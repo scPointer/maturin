@@ -1,3 +1,5 @@
+const SBI_CONSOLE_PUTCHAR: usize = 1;
+
 #[inline(always)]
 fn sbi_call(which: usize, arg0: usize, arg1: usize, arg2: usize) -> usize {
     let ret;
@@ -14,7 +16,7 @@ fn sbi_call(which: usize, arg0: usize, arg1: usize, arg2: usize) -> usize {
 }
 
 pub fn console_putchar(c: usize) {
-    sbi_call(1, c, 0, 0);
+    sbi_call(SBI_CONSOLE_PUTCHAR, c, 0, 0);
 }
 
 pub fn console_putint(val: usize) {

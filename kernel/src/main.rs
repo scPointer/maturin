@@ -5,6 +5,7 @@
 mod constants;
 mod lang;
 mod memory;
+mod console;
 
 #[cfg(target_arch = "riscv64")]
 #[path = "arch/riscv/mod.rs"]
@@ -44,11 +45,13 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
         spin_loop();
     }
     // 
-
+    println!("I'm CPU [{}]", cpu_id);
+    /*
     for _i in 0..100 {
         arch::io::console_putint(cpu_id);
     };
-
+    */
+    
     match cpu_id {
         constants::BOOTSTRAP_CPU_ID => boot_main(),
         _ => secondary_main(),

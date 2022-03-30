@@ -13,6 +13,15 @@ dependencies = [
 
 [[package]]
 name = "bare-metal"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5deb64efa5bd81e31fcd1938615a6d98c82eafcbcd787162b6f63b91d6bac5b3"
+dependencies = [
+ "rustc_version",
+]
+
+[[package]]
+name = "bare-metal"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8fe8f5a8a398345e52358e18ff07cc17a568fbca5c6f73873d3a62056309603"
@@ -72,7 +81,7 @@ dependencies = [
  "lazy_static",
  "log",
  "raw-cpuid",
- "riscv",
+ "riscv 0.7.0",
  "x86_64",
 ]
 
@@ -92,6 +101,7 @@ dependencies = [
  "buddy_system_allocator",
  "lazy_static",
  "lock",
+ "riscv 0.6.0",
 ]
 
 [[package]]
@@ -143,10 +153,22 @@ checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
 name = "riscv"
+version = "0.6.0"
+source = "git+https://github.com/rcore-os/riscv#11d43cf7cccb3b62a3caaf3e07a1db7449588f9a"
+dependencies = [
+ "bare-metal 0.2.5",
+ "bit_field",
+ "bitflags",
+ "log",
+ "riscv-target",
+]
+
+[[package]]
+name = "riscv"
 version = "0.7.0"
 source = "git+https://github.com/rust-embedded/riscv?rev=cd31989ba1#cd31989ba11d5d64e1addd8aab98bfb00dd927d5"
 dependencies = [
- "bare-metal",
+ "bare-metal 1.0.0",
  "bit_field",
  "embedded-hal",
  "riscv-target",
@@ -161,6 +183,30 @@ dependencies = [
  "lazy_static",
  "regex",
 ]
+
+[[package]]
+name = "rustc_version"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
+dependencies = [
+ "semver",
+]
+
+[[package]]
+name = "semver"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
+dependencies = [
+ "semver-parser",
+]
+
+[[package]]
+name = "semver-parser"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "spin"
