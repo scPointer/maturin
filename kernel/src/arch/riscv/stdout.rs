@@ -5,7 +5,7 @@ use lock::mutex::Mutex;
 struct Stdout;
 
 fn putchar(c: u8) {
-    super::io::console_putchar(c as usize);
+    super::sbi::console_putchar(c as usize);
 }
 
 impl Write for Stdout {

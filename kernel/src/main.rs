@@ -2,14 +2,25 @@
 #![no_main]
 #![feature(default_alloc_error_handler)]
 
+#[macro_use]
+mod console;
+
 mod constants;
 mod lang;
 mod memory;
-mod console;
+mod loader;
+mod timer;
+
+pub mod syscall;
+pub mod task;
+pub mod trap;
 
 #[cfg(target_arch = "riscv64")]
 #[path = "arch/riscv/mod.rs"]
 mod arch;
+
+//在引入 mod arch 时已经加入了 entry.S
+core::arch::global_asm!(include_str!("link_app.S"));
 
 //use core::sync::atomic::{Ordering, AtomicUsize};
 use core::hint::spin_loop;
@@ -30,11 +41,17 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     let cpu_id = arch::cpu::id();
     if cpu_id == constants::BOOTSTRAP_CPU_ID {
         memory::init();
+
+        trap::init();
+        loader::load_apps();
+        trap::enable_timer_interrupt();
+        timer::set_next_trigger();
+        task::run_first_task();
         //AP_CAN_INIT.compare_exchange(cpu_id, cpu_id + 1, Ordering::Relaxed, Ordering::Relaxed).unwrap();
-        check_and_init(cpu_id);
+        check_and_finish_init(cpu_id);
     } else {
         //while cpu_id != AP_CAN_INIT.compare_exchange(cpu_id, cpu_id + 1, Ordering::Relaxed, Ordering::Relaxed).unwrap() {
-        while !check_and_init(cpu_id) {
+        while !check_and_finish_init(cpu_id) {
             spin_loop();
         }
     }
@@ -59,7 +76,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     
 }
 
-pub fn check_and_init(cpu_id: usize) -> bool {
+pub fn check_and_finish_init(cpu_id: usize) -> bool {
     let mut id_now = AP_CAN_INIT.lock();
     if *id_now != cpu_id {
         false

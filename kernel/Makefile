@@ -34,6 +34,7 @@ endif
 build: $(kernel_img)
 
 kernel:
+	@cd ../user && make build
 	@echo Building maturin kernel
 	cargo build $(build_args)
 
