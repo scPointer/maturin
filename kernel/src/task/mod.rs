@@ -105,7 +105,7 @@ impl TaskManager {
         // 而在多核环境下，一个核启动的第一个应用不一定是task[0]
         inner.current_task_at_cpu[cpu_id] = self.num_app - 1;
         if let Some(next) = self.find_next_task(&inner, cpu_id) {
-            println!("[cpu {}] running task {}", cpu_id, next);
+            //println!("[cpu {}] running task {}", cpu_id, next);
             //let current = inner.current_task;
             inner.tasks[next].task_status = TaskStatus::Running;
             inner.current_task_at_cpu[cpu_id] = next;
@@ -184,8 +184,8 @@ impl TaskManager {
         inner.tasks[current].task_status = new_status_for_current;
 
         if let Some(next) = self.find_next_task(&inner, cpu_id) {
-            println!("[cpu {}] leaving task {}", cpu_id, current);
-            println!("[cpu {}] running task {}", cpu_id, next);
+            //println!("[cpu {}] leaving task {}", cpu_id, current);
+            //println!("[cpu {}] running task {}", cpu_id, next);
             inner.tasks[next].task_status = TaskStatus::Running;
             inner.current_task_at_cpu[cpu_id] = next;
             let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
@@ -197,7 +197,7 @@ impl TaskManager {
             }
             // go back to user mode
         } else if inner.current_task_at_cpu[cpu_id] != EMPTY_TASK {
-            println!("[cpu {}] leaving task {}", cpu_id, inner.current_task_at_cpu[cpu_id]);
+            //println!("[cpu {}] leaving task {}", cpu_id, inner.current_task_at_cpu[cpu_id]);
             inner.current_task_at_cpu[cpu_id] = EMPTY_TASK;
             drop(inner);
             let mut cnt = self.finished_core_cnt.lock();
