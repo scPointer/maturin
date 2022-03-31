@@ -9,9 +9,15 @@ use user_lib::{get_time, yield_};
 #[no_mangle]
 fn main() -> i32 {
     let current_timer = get_time();
-    let wait_for = current_timer + 3000;
-    while get_time() < wait_for {
-        yield_();
+    let wait_for = current_timer + 1000;
+    loop {
+        let now = get_time();
+        println!("timer {} now {} wait {}", current_timer, now, wait_for);
+        if now < wait_for {
+            yield_();
+        } else {
+            break;
+        }
     }
     println!("Test sleep OK!");
     0

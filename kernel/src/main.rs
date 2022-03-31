@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![feature(panic_info_message)]
 #![feature(default_alloc_error_handler)]
 
 #[macro_use]
@@ -38,7 +39,7 @@ lazy_static::lazy_static! {
 
 #[no_mangle]
 pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
-    let cpu_id = arch::cpu::id();
+    let cpu_id = arch::get_cpu_id();
     if cpu_id == constants::BOOTSTRAP_CPU_ID {
         memory::init();
 
@@ -46,14 +47,17 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
         loader::load_apps();
         trap::enable_timer_interrupt();
         timer::set_next_trigger();
-        task::run_first_task();
         //AP_CAN_INIT.compare_exchange(cpu_id, cpu_id + 1, Ordering::Relaxed, Ordering::Relaxed).unwrap();
         check_and_finish_init(cpu_id);
+
     } else {
         //while cpu_id != AP_CAN_INIT.compare_exchange(cpu_id, cpu_id + 1, Ordering::Relaxed, Ordering::Relaxed).unwrap() {
         while !check_and_finish_init(cpu_id) {
             spin_loop();
         }
+        trap::init();
+        trap::enable_timer_interrupt();
+        timer::set_next_trigger();
     }
     
     // In fact, it is unnecessary to check all cpu booted before respective initialization
@@ -93,10 +97,12 @@ pub fn check_all_cpu_started() -> bool {
 
 pub fn boot_main() -> ! {
     //arch::io::print("I'm bootstrap CPU\n");
+    task::run_first_task();
     loop {}
 }
 
 pub fn secondary_main() -> ! {
     //arch::io::print("I'm another CPU\n");
+    task::run_first_task();
     loop {}
 }

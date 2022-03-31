@@ -36,6 +36,11 @@ pub fn set_timer(stime_value: u64) {
     sbi_call(SBI_SET_TIMER, stime_value as usize, 0, 0);
 }
 
+pub fn shutdown() -> ! {
+    sbi_call(SBI_SHUTDOWN, 0, 0, 0);
+    unreachable!()
+}
+
 pub fn console_putchar(c: usize) {
     sbi_call(SBI_CONSOLE_PUTCHAR, c, 0, 0);
 }
