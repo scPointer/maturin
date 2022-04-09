@@ -1,5 +1,7 @@
 #![no_std]
 #![no_main]
+//#![deny(missing_docs)]
+//#![deny(warnings)]
 #![feature(panic_info_message)]
 #![feature(default_alloc_error_handler)]
 
@@ -32,6 +34,7 @@ extern crate lock;
 use lock::mutex::Mutex;
 
 extern crate lazy_static;
+
 //static AP_CAN_INIT: AtomicUsize = AtomicUsize::new(0);
 lazy_static::lazy_static! {
     static ref AP_CAN_INIT: Arc<Mutex<usize>> = Arc::new(Mutex::new(0));
@@ -41,8 +44,8 @@ lazy_static::lazy_static! {
 pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     let cpu_id = arch::get_cpu_id();
     if cpu_id == constants::BOOTSTRAP_CPU_ID {
+        //memory::clear_bss();
         memory::init();
-
         trap::init();
         loader::load_apps();
         trap::enable_timer_interrupt();

@@ -30,6 +30,7 @@ SECTIONS
     }
 
     . = ALIGN(4K);
+    sbss_with_stack = .;
     .bss : {
 	    *(.bss.stack)
         sbss = .;
@@ -38,5 +39,6 @@ SECTIONS
     }
 
     . = ALIGN(4K);
+    kernel_end = .;
     PROVIDE(end = .);
 }

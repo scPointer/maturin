@@ -8,6 +8,7 @@ edition = "2021"
 
 [dependencies]
 buddy_system_allocator = "0.5"
+bitflags = "1.2.1"
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 lock = { git = "https://github.com/DeathWish5/kernel-sync.git"}
 riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }

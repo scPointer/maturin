@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub const BOOTSTRAP_CPU_ID: usize = 0;
 pub const CPU_NUM: usize =  4;
 pub const LAST_CPU_ID: usize = CPU_NUM - 1;
@@ -10,4 +11,8 @@ pub const USER_STACK_SIZE: usize = 0x4000; // 16 KB
 pub const MAX_APP_NUM: usize = 20; // 应用程序个数限制
 pub const APP_BASE_ADDRESS: usize = 0x80400000;
 pub const APP_SIZE_LIMIT: usize = 0x20000;
+
+//pub const MEMORY_END: usize = 0x80800000; //128MB
+pub const PAGE_SIZE: usize = 0x1000;
+pub const PAGE_SIZE_BITS: usize = 0xc;
 pub const EMPTY_TASK: usize = usize::MAX;
