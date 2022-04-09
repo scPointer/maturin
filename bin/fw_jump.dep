@@ -1,0 +1,9 @@
+/mnt/d/oscomp/opensbi3/opensbi/build/platform/generic/firmware/fw_jump.o: /mnt/d/oscomp/opensbi3/opensbi/firmware/fw_jump.S \
+ /mnt/d/oscomp/opensbi3/opensbi/firmware/fw_base.S \
+ /mnt/d/oscomp/opensbi3/opensbi/include/sbi/riscv_asm.h \
+ /mnt/d/oscomp/opensbi3/opensbi/include/sbi/riscv_encoding.h \
+ /mnt/d/oscomp/opensbi3/opensbi/include/sbi/sbi_const.h \
+ /mnt/d/oscomp/opensbi3/opensbi/include/sbi/riscv_elf.h \
+ /mnt/d/oscomp/opensbi3/opensbi/include/sbi/sbi_platform.h \
+ /mnt/d/oscomp/opensbi3/opensbi/include/sbi/sbi_scratch.h \
+ /mnt/d/oscomp/opensbi3/opensbi/include/sbi/sbi_trap.h

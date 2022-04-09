@@ -1,9 +1,12 @@
 ARCH ?= riscv64
-MODE ?= debug
-SMP ?= 4
+MODE ?= release
+SMP ?= 5
 
 OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy
+
+MACHINE := sifive_u
+BOOTLOADER := ../bin/fw_jump.bin
 
 ifeq ($(ARCH), riscv64)
 target := riscv64imac-unknown-none-elf
@@ -21,12 +24,12 @@ ifeq ($(MODE), release)
 build_args += --release
 endif
 
-qemu_args := -nographic -smp $(SMP)
+qemu_args := -nographic -smp $(SMP) -m 2G
 ifeq ($(ARCH), riscv64)
 qemu_args += \
-	-machine virt \
-	-bios default \
-	-device loader,file=$(kernel_img),addr=0x80200000
+	-machine $(MACHINE) \
+	-bios  $(BOOTLOADER) \
+	-kernel $(kernel)
 endif
 
 .PHONY: build kernel run qemu asm clean
@@ -41,6 +44,13 @@ $(kernel_img): kernel
 	$(OBJCOPY) $(kernel) --strip-all -O binary $@
 
 run: build qemu
+
+gdb := riscv64-unknown-elf-gdb
+
+debug:build
+	$(qemu) $(qemu_args) -S -gdb tcp::15234 &
+	@sleep 1
+	$(gdb)
 
 qemu:
 	$(qemu) $(qemu_args)

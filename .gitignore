@@ -1,2 +1,4 @@
 .vscode
 target
+*.dtb
+*.dts
