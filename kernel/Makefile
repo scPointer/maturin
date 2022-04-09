@@ -7,7 +7,6 @@ OBJCOPY ?= rust-objcopy
 
 MACHINE := sifive_u
 BOOTLOADER := ../bin/fw_jump.bin
-
 ifeq ($(ARCH), riscv64)
 target := riscv64imac-unknown-none-elf
 else

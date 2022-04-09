@@ -14,7 +14,6 @@ mod arch;
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::hint::spin_loop;
 
-use crate::memory::clear_bss;
 extern crate alloc;
 extern crate lock;
 
@@ -30,7 +29,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     let cpu_id = arch::cpu::id();
     arch::io::console_putint(cpu_id);
     if cpu_id == constants::BOOTSTRAP_CPU_ID {
-        clear_bss();
+        memory::clear_bss();
         memory::init();
         // AP_CAN_INIT.compare_exchange(cpu_id, cpu_id + 1, Ordering::Relaxed, Ordering::Relaxed).unwrap();
         AP_CAN_INIT.store(true, Ordering::Release);
