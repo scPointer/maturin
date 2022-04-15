@@ -16,6 +16,7 @@ mod context;
 
 use crate::syscall::syscall;
 use crate::task::{exit_current_and_run_next, suspend_current_and_run_next};
+use crate::memory::{handle_kernel_page_fault, MMUFlags};
 use crate::timer::set_next_trigger;
 use crate::arch::get_cpu_id;
 use core::arch::global_asm;
@@ -54,25 +55,35 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             cx.sepc += 4;
             cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
         }
-        Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
-            println!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
+        Trap::Exception(Exception::StoreFault) => {
+            println!("[kernel] StoreFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
             exit_current_and_run_next();
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             println!("[kernel] IllegalInstruction in application, kernel killed it.");
             exit_current_and_run_next();
         }
-        /*
+
+        // 临时的错误实现：不应该在此用handle_kernel_page_fault
         Trap::Exception(Exception::InstructionPageFault) => {
-            TrapReason::PageFault(stval, MMUFlags::USER | MMUFlags::EXECUTE)
+            println!("[kernel] InstructionPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", stval, cx.sepc);
+            handle_kernel_page_fault(stval, MMUFlags::USER | MMUFlags::EXECUTE);
+            //PageFault(stval, MMUFlags::USER | MMUFlags::EXECUTE)
         }
         Trap::Exception(Exception::LoadPageFault) => {
-            TrapReason::PageFault(stval, MMUFlags::USER | MMUFlags::READ)
+            println!("[kernel] LoadPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", stval, cx.sepc);
+            handle_kernel_page_fault(stval, MMUFlags::USER | MMUFlags::READ);
+            //PageFault(stval, MMUFlags::USER | MMUFlags::READ)
         }
         Trap::Exception(Exception::StorePageFault) => {
-            TrapReason::PageFault(stval, MMUFlags::USER | MMUFlags::WRITE)
+            println!("[kernel] StorePageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", stval, cx.sepc);
+            if cx.sepc == 0xffff_ffff_8020_999a {
+                panic!("...");
+            }
+            handle_kernel_page_fault(stval, MMUFlags::USER | MMUFlags::WRITE);
+            //PageFault(stval, MMUFlags::USER | MMUFlags::WRITE)
         }
-        */
+        
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             set_next_trigger();
             suspend_current_and_run_next();

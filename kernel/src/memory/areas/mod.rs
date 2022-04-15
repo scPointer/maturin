@@ -146,6 +146,13 @@ impl VmArea {
         );
         let mut pma = self.pma.lock();
         if !self.flags.contains(access_flags) {
+            if access_flags.contains(MMUFlags::USER) {
+                let offset = align_down(offset);
+                let vaddr = self.start + offset;
+                let entry = pt.get_entry(vaddr)?;
+                PTETranslator::set_flags(entry, self.flags | MMUFlags::USER);
+                return Ok(());
+            }
             return Err(OSError::PageFaultHandler_AccessDenied);
         }
         let offset = align_down(offset);

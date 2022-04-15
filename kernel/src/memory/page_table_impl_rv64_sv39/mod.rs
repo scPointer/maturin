@@ -155,6 +155,7 @@ impl PageTable for RvPageTable {
         #[cfg(target_arch = "riscv64")] // [0xffff_ffff_8000_0000, 0xffff_ffff_ffff_ffff]
         for i in 510..512 {
             table[i].set::<rv::PhysAddr>(kernel_table[i].frame(), kernel_table[i].flags());
+            println!("map entry {:x?}", table[i]);
         }
     }
 

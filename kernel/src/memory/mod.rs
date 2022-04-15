@@ -63,6 +63,7 @@ pub use areas::{
 pub use vmm::{
     MemorySet,
     kernel_page_table_init,
+    handle_kernel_page_fault,
 };
 
 pub fn clear_bss() {

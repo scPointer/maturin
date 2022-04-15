@@ -20,7 +20,7 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
-use crate::constants::{MAX_APP_NUM, CPU_NUM, EMPTY_TASK};
+use crate::constants::{CPU_NUM, EMPTY_TASK};
 use crate::loader::{get_num_app, init_app_cx};
 use crate::memory::MemorySet;
 use crate::arch::get_cpu_id;
@@ -63,7 +63,9 @@ lazy_static! {
     /// Global variable: TASK_MANAGER
     pub static ref TASK_MANAGER: TaskManager = {
         let num_app = get_num_app();
+        println!("now");
         let mut tasks: Vec<TaskControlBlock> = Vec::new();
+        println!("now");
         for i in 0..num_app {
             tasks.push(TaskControlBlock{
                 task_cx: TaskContext::goto_restore(init_app_cx(i)),
@@ -71,6 +73,7 @@ lazy_static! {
                 vm: MemorySet::new_user(),
             });
         }
+        println!("now");
         /*
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
@@ -125,8 +128,11 @@ impl TaskManager {
             inner.current_task_at_cpu[cpu_id] = next;
             //let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
             let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
+
+            //unsafe {inner.tasks[next].vm.activate(); }
             drop(inner);
             let mut _unused = TaskContext::zero_init();
+
             // before this, we should drop local variables that must be dropped manually
             unsafe {
                 __switch(&mut _unused as *mut TaskContext, next_task_cx_ptr);
@@ -204,6 +210,7 @@ impl TaskManager {
             inner.current_task_at_cpu[cpu_id] = next;
             let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
             let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
+            //unsafe {inner.tasks[next].vm.activate(); }
             drop(inner);
             // before this, we should drop local variables that must be dropped manually
             unsafe {

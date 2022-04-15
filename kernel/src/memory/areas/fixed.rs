@@ -8,7 +8,7 @@ use super::{PmArea, VmArea};
 use crate::error::{OSError, OSResult};
 use crate::memory::{
     addr::{align_down, align_up},
-    MMUFlags, PhysAddr, PAGE_SIZE,
+    MMUFlags, PhysAddr, VirtAddr, PAGE_SIZE,
 };
 
 /// A PMA representing a fixed physical memory region.
@@ -76,8 +76,8 @@ impl PmAreaFixed {
 
 impl VmArea {
     pub fn from_fixed_pma(
-        start_paddr: PhysAddr,
-        end_paddr: PhysAddr,
+        start_paddr: VirtAddr,
+        end_paddr: VirtAddr,
         offset: usize,
         flags: MMUFlags,
         name: &'static str,
@@ -87,6 +87,21 @@ impl VmArea {
             end_paddr + offset,
             flags,
             Arc::new(Mutex::new(PmAreaFixed::new(start_paddr, end_paddr)?)),
+            name,
+        )
+    }
+
+    pub fn from_identical_pma(
+        start_vaddr: VirtAddr,
+        end_vaddr: VirtAddr,
+        flags: MMUFlags,
+        name: &'static str,
+    ) -> OSResult<Self> {
+        Self::new(
+            start_vaddr,
+            end_vaddr,
+            flags,
+            Arc::new(Mutex::new(PmAreaFixed::new(start_vaddr, end_vaddr)?)),
             name,
         )
     }

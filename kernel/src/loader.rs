@@ -11,6 +11,7 @@ use crate::constants::{
     MAX_APP_NUM,
     APP_BASE_ADDRESS,
     APP_SIZE_LIMIT,
+    PHYS_VIRT_OFFSET,
 };
 use crate::trap::TrapContext;
 use core::arch::asm;
@@ -56,7 +57,7 @@ impl UserStack {
 
 /// Get base address of app i.
 fn get_base_i(app_id: usize) -> usize {
-    APP_BASE_ADDRESS + app_id * APP_SIZE_LIMIT
+    APP_BASE_ADDRESS + app_id * APP_SIZE_LIMIT + PHYS_VIRT_OFFSET
 }
 
 /// Get the total number of applications.
@@ -75,6 +76,7 @@ pub fn load_apps() {
     }
     let num_app_ptr = _num_app as usize as *const usize;
     let num_app = get_num_app();
+    println!("num_app_ptr {:x}, num_app {}", num_app_ptr as usize, num_app);
     let app_start = unsafe { core::slice::from_raw_parts(num_app_ptr.add(1), num_app + 1) };
     // clear i-cache first
     unsafe {
@@ -83,15 +85,20 @@ pub fn load_apps() {
     // load apps
     for i in 0..num_app {
         let base_i = get_base_i(i);
+        println!("load {}, base {:x} app_origin_pos {:x}", i, base_i, app_start[i] as usize);
+        
         // clear region
         (base_i..base_i + APP_SIZE_LIMIT)
             .for_each(|addr| unsafe { (addr as *mut u8).write_volatile(0) });
+        
+        println!("load {}", i);
         // load app from data section to memory
         let src = unsafe {
             core::slice::from_raw_parts(app_start[i] as *const u8, app_start[i + 1] - app_start[i])
         };
         let dst = unsafe { core::slice::from_raw_parts_mut(base_i as *mut u8, src.len()) };
         dst.copy_from_slice(src);
+        println!("load {}", i);
     }
 }
 

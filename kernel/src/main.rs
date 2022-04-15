@@ -52,12 +52,14 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     if cpu_id == constants::BOOTSTRAP_CPU_ID {
         //memory::clear_bss();
         memory::allocator_init();
-        //memory::kernel_page_table_init();
+        memory::kernel_page_table_init();
         println!("[CPU {}] page table enabled", cpu_id);
         trap::init();
+        
         loader::load_apps();
         trap::enable_timer_interrupt();
         timer::set_next_trigger();
+        
         //AP_CAN_INIT.compare_exchange(cpu_id, cpu_id + 1, Ordering::Relaxed, Ordering::Relaxed).unwrap();
         check_and_finish_init(cpu_id);
 
@@ -66,7 +68,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
         while !check_and_finish_init(cpu_id) {
             spin_loop();
         }
-        //memory::kernel_page_table_init();
+        memory::kernel_page_table_init();
         trap::init();
         trap::enable_timer_interrupt();
         timer::set_next_trigger();
@@ -110,13 +112,13 @@ pub fn check_all_cpu_started() -> bool {
 pub fn boot_main() -> ! {
     //arch::io::print("I'm bootstrap CPU\n");
     test_vm();
-    //task::run_first_task();
+    task::run_first_task();
     loop {}
 }
 
 pub fn secondary_main() -> ! {
     //arch::io::print("I'm another CPU\n");
-    //task::run_first_task();
+    task::run_first_task();
     loop {}
 }
 
