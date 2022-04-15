@@ -17,6 +17,7 @@ mod context;
 use crate::syscall::syscall;
 use crate::task::{exit_current_and_run_next, suspend_current_and_run_next};
 use crate::timer::set_next_trigger;
+use crate::arch::get_cpu_id;
 use core::arch::global_asm;
 use riscv::register::{
     mtvec::TrapMode,
@@ -61,13 +62,25 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             println!("[kernel] IllegalInstruction in application, kernel killed it.");
             exit_current_and_run_next();
         }
+        /*
+        Trap::Exception(Exception::InstructionPageFault) => {
+            TrapReason::PageFault(stval, MMUFlags::USER | MMUFlags::EXECUTE)
+        }
+        Trap::Exception(Exception::LoadPageFault) => {
+            TrapReason::PageFault(stval, MMUFlags::USER | MMUFlags::READ)
+        }
+        Trap::Exception(Exception::StorePageFault) => {
+            TrapReason::PageFault(stval, MMUFlags::USER | MMUFlags::WRITE)
+        }
+        */
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             set_next_trigger();
             suspend_current_and_run_next();
         }
         _ => {
             panic!(
-                "Unsupported trap {:?}, stval = {:#x}!",
+                "[cpu {}] Unsupported trap {:?}, stval = {:#x}!",
+                get_cpu_id(),
                 scause.cause(),
                 stval
             );

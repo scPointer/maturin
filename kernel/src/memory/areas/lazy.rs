@@ -1,10 +1,11 @@
 use alloc::{sync::Arc, vec::Vec};
 use core::fmt::{Debug, Formatter, Result};
 
-use spin::Mutex;
+//use spin::Mutex;
+use lock::mutex::Mutex;
 
 use super::{PmArea, VmArea};
-use crate::error::{AcoreError, AcoreResult};
+use crate::error::{OSError, OSResult};
 use crate::memory::{
     addr::{self, align_down},
     Frame, MMUFlags, PhysAddr, VirtAddr, PAGE_SIZE, USER_VIRT_ADDR_LIMIT,
@@ -19,24 +20,27 @@ impl PmArea for PmAreaLazy {
     fn size(&self) -> usize {
         self.frames.len() * PAGE_SIZE
     }
-    fn get_frame(&mut self, idx: usize, need_alloc: bool) -> AcoreResult<Option<PhysAddr>> {
+    fn get_frame(&mut self, idx: usize, need_alloc: bool) -> OSResult<Option<PhysAddr>> {
         if need_alloc && self.frames[idx].is_none() {
-            let mut frame = Frame::new()?;
-            frame.zero();
-            self.frames[idx] = Some(frame);
+            if let Some(mut frame) = Frame::new() {
+                frame.zero();
+                self.frames[idx] = Some(frame);
+            } else {
+                return Err(OSError::Memory_RunOutOfMemory);
+            }
         }
         Ok(self.frames[idx].as_ref().map(|f| f.start_paddr()))
     }
-    fn release_frame(&mut self, idx: usize) -> AcoreResult {
-        self.frames[idx].take().ok_or(AcoreError::NotFound)?;
+    fn release_frame(&mut self, idx: usize) -> OSResult {
+        self.frames[idx].take().ok_or(OSError::PmArea_InvalidRelease)?;
         Ok(())
     }
-    fn read(&mut self, offset: usize, dst: &mut [u8]) -> AcoreResult<usize> {
+    fn read(&mut self, offset: usize, dst: &mut [u8]) -> OSResult<usize> {
         self.for_each_frame(offset, dst.len(), |processed: usize, frame: &mut [u8]| {
             dst[processed..processed + frame.len()].copy_from_slice(frame);
         })
     }
-    fn write(&mut self, offset: usize, src: &[u8]) -> AcoreResult<usize> {
+    fn write(&mut self, offset: usize, src: &[u8]) -> OSResult<usize> {
         self.for_each_frame(offset, src.len(), |processed: usize, frame: &mut [u8]| {
             frame.copy_from_slice(&src[processed..processed + frame.len()]);
         })
@@ -44,20 +48,20 @@ impl PmArea for PmAreaLazy {
 }
 
 impl PmAreaLazy {
-    pub fn new(page_count: usize) -> AcoreResult<Self> {
+    pub fn new(page_count: usize) -> OSResult<Self> {
         if page_count == 0 {
-            warn!(
+            println!(
                 "page_count cannot be 0 in PmAreaLazy::new(): {:#x?}",
                 page_count
             );
-            return Err(AcoreError::InvalidArgs);
+            return Err(OSError::PmArea_InvalidRange);
         }
         if page_count > addr::page_count(USER_VIRT_ADDR_LIMIT) {
-            warn!(
+            println!(
                 "page_count is too large in PmAreaLazy::new(): {:#x?}",
                 page_count
             );
-            return Err(AcoreError::NoMemory);
+            return Err(OSError::Memory_RunOutOfMemory);
         }
         let mut frames = Vec::with_capacity(page_count);
         for _ in 0..page_count {
@@ -71,13 +75,13 @@ impl PmAreaLazy {
         offset: usize,
         len: usize,
         mut op: impl FnMut(usize, &mut [u8]),
-    ) -> AcoreResult<usize> {
+    ) -> OSResult<usize> {
         if offset >= self.size() || offset + len > self.size() {
-            warn!(
+            println!(
                 "out of range in PmAreaLazy::for_each_frame(): offset={:#x?}, len={:#x?}, {:#x?}",
                 offset, len, self
             );
-            return Err(AcoreError::OutOfRange);
+            return Err(OSError::PmArea_OutOfRange);
         }
         let mut start = offset;
         let mut len = len;
@@ -89,9 +93,17 @@ impl PmAreaLazy {
 
             let idx = start_align / PAGE_SIZE;
             if self.frames[idx].is_none() {
+                if let Some(mut frame) = Frame::new() {
+                    frame.zero();
+                    self.frames[idx] = Some(frame);
+                } else {
+                    return Err(OSError::Memory_RunOutOfMemory);
+                }
+                /*
                 let mut frame = Frame::new()?;
                 frame.zero();
                 self.frames[idx] = Some(frame);
+                */
             }
             let frame = self.frames[idx].as_mut().unwrap();
             op(processed, &mut frame.as_slice_mut()[pgoff..pgoff + n]);
@@ -117,7 +129,7 @@ impl VmArea {
         size: usize,
         flags: MMUFlags,
         name: &'static str,
-    ) -> AcoreResult<Self> {
+    ) -> OSResult<Self> {
         Self::new(
             start_vaddr,
             start_vaddr + size,

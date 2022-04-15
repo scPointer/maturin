@@ -1,10 +1,11 @@
 use alloc::sync::Arc;
 use core::slice;
 
-use spin::Mutex;
+//use spin::Mutex;
+use lock::mutex::Mutex;
 
 use super::{PmArea, VmArea};
-use crate::error::{AcoreError, AcoreResult};
+use crate::error::{OSError, OSResult};
 use crate::memory::{
     addr::{align_down, align_up},
     MMUFlags, PhysAddr, PAGE_SIZE,
@@ -21,34 +22,34 @@ impl PmArea for PmAreaFixed {
     fn size(&self) -> usize {
         self.end - self.start
     }
-    fn get_frame(&mut self, idx: usize, _need_alloc: bool) -> AcoreResult<Option<PhysAddr>> {
+    fn get_frame(&mut self, idx: usize, _need_alloc: bool) -> OSResult<Option<PhysAddr>> {
         let paddr = self.start + idx * PAGE_SIZE;
         debug_assert!(paddr < self.end);
         Ok(Some(paddr))
     }
-    fn release_frame(&mut self, _idx: usize) -> AcoreResult {
+    fn release_frame(&mut self, _idx: usize) -> OSResult {
         Ok(())
     }
-    fn read(&mut self, offset: usize, dst: &mut [u8]) -> AcoreResult<usize> {
+    fn read(&mut self, offset: usize, dst: &mut [u8]) -> OSResult<usize> {
         if offset >= self.size() {
-            warn!(
+            println!(
                 "out of range in PmAreaFixed::read(): offset={:#x?}, {:#x?}",
                 offset, self
             );
-            return Err(AcoreError::OutOfRange);
+            return Err(OSError::PmArea_OutOfRange);
         }
         let len = dst.len().min(self.end - offset);
         let data = unsafe { slice::from_raw_parts((self.start + offset) as *const u8, len) };
         dst.copy_from_slice(data);
         Ok(len)
     }
-    fn write(&mut self, offset: usize, src: &[u8]) -> AcoreResult<usize> {
+    fn write(&mut self, offset: usize, src: &[u8]) -> OSResult<usize> {
         if offset >= self.size() {
-            warn!(
+            println!(
                 "out of range in PmAreaFixed::write(): offset={:#x?}, {:#x?}",
                 offset, self
             );
-            return Err(AcoreError::OutOfRange);
+            return Err(OSError::PmArea_OutOfRange);
         }
         let len = src.len().min(self.end - offset);
         let data = unsafe { slice::from_raw_parts_mut((self.start + offset) as *mut u8, len) };
@@ -58,13 +59,13 @@ impl PmArea for PmAreaFixed {
 }
 
 impl PmAreaFixed {
-    pub fn new(start: PhysAddr, end: PhysAddr) -> AcoreResult<Self> {
+    pub fn new(start: PhysAddr, end: PhysAddr) -> OSResult<Self> {
         if start >= end {
-            warn!(
+            println!(
                 "invalid memory region in PmAreaFixed::new(): [{:#x?}, {:#x?})",
                 start, end
             );
-            return Err(AcoreError::InvalidArgs);
+            return Err(OSError::PmArea_InvalidRange);
         }
         Ok(Self {
             start: align_down(start),
@@ -80,7 +81,7 @@ impl VmArea {
         offset: usize,
         flags: MMUFlags,
         name: &'static str,
-    ) -> AcoreResult<Self> {
+    ) -> OSResult<Self> {
         Self::new(
             start_paddr + offset,
             end_paddr + offset,

@@ -6,12 +6,13 @@ pub use lazy::PmAreaLazy;
 
 use alloc::sync::Arc;
 
-use spin::Mutex;
+//use spin::Mutex;
+use lock::mutex::Mutex;
 
 use super::addr::{align_down, align_up, PhysAddr, VirtAddr};
-use super::paging::{MMUFlags, PageTable};
+use super::{MMUFlags, PageTable, PTETranslator};
 use super::PAGE_SIZE;
-use crate::error::{AcoreError, AcoreResult};
+use crate::error::{OSError, OSResult};
 
 /// A physical memory area with same MMU flags, can be discontiguous and lazy allocated,
 /// or shared by multi-threads.
@@ -20,13 +21,13 @@ pub trait PmArea: core::fmt::Debug + Send + Sync {
     fn size(&self) -> usize;
     /// Get the start address of a 4KB physical frame relative to the index `idx`, perform
     /// allocation if `need_alloc` is `true`.
-    fn get_frame(&mut self, idx: usize, need_alloc: bool) -> AcoreResult<Option<PhysAddr>>;
+    fn get_frame(&mut self, idx: usize, need_alloc: bool) -> OSResult<Option<PhysAddr>>;
     /// Release the given 4KB physical frame, perform deallocation if the frame has been allocated.
-    fn release_frame(&mut self, idx: usize) -> AcoreResult;
+    fn release_frame(&mut self, idx: usize) -> OSResult;
     /// Read data from this PMA at `offset`.
-    fn read(&mut self, offset: usize, dst: &mut [u8]) -> AcoreResult<usize>;
+    fn read(&mut self, offset: usize, dst: &mut [u8]) -> OSResult<usize>;
     /// Write data to this PMA at `offset`.
-    fn write(&mut self, offset: usize, src: &[u8]) -> AcoreResult<usize>;
+    fn write(&mut self, offset: usize, src: &[u8]) -> OSResult<usize>;
 }
 
 /// A contiguous virtual memory area with same MMU flags.
@@ -47,21 +48,23 @@ impl VmArea {
         flags: MMUFlags,
         pma: Arc<Mutex<dyn PmArea>>,
         name: &'static str,
-    ) -> AcoreResult<Self> {
+    ) -> OSResult<Self> {
         if start >= end {
-            warn!("invalid memory region: [{:#x?}, {:#x?})", start, end);
-            return Err(AcoreError::InvalidArgs);
+            //println!("invalid memory region: [{:#x?}, {:#x?})", start, end);
+            return Err(OSError::VmArea_InvalidRange);
         }
         let start = align_down(start);
         let end = align_up(end);
         if end - start != pma.lock().size() {
-            warn!(
+            /*
+            println!(
                 "VmArea size != PmArea size: [{:#x?}, {:#x?}), {:x?}",
                 start,
                 end,
                 pma.lock()
             );
-            return Err(AcoreError::InvalidArgs);
+            */
+            return Err(OSError::VmArea_VmSizeNotEqualToPmSize);
         }
         Ok(Self {
             start,
@@ -87,8 +90,8 @@ impl VmArea {
     }
 
     /// Create mapping between this VMA to the associated PMA.
-    pub fn map_area(&self, pt: &mut impl PageTable) -> AcoreResult {
-        trace!("create mapping: {:#x?}", self);
+    pub fn map_area(&self, pt: &mut impl PageTable) -> OSResult {
+        //println!("create mapping: {:#x?}", self);
         let mut pma = self.pma.lock();
         for vaddr in (self.start..self.end).step_by(PAGE_SIZE) {
             let page = pma.get_frame((vaddr - self.start) / PAGE_SIZE, false)?;
@@ -98,7 +101,7 @@ impl VmArea {
                 pt.map(vaddr, 0, MMUFlags::empty())
             };
             res.map_err(|e| {
-                error!(
+                println!(
                     "failed to create mapping: {:#x?} -> {:#x?}, {:?}",
                     vaddr, page, e
                 );
@@ -109,17 +112,17 @@ impl VmArea {
     }
 
     /// Destory mapping of this VMA.
-    pub fn unmap_area(&self, pt: &mut impl PageTable) -> AcoreResult {
-        trace!("destory mapping: {:#x?}", self);
+    pub fn unmap_area(&self, pt: &mut impl PageTable) -> OSResult {
+        //println!("destory mapping: {:#x?}", self);
         let mut pma = self.pma.lock();
         for vaddr in (self.start..self.end).step_by(PAGE_SIZE) {
             let res = pma.release_frame((vaddr - self.start) / PAGE_SIZE);
-            if res != Err(AcoreError::NotFound) {
+            if res != Err(OSError::VmArea_InvalidUnmap) {
                 if res.is_err() {
                     return res;
                 }
                 pt.unmap(vaddr).map_err(|e| {
-                    error!("failed to unmap VA: {:#x?}, {:?}", vaddr, e);
+                    println!("failed to unmap VA: {:#x?}, {:?}", vaddr, e);
                     e
                 })?;
             }
@@ -133,9 +136,9 @@ impl VmArea {
         offset: usize,
         access_flags: MMUFlags,
         pt: &mut impl PageTable,
-    ) -> AcoreResult {
+    ) -> OSResult {
         debug_assert!(offset < self.end - self.start);
-        trace!(
+        println!(
             "handle page fault @ offset {:#x?} with access {:?}: {:#x?}",
             offset,
             access_flags,
@@ -143,20 +146,20 @@ impl VmArea {
         );
         let mut pma = self.pma.lock();
         if !self.flags.contains(access_flags) {
-            return Err(AcoreError::AccessDenied);
+            return Err(OSError::PageFaultHandler_AccessDenied);
         }
         let offset = align_down(offset);
         let vaddr = self.start + offset;
         let paddr = pma
             .get_frame(offset / PAGE_SIZE, true)?
-            .ok_or(AcoreError::NoMemory)?;
+            .ok_or(OSError::Memory_RunOutOfMemory)?;
 
         let entry = pt.get_entry(vaddr)?;
-        if entry.is_present() {
-            Err(AcoreError::AlreadyExists)
+        if PTETranslator::is_present(entry) {
+            Err(OSError::PageFaultHandler_TrapAtValidPage)
         } else {
-            entry.set_addr(paddr);
-            entry.set_flags(self.flags);
+            PTETranslator::set_addr(entry, paddr);
+            PTETranslator::set_flags(entry, self.flags);
             pt.flush_tlb(Some(vaddr));
             Ok(())
         }

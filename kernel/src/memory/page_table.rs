@@ -2,8 +2,9 @@
 
 use core::mem::ManuallyDrop;
 
-use super::{PhysAddr, VirtAddr};
-use crate::error::AcoreResult;
+use super::{PhysAddr, VirtAddr, OSError};
+
+pub type PTETranslator = super::RvPTETranslator;
 
 bitflags! {
     pub struct MMUFlags: usize {
@@ -49,27 +50,27 @@ pub trait PageTable: Sized {
 
     fn map_kernel(&mut self);
 
-    fn get_entry(&mut self, vaddr: VirtAddr) -> AcoreResult<&mut dyn PageTableEntry>;
+    fn get_entry(&mut self, vaddr: VirtAddr) -> Result<&mut riscv::paging::PageTableEntry, OSError>;
 
-    fn map(&mut self, vaddr: VirtAddr, paddr: PhysAddr, flags: MMUFlags) -> AcoreResult {
+    fn map(&mut self, vaddr: VirtAddr, paddr: PhysAddr, flags: MMUFlags) -> Result<(), OSError> {
         let entry = self.get_entry(vaddr)?;
-        entry.set_addr(paddr);
-        entry.set_flags(flags);
+        PTETranslator::set_addr(entry, paddr);
+        PTETranslator::set_flags(entry, flags);
         Ok(())
     }
 
-    fn unmap(&mut self, vaddr: VirtAddr) -> AcoreResult {
-        self.get_entry(vaddr)?.clear();
+    fn unmap(&mut self, vaddr: VirtAddr) -> Result<(), OSError> {
+        PTETranslator::clear(self.get_entry(vaddr)?);
         Ok(())
     }
 
-    fn protect(&mut self, vaddr: VirtAddr, flags: MMUFlags) -> AcoreResult {
-        self.get_entry(vaddr)?.set_flags(flags);
+    fn protect(&mut self, vaddr: VirtAddr, flags: MMUFlags) -> Result<(), OSError> {
+        PTETranslator::set_flags(self.get_entry(vaddr)?, flags);
         Ok(())
     }
 
-    fn query(&mut self, vaddr: VirtAddr) -> AcoreResult<PhysAddr> {
-        Ok(self.get_entry(vaddr)?.addr())
+    fn query(&mut self, vaddr: VirtAddr) -> Result<PhysAddr, OSError> {
+        Ok(PTETranslator::addr(self.get_entry(vaddr)?))
     }
 
     fn current() -> ManuallyDrop<Self> {
@@ -82,7 +83,7 @@ pub trait PageTable: Sized {
     unsafe fn set_current(&self) {
         let old_root = Self::current_root_paddr();
         let new_root = self.root_paddr();
-        debug!("switch table {:#x?} -> {:#x?}", old_root, new_root);
+        println!("switch table {:#x?} -> {:#x?}", old_root, new_root);
         if new_root != old_root {
             Self::set_current_root_paddr(new_root);
             self.flush_tlb(None);

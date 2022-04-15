@@ -11,6 +11,7 @@
 
 use lazy_static::*;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use lock::mutex::Mutex;
 
 mod context;
@@ -21,6 +22,7 @@ mod task;
 
 use crate::constants::{MAX_APP_NUM, CPU_NUM, EMPTY_TASK};
 use crate::loader::{get_num_app, init_app_cx};
+use crate::memory::MemorySet;
 use crate::arch::get_cpu_id;
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
@@ -51,7 +53,7 @@ pub struct TaskManager {
 /// Inner of Task Manager
 pub struct TaskManagerInner {
     /// task list
-    tasks: [TaskControlBlock; MAX_APP_NUM],
+    tasks: Vec<TaskControlBlock>,
     /// id of current `Running` task
 //    current_task: usize,
     current_task_at_cpu: [usize; CPU_NUM],
@@ -61,14 +63,26 @@ lazy_static! {
     /// Global variable: TASK_MANAGER
     pub static ref TASK_MANAGER: TaskManager = {
         let num_app = get_num_app();
+        let mut tasks: Vec<TaskControlBlock> = Vec::new();
+        for i in 0..num_app {
+            tasks.push(TaskControlBlock{
+                task_cx: TaskContext::goto_restore(init_app_cx(i)),
+                task_status: TaskStatus::Ready,
+                vm: MemorySet::new_user(),
+            });
+        }
+        /*
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
+            vm: None,
         }; MAX_APP_NUM];
+        
         for (i, task) in tasks.iter_mut().enumerate() {
             task.task_cx = TaskContext::goto_restore(init_app_cx(i));
             task.task_status = TaskStatus::Ready;
         }
+        */
         TaskManager {
             num_app,
             inner: Arc::new(Mutex::new(TaskManagerInner {

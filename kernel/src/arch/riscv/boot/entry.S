@@ -10,8 +10,6 @@ _start:
     la sp, boot_stack
     add sp, sp, t0
 
-    # 2. enable paging
-    # satp = (8 << 60) | PPN(boot_page_table_sv39)
     la      t0, boot_page_table_sv39
     srli    t0, t0, 12
     li      t1, 8 << 60

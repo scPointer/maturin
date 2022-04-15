@@ -1,15 +1,20 @@
 //! Physical memory allocation.
 
+//16M bit * (4K per page) = max 64G
+//实际上u740板子的内存16G用不完bit map，但再小一点的实现只有4G空间
+extern crate bitmap_allocator;
+type FrameAllocatorImpl = bitmap_allocator::BitAlloc16M;
 use bitmap_allocator::BitAlloc;
+
 use core::mem::ManuallyDrop;
 
-use spin::Mutex;
+use lock::mutex::Mutex;
 
-use super::{addr::phys_to_virt, PhysAddr, PAGE_SIZE, PHYS_MEMORY_OFFSET};
-use crate::arch::memory::FrameAlloc;
-use crate::error::{AcoreError, AcoreResult};
+use super::phys_to_virt;
+use super::{PhysAddr, PAGE_SIZE, PHYS_MEMORY_OFFSET};
 
-static FRAME_ALLOCATOR: Mutex<FrameAlloc> = Mutex::new(FrameAlloc::DEFAULT);
+
+static FRAME_ALLOCATOR: Mutex<FrameAllocatorImpl> = Mutex::new(FrameAllocatorImpl::DEFAULT);
 
 fn phys_addr_to_frame_idx(addr: PhysAddr) -> usize {
     (addr - PHYS_MEMORY_OFFSET) / PAGE_SIZE
@@ -24,7 +29,7 @@ fn frame_idx_to_phys_addr(idx: usize) -> PhysAddr {
 /// This function is unsafe because your need to deallocate manually.
 unsafe fn alloc_frame() -> Option<PhysAddr> {
     let ret = FRAME_ALLOCATOR.lock().alloc().map(frame_idx_to_phys_addr);
-    trace!("Allocate frame: {:x?}", ret);
+    //println!("Allocate frame: {:x?}", ret);
     ret
 }
 
@@ -36,12 +41,14 @@ unsafe fn alloc_frame_contiguous(frame_count: usize, align_log2: usize) -> Optio
         .lock()
         .alloc_contiguous(frame_count, align_log2)
         .map(frame_idx_to_phys_addr);
-    trace!(
+    /*
+    println!(
         "Allocate {} frames with alignment {}: {:x?}",
         frame_count,
         1 << align_log2,
         ret
     );
+    */
     ret
 }
 
@@ -49,7 +56,7 @@ unsafe fn alloc_frame_contiguous(frame_count: usize, align_log2: usize) -> Optio
 ///
 /// This function is unsafe because the frame must have been allocated.
 unsafe fn dealloc_frame(target: PhysAddr) {
-    trace!("Deallocate frame: {:x}", target);
+    //println!("Deallocate frame: {:x}", target);
     FRAME_ALLOCATOR
         .lock()
         .dealloc(phys_addr_to_frame_idx(target))
@@ -59,7 +66,7 @@ unsafe fn dealloc_frame(target: PhysAddr) {
 ///
 /// This function is unsafe because the frames must have been allocated.
 unsafe fn dealloc_frame_contiguous(target: PhysAddr, frame_count: usize) {
-    trace!("Deallocate {} frames: {:x}", frame_count, target);
+    //println!("Deallocate {} frames: {:x}", frame_count, target);
     let start_idx = phys_addr_to_frame_idx(target);
     let mut ba = FRAME_ALLOCATOR.lock();
     for i in start_idx..start_idx + frame_count {
@@ -68,16 +75,16 @@ unsafe fn dealloc_frame_contiguous(target: PhysAddr, frame_count: usize) {
 }
 
 /// Initialize the frame alloactor.
-pub(super) fn init() {
+pub fn init() {
     let mut ba = FRAME_ALLOCATOR.lock();
-    let regions = crate::arch::memory::get_phys_memory_regions();
+    let regions = super::get_phys_memory_regions();
     for region in regions {
         let frame_start = phys_addr_to_frame_idx(region.start);
         let frame_end = phys_addr_to_frame_idx(region.end - 1) + 1;
         assert!(frame_start < frame_end, "illegal range for frame allocator");
         ba.insert(frame_start..frame_end);
     }
-    info!("frame allocator init end.");
+    //println!("frame allocator init end.");
 }
 
 /// A safe wrapper for physical frame allocation.
@@ -89,26 +96,24 @@ pub struct Frame {
 
 impl Frame {
     /// Allocate one physical frame.
-    pub fn new() -> AcoreResult<Self> {
+    pub fn new() -> Option<Self> {
         unsafe {
             alloc_frame()
                 .map(|start_paddr| Self {
                     start_paddr,
                     frame_count: 1,
                 })
-                .ok_or(AcoreError::NoMemory)
         }
     }
 
     /// Allocate contiguous physical frames.
-    pub fn new_contiguous(frame_count: usize, align_log2: usize) -> AcoreResult<Self> {
+    pub fn new_contiguous(frame_count: usize, align_log2: usize) -> Option<Self> {
         unsafe {
             alloc_frame_contiguous(frame_count, align_log2)
                 .map(|start_paddr| Self {
                     start_paddr,
                     frame_count,
                 })
-                .ok_or(AcoreError::NoMemory)
         }
     }
 

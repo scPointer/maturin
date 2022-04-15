@@ -4,17 +4,20 @@ use alloc::collections::{btree_map::Entry, BTreeMap};
 use alloc::sync::Arc;
 use core::fmt::{Debug, Formatter, Result};
 
-use spin::Mutex;
+use lock::mutex::Mutex;
 
-use super::addr::{align_down, align_up, virt_to_phys, VirtAddr};
-use super::areas::VmArea;
-use super::paging::{MMUFlags, PageTable};
-use super::{KERNEL_STACK, PAGE_SIZE, USER_VIRT_ADDR_LIMIT};
-use crate::arch::memory::ArchPageTable;
-use crate::error::{AcoreError, AcoreResult};
+use super::{align_down, align_up, virt_to_phys, VirtAddr};
+use super::{VmArea, MMUFlags, PageTable};
+use super::{CPU_NUM, PAGE_SIZE, USER_VIRT_ADDR_LIMIT};
+use super::RvPageTable;
+use super::{
+    get_phys_memory_regions,
+    create_mapping,
+};
+use crate::error::{OSError, OSResult};
 
 /// A set of virtual memory areas with the associated page table.
-pub struct MemorySet<PT: PageTable = ArchPageTable> {
+pub struct MemorySet<PT: PageTable = RvPageTable> {
     areas: BTreeMap<usize, VmArea>,
     pt: PT,
     is_user: bool,
@@ -42,7 +45,7 @@ impl<PT: PageTable> MemorySet<PT> {
     /// Find a free area with hint address `addr_hint` and length `len`.
     /// Return the start address of found free area.
     /// Used for mmap.
-    pub fn find_free_area(&self, addr_hint: VirtAddr, len: usize) -> AcoreResult<VirtAddr> {
+    pub fn find_free_area(&self, addr_hint: VirtAddr, len: usize) -> OSResult<VirtAddr> {
         // brute force:
         // try each area's end address as the start
         let addr = core::iter::once(align_up(addr_hint))
@@ -50,7 +53,7 @@ impl<PT: PageTable> MemorySet<PT> {
             .find(|&addr| self.test_free_area(addr, addr + len))
             .unwrap();
         if addr >= USER_VIRT_ADDR_LIMIT {
-            Err(AcoreError::NoMemory)
+            Err(OSError::Memory_RunOutOfConsecutiveMemory)
         } else {
             Ok(addr)
         }
@@ -72,10 +75,10 @@ impl<PT: PageTable> MemorySet<PT> {
     }
 
     /// Add a VMA to this set.
-    pub fn push(&mut self, vma: VmArea) -> AcoreResult {
+    pub fn push(&mut self, vma: VmArea) -> OSResult {
         if !self.test_free_area(vma.start, vma.end) {
-            warn!("VMA overlap: {:#x?}\n{:#x?}", vma, self);
-            return Err(AcoreError::InvalidArgs);
+            println!("VMA overlap: {:#x?}\n{:#x?}", vma, self);
+            return Err(OSError::MemorySet_InvalidRange);
         }
         vma.map_area(&mut self.pt)?;
         self.areas.insert(vma.start, vma);
@@ -83,10 +86,10 @@ impl<PT: PageTable> MemorySet<PT> {
     }
 
     /// Remove the area `[start_addr, end_addr)` from `MemorySet`.
-    pub fn pop(&mut self, start: VirtAddr, end: VirtAddr) -> AcoreResult {
+    pub fn pop(&mut self, start: VirtAddr, end: VirtAddr) -> OSResult {
         if start >= end {
-            warn!("invalid memory region: [{:#x?}, {:#x?})", start, end);
-            return Err(AcoreError::InvalidArgs);
+            println!("invalid memory region: [{:#x?}, {:#x?})", start, end);
+            return Err(OSError::MemorySet_InvalidRange);
         }
         let start = align_down(start);
         let end = align_up(end);
@@ -98,38 +101,38 @@ impl<PT: PageTable> MemorySet<PT> {
             }
         }
         if self.test_free_area(start, end) {
-            warn!(
+            println!(
                 "no matched VMA found for memory region: [{:#x?}, {:#x?})",
                 start, end
             );
-            Err(AcoreError::InvalidArgs)
+            Err(OSError::MemorySet_UnmapAreaNotFound)
         } else {
-            warn!(
+            println!(
                 "partially unmap memory region [{:#x?}, {:#x?}) is not supported",
                 start, end
             );
-            Err(AcoreError::NotSupported)
+            Err(OSError::MemorySet_PartialUnmap)
         }
     }
 
     /// Handle page fault.
-    pub fn handle_page_fault(&mut self, vaddr: VirtAddr, access_flags: MMUFlags) -> AcoreResult {
+    pub fn handle_page_fault(&mut self, vaddr: VirtAddr, access_flags: MMUFlags) -> OSResult {
         if let Some((_, area)) = self.areas.range(..=vaddr).last() {
             if area.contains(vaddr) {
                 return area.handle_page_fault(vaddr - area.start, access_flags, &mut self.pt);
             }
         }
-        warn!(
+        println!(
             "unhandled page fault @ {:#x?} with access {:?}",
             vaddr, access_flags
         );
-        Err(AcoreError::Fault)
+        Err(OSError::PageFaultHandler_Unhandled)
     }
 
     /// Clear and unmap all areas.
     pub fn clear(&mut self) {
         if !self.is_user {
-            error!("cannot clear kernel memory set");
+            println!("cannot clear kernel memory set");
             return;
         }
         for area in self.areas.values() {
@@ -148,18 +151,18 @@ impl<PT: PageTable> MemorySet<PT> {
         start: VirtAddr,
         len: usize,
         access_flags: MMUFlags,
-        mut op: impl FnMut(&VmArea, usize, usize, usize) -> AcoreResult,
-    ) -> AcoreResult {
+        mut op: impl FnMut(&VmArea, usize, usize, usize) -> OSResult,
+    ) -> OSResult {
         let mut start = start;
         let mut len = len;
         let mut processed = 0;
         while len > 0 {
             if let Some((_, area)) = self.areas.range(..=start).last() {
                 if area.end <= start {
-                    return Err(AcoreError::Fault);
+                    return Err(OSError::MemorySet_InvalidRange);
                 }
                 if !area.flags.contains(access_flags) {
-                    return Err(AcoreError::AccessDenied);
+                    return Err(OSError::PageFaultHandler_AccessDenied);
                 }
                 let n = (area.end - start).min(len);
                 op(area, start - area.start, n, processed)?;
@@ -167,7 +170,7 @@ impl<PT: PageTable> MemorySet<PT> {
                 processed += n;
                 len -= n;
             } else {
-                return Err(AcoreError::Fault);
+                return Err(OSError::MemorySet_InvalidRange);
             }
         }
         Ok(())
@@ -179,7 +182,7 @@ impl<PT: PageTable> MemorySet<PT> {
         len: usize,
         dst: &mut [u8],
         access_flags: MMUFlags,
-    ) -> AcoreResult {
+    ) -> OSResult {
         self.read_write(start, len, access_flags, |area, offset, len, processed| {
             area.pma
                 .lock()
@@ -194,7 +197,7 @@ impl<PT: PageTable> MemorySet<PT> {
         len: usize,
         src: &[u8],
         access_flags: MMUFlags,
-    ) -> AcoreResult {
+    ) -> OSResult {
         self.read_write(start, len, access_flags, |area, offset, len, processed| {
             area.pma
                 .lock()
@@ -220,7 +223,7 @@ impl<PT: PageTable> Debug for MemorySet<PT> {
 }
 
 /// Re-build a fine-grained kernel page table, push memory segments to kernel memory set.
-fn init_kernel_memory_set(ms: &mut MemorySet) -> AcoreResult {
+fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
     extern "C" {
         fn stext();
         fn etext();
@@ -230,6 +233,8 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> AcoreResult {
         fn erodata();
         fn sbss();
         fn ebss();
+        fn boot_stack();
+        fn boot_stack_top();
     }
 
     use super::PHYS_VIRT_OFFSET;
@@ -261,9 +266,14 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> AcoreResult {
         MMUFlags::READ | MMUFlags::WRITE,
         "kbss",
     )?)?;
-    for stack in &KERNEL_STACK {
-        let per_cpu_stack_bottom = stack.as_ptr() as usize + PAGE_SIZE; // shadow page
-        let per_cpu_stack_top = stack.as_ptr() as usize + stack.len();
+    let kernel_stack = boot_stack as usize;
+    let kernel_stack_top = boot_stack_top as usize;
+    let size_per_cpu = (kernel_stack_top - kernel_stack) / CPU_NUM;
+    // 这里默认每个核的栈等长，且依次排列在 kernel_stack 中。且默认栈的开头恰好是页面的开头(entry.S中保证)
+    for cpu_id in 0..CPU_NUM {
+        // 加一页是为了保证内核栈溢出时可以触发异常，而不是跑到其他核的栈去
+        let per_cpu_stack_bottom = kernel_stack + size_per_cpu * cpu_id + PAGE_SIZE;
+        let per_cpu_stack_top = kernel_stack + size_per_cpu * (cpu_id + 1);
         ms.push(VmArea::from_fixed_pma(
             virt_to_phys(per_cpu_stack_bottom),
             virt_to_phys(per_cpu_stack_top),
@@ -272,7 +282,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> AcoreResult {
             "kstack",
         )?)?;
     }
-    for region in crate::arch::memory::get_phys_memory_regions() {
+    for region in get_phys_memory_regions() {
         ms.push(VmArea::from_fixed_pma(
             region.start,
             region.end,
@@ -281,21 +291,21 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> AcoreResult {
             "physical_memory",
         )?)?;
     }
-    crate::arch::memory::create_mapping(ms)?;
+    create_mapping(ms)?;
     Ok(())
 }
 
-lazy_static! {
+lazy_static::lazy_static! {
     #[repr(align(64))]
     pub static ref KERNEL_MEMORY_SET: Arc<Mutex<MemorySet>> = {
         let mut ms = MemorySet::new_kernel();
         init_kernel_memory_set(&mut ms).unwrap();
-        info!("kernel memory set init end:\n{:#x?}", ms);
+        println!("kernel memory set init end:\n{:#x?}", ms);
         Arc::new(Mutex::new(ms))
     };
 }
 
 /// Initialize the kernel memory set and activate kernel page table.
-pub fn init() {
+pub fn kernel_page_table_init() {
     unsafe { KERNEL_MEMORY_SET.lock().activate() };
 }
