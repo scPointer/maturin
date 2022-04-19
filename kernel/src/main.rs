@@ -1,6 +1,8 @@
+//! 程序入口为 mod arch 中的 entry.S
+//! 将cpu_id存到tp寄存器并设置好初始的内核栈与页表后，跳转到 start_kernel 启动
 #![no_std]
 #![no_main]
-//#![deny(missing_docs)]
+#![deny(missing_docs)]
 //#![deny(warnings)]
 #![feature(panic_info_message)]
 #![feature(default_alloc_error_handler)]
@@ -47,6 +49,7 @@ lazy_static::lazy_static! {
 }
 
 #[no_mangle]
+/// 启动OS，每个核分别执行用户程序
 pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     let cpu_id = arch::get_cpu_id();
     if cpu_id == constants::BOOTSTRAP_CPU_ID {
@@ -94,6 +97,9 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     
 }
 
+/// 检查是否*可以*初始化，如可则返回 true
+/// 这个函数制定了内核必须由 cpu_id 等于 AP_CAN_INIT 初始值的核先启动，然后启动的 cpu_id 依次递增
+/// 也即如有 N 个核启动，要求其 cpu_id 必须为 [0,N-1]
 pub fn check_and_finish_init(cpu_id: usize) -> bool {
     let mut id_now = AP_CAN_INIT.lock();
     if *id_now != cpu_id {
@@ -105,10 +111,12 @@ pub fn check_and_finish_init(cpu_id: usize) -> bool {
     }
 }
 
+/// 检查是否所有核已启动，如是则返回 true
 pub fn check_all_cpu_started() -> bool {
     *AP_CAN_INIT.lock() == constants::LAST_CPU_ID + 1
 }
 
+/// 第一个核启动后的任务
 pub fn boot_main() -> ! {
     //arch::io::print("I'm bootstrap CPU\n");
     test_vm();
@@ -116,12 +124,14 @@ pub fn boot_main() -> ! {
     loop {}
 }
 
+/// 其他核启动后的任务
 pub fn secondary_main() -> ! {
     //arch::io::print("I'm another CPU\n");
     task::run_first_task();
     loop {}
 }
 
+/// 输出linker各段的虚存映射
 pub fn test_vm() {
     extern "C" {
         fn stext();
