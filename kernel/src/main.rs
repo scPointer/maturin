@@ -58,8 +58,11 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
         memory::kernel_page_table_init();
         println!("[CPU {}] page table enabled", cpu_id);
         trap::init();
-        
+
+        arch::setSUMAccessOpen(); //开启内核直接访问用户地址空间的权限
         loader::load_apps();
+        //arch::setSUMAccessClose();
+
         trap::enable_timer_interrupt();
         timer::set_next_trigger();
         
