@@ -20,7 +20,7 @@ pub enum OSError {
     VmArea_VmSizeNotEqualToPmSize,
     VmArea_InvalidUnmap,
 
-    // 在areas/mod.rs
+    // 在areas/mod.rs 与 vmm.rs 都可能检查到
     PageFaultHandler_AccessDenied,
     // 在areas/mod.rs
     // 触发缺页异常的页在页表中已经是valid了
