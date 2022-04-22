@@ -13,7 +13,7 @@ fn sbi_call(which: usize, arg0: usize, arg1: usize, arg2: usize) -> usize {
     ret
 }
 
-fn a_sbi_ecall(which:usize, arg0:usize, arg1: usize, arg2: usize, arg3:usize, arg4:usize, arg5:uszie){
+fn a_sbi_ecall(which:usize, fid:usize, arg0:usize, arg1: usize, arg2: usize, arg3:usize, arg4:usize, arg5:usize){
     unsafe{
         core::arch::asm!("ecall",
             in("a0") arg0,
@@ -22,6 +22,7 @@ fn a_sbi_ecall(which:usize, arg0:usize, arg1: usize, arg2: usize, arg3:usize, ar
             in("a3") arg3,
             in("a4") arg4,
             in("a5") arg5,
+            in("a6") fid,
             in("a7") which,
         );
     }
@@ -41,6 +42,12 @@ pub fn print(s: &str) {
     }
 }
 
-pub fn start_hart(hartid:usize,start_add:usize,  a1:usize) {
+pub fn start_hart(hartid:usize,start_addr:usize,  a1:usize) {
+    print("start_hart");
+    console_putint(hartid);
+    print("\n");
     a_sbi_ecall(0x48534D, 0, hartid, start_addr, a1, 0, 0, 0);
+    print("end_start_hart");
+    console_putint(hartid);
+    print("\n");
 }
