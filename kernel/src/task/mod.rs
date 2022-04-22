@@ -22,7 +22,7 @@ mod task;
 
 use crate::constants::{CPU_NUM, EMPTY_TASK};
 use crate::loader::{get_num_app, init_app_cx};
-use crate::memory::MemorySet;
+use crate::memory::{MemorySet, new_memory_set_for_task};
 use crate::arch::get_cpu_id;
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
@@ -63,17 +63,17 @@ lazy_static! {
     /// Global variable: TASK_MANAGER
     pub static ref TASK_MANAGER: TaskManager = {
         let num_app = get_num_app();
-        println!("now");
+        //println!("now");
         let mut tasks: Vec<TaskControlBlock> = Vec::new();
-        println!("now");
+        //println!("now");
         for i in 0..num_app {
             tasks.push(TaskControlBlock{
                 task_cx: TaskContext::goto_restore(init_app_cx(i)),
                 task_status: TaskStatus::Ready,
-                vm: MemorySet::new_user(),
+                vm: MemorySet::new_user()//new_memory_set_for_task().unwrap(),
             });
         }
-        println!("now");
+        //println!("now");
         /*
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
@@ -130,6 +130,7 @@ impl TaskManager {
             let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
 
             //unsafe {inner.tasks[next].vm.activate(); }
+            println!("user activate");
             drop(inner);
             let mut _unused = TaskContext::zero_init();
 

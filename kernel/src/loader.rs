@@ -57,7 +57,7 @@ impl UserStack {
 
 /// Get base address of app i.
 fn get_base_i(app_id: usize) -> usize {
-    APP_BASE_ADDRESS + app_id * APP_SIZE_LIMIT + PHYS_VIRT_OFFSET
+    APP_BASE_ADDRESS + app_id * APP_SIZE_LIMIT
 }
 
 /// Get the total number of applications.
@@ -86,6 +86,9 @@ pub fn load_apps() {
     for i in 0..num_app {
         let base_i = get_base_i(i);
         println!("load {}, base {:x} app_origin_pos {:x}", i, base_i, app_start[i] as usize);
+        //let ad :usize = 0x8010_0000;
+        //unsafe { (ad as *mut u8).write_volatile(0)}
+        //println!("written");
         
         // clear region
         (base_i..base_i + APP_SIZE_LIMIT)

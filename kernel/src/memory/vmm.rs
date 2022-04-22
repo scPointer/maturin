@@ -8,11 +8,18 @@ use lock::mutex::Mutex;
 
 use super::{align_down, align_up, virt_to_phys, VirtAddr};
 use super::{VmArea, MMUFlags, PageTable};
-use super::{CPU_NUM, PAGE_SIZE, USER_VIRT_ADDR_LIMIT};
 use super::RvPageTable;
 use super::{
     get_phys_memory_regions,
     create_mapping,
+};
+
+use crate::constants::{
+    CPU_NUM, 
+    PAGE_SIZE, 
+    USER_VIRT_ADDR_LIMIT,
+    APP_BASE_ADDRESS,
+    APP_ADDRESS_END,
 };
 use crate::error::{OSError, OSResult};
 
@@ -32,15 +39,18 @@ impl<PT: PageTable> MemorySet<PT> {
         }
     }
 
+    
     pub fn new_user() -> Self {
         let mut pt = PT::new();
         pt.map_kernel();
+        //println!("new user page table at {:x}", pt.root_paddr());
         Self {
             areas: BTreeMap::new(),
             pt,
             is_user: true,
         }
     }
+    
 
     /// Find a free area with hint address `addr_hint` and length `len`.
     /// Return the start address of found free area.
@@ -100,12 +110,14 @@ impl<PT: PageTable> MemorySet<PT> {
             flags,
             name,
         )?)?;
+        
         self.push(VmArea::from_identical_pma(
             start_vaddr,
             end_vaddr,
             flags,
             name,
         )?)?;
+        
         Ok(())
     }
 
@@ -318,6 +330,33 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
             "physical_memory",
         )?;
     }
+
+    /*
+    ms.init_a_kernel_region(
+        APP_BASE_ADDRESS,
+        APP_ADDRESS_END,
+        PHYS_VIRT_OFFSET,
+        MMUFlags::READ | MMUFlags::WRITE | MMUFlags::EXECUTE,
+        "users",
+    )?;
+    */
+    ms.push(VmArea::from_identical_pma(
+        APP_BASE_ADDRESS,
+        APP_ADDRESS_END,
+        MMUFlags::READ | MMUFlags::WRITE | MMUFlags::EXECUTE | MMUFlags::USER,
+        "users",
+    )?)?;
+    
+    // 其实不该有这一段的。这是因为某次修改用户库时设 base_address = (app_id + 1 ) * 0x20000
+    // 所以用户库有时候会跳转到这个位置
+    // 在 kernel/user 下进行 make clean 都有概率还是生成旧版本的代码，原因暂时不明。
+    ms.push(VmArea::from_fixed_pma_negative_offset(
+        APP_BASE_ADDRESS,
+        APP_ADDRESS_END,
+        0x8010_0000 - 0x2_0000,
+        MMUFlags::READ | MMUFlags::WRITE | MMUFlags::EXECUTE | MMUFlags::USER,
+        "users",
+    )?)?;
     /*
     ms.init_a_kernel_region(
         0x8600_0000,
@@ -352,4 +391,10 @@ pub fn handle_kernel_page_fault(vaddr: VirtAddr, access_flags: MMUFlags) -> OSRe
 /// Initialize the kernel memory set and activate kernel page table.
 pub fn kernel_page_table_init() {
     unsafe { KERNEL_MEMORY_SET.lock().activate() };
+}
+
+pub fn new_memory_set_for_task() -> OSResult<MemorySet> {
+    let mut ms = MemorySet::new_kernel();
+    init_kernel_memory_set(&mut ms).unwrap();
+    Ok(ms)
 }

@@ -17,6 +17,7 @@ impl TrapContext {
     }
     /// init app context
     pub fn app_init_context(entry: usize, sp: usize) -> Self {
+        println!("init app entry {:x} sp {:x}", entry, sp);
         let mut sstatus = sstatus::read(); // CSR sstatus
         sstatus.set_spp(SPP::User); //previous privilege mode: user mode
         let mut cx = Self {

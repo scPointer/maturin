@@ -64,6 +64,7 @@ pub use vmm::{
     MemorySet,
     kernel_page_table_init,
     handle_kernel_page_fault,
+    new_memory_set_for_task,
 };
 
 pub fn clear_bss() {

@@ -91,6 +91,22 @@ impl VmArea {
         )
     }
 
+    pub fn from_fixed_pma_negative_offset(
+        start_paddr: VirtAddr,
+        end_paddr: VirtAddr,
+        offset: usize,
+        flags: MMUFlags,
+        name: &'static str,
+    ) -> OSResult<Self> {
+        Self::new(
+            start_paddr - offset,
+            end_paddr - offset,
+            flags,
+            Arc::new(Mutex::new(PmAreaFixed::new(start_paddr, end_paddr)?)),
+            name,
+        )
+    }
+
     pub fn from_identical_pma(
         start_vaddr: VirtAddr,
         end_vaddr: VirtAddr,

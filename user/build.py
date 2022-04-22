@@ -1,6 +1,7 @@
 import os
 
-base_address = 0x80400000
+origin_base_address = 0x80100000
+new_base_address = 0x80100000
 step = 0x20000
 linker = 'src/linker.ld'
 
@@ -14,12 +15,12 @@ for app in apps:
     with open(linker, 'r') as f:
         for line in f.readlines():
             lines_before.append(line)
-            line = line.replace(hex(base_address), hex(base_address+step*app_id))
+            line = line.replace(hex(origin_base_address), hex(new_base_address+step*app_id))
             lines.append(line)
     with open(linker, 'w+') as f:
         f.writelines(lines)
     os.system('cargo build --bin %s --release' % app)
-    print('[build.py] application %s start with address %s' %(app, hex(base_address+step*app_id)))
+    print('[build.py] application %s start with address %s' %(app, hex(new_base_address+step*app_id)))
     with open(linker, 'w+') as f:
         f.writelines(lines_before)
     app_id = app_id + 1
