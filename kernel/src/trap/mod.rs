@@ -67,7 +67,6 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         // 临时的错误实现：不应该在此用handle_kernel_page_fault
         Trap::Exception(Exception::InstructionPageFault) => {
             println!("[kernel] InstructionPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", stval, cx.sepc);
-            panic!("ipf");
             handle_kernel_page_fault(stval, MMUFlags::USER | MMUFlags::EXECUTE);
             //PageFault(stval, MMUFlags::USER | MMUFlags::EXECUTE)
         }

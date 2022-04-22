@@ -46,6 +46,9 @@ pub enum OSError {
     // unmap 一段 VMA 可能会把分成两段
     // 本身不该算是错误，只是目前还没有实现
     MemorySet_PartialUnmap,
+
+    Loader_ParseElfFailed,
+    Loader_InvalidSegment,
 }
 
 pub type OSResult<T = ()> = Result<T, OSError>;

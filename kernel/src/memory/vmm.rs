@@ -319,6 +319,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         )?;
     }
     
+    
     for region in get_phys_memory_regions() {
         println!("init region {:x}, {:x}", region.start, region.end);
         ms.init_a_kernel_region(
@@ -330,7 +331,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
             "physical_memory",
         )?;
     }
-
+    
     /*
     ms.init_a_kernel_region(
         APP_BASE_ADDRESS,

@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use core::ops::Range;
 
 mod allocator;
-mod addr;
+pub mod addr;
 #[cfg(target_arch = "riscv64")]
 mod page_table;
 #[cfg(target_arch = "riscv64")]
@@ -58,6 +58,9 @@ pub use page_table_impl_rv64_sv39::{
 
 pub use areas::{
     VmArea,
+    PmArea,
+    PmAreaLazy,
+    PmAreaFixed,
 };
 
 pub use vmm::{
