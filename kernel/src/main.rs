@@ -25,23 +25,22 @@ extern crate lazy_static;
 #[no_mangle]
 pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     static AP_CAN_INIT: AtomicBool = AtomicBool::new(false);
-    arch::io::print("Hello");    
+    // arch::io::print("Hello");    
     let cpu_id = arch::cpu::id();
-    arch::io::console_putint(cpu_id);
+    // arch::io::console_putint(cpu_id);
     if cpu_id == constants::BOOTSTRAP_CPU_ID {
         memory::clear_bss();
         memory::init();
-        // AP_CAN_INIT.compare_exchange(cpu_id, cpu_id + 1, Ordering::Relaxed, Ordering::Relaxed).unwrap();
-        AP_CAN_INIT.store(true, Ordering::Release);
         arch::io::console_putint(cpu_id);
+        AP_CAN_INIT.store(true, Ordering::Release);
+        
     } else {
-        //while cpu_id != AP_CAN_INIT.compare_exchange(cpu_id, cpu_id + 1, Ordering::Relaxed, Ordering::Relaxed).unwrap() {
         while !AP_CAN_INIT.load(Ordering::Acquire){
             spin_loop();
         }
         arch::io::console_putint(cpu_id);
     }
-    loop {}
+    loop{}
     // // In fact, it is unnecessary to check all cpu booted before respective initialization
     // // this is just to make a pretty output 
     // while !check_all_cpu_started() {

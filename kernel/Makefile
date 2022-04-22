@@ -5,7 +5,7 @@ SMP ?= 5
 OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy
 PLATFORM ?= qemu
-MACHINE := virt
+MACHINE := sifive_u
 BOOTLOADER := ../bin/fw_jump.bin
 ifeq ($(ARCH), riscv64)
 target := riscv64imac-unknown-none-elf
@@ -45,7 +45,7 @@ $(kernel_img): kernel
 	$(OBJCOPY) --binary-architecture=$(ARCH) $(kernel) --strip-all -O binary $@
 
 fu740:
-	gzip -9 -cvf $(build_path)/$(kernel_img) > $(build_path)/maturin.bin.gz
+	gzip -9 -cvf $(kernel_img) > $(build_path)/maturin.bin.gz
 	mkimage -A riscv -O linux -C gzip -T kernel -a 80200000 -e 80200000 -n "maturin-fu740" -d $(build_path)/maturin.bin.gz $(build_path)/maturin-fu740
 
 run: build qemu
