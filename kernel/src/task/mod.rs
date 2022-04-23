@@ -21,8 +21,9 @@ mod switch;
 mod task;
 
 use crate::constants::{CPU_NUM, EMPTY_TASK};
+use crate::error::{OSResult, OSError};
 use crate::loader::{get_num_app, init_app_cx};
-use crate::memory::{MemorySet, new_memory_set_for_task};
+use crate::memory::{MemorySet, new_memory_set_for_task, VirtAddr, PTEFlags};
 use crate::arch::get_cpu_id;
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
@@ -70,7 +71,7 @@ lazy_static! {
             tasks.push(TaskControlBlock{
                 task_cx: TaskContext::goto_restore(init_app_cx(i)),
                 task_status: TaskStatus::Ready,
-                vm: MemorySet::new_user()//new_memory_set_for_task().unwrap(),
+                vm: new_memory_set_for_task().unwrap()//MemorySet::new_user()//,
             });
         }
         //println!("now");
@@ -129,7 +130,7 @@ impl TaskManager {
             //let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
             let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
 
-            //unsafe {inner.tasks[next].vm.activate(); }
+            unsafe {inner.tasks[next].vm.activate(); }
             println!("user activate");
             drop(inner);
             let mut _unused = TaskContext::zero_init();
@@ -211,7 +212,7 @@ impl TaskManager {
             inner.current_task_at_cpu[cpu_id] = next;
             let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
             let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
-            //unsafe {inner.tasks[next].vm.activate(); }
+            unsafe {inner.tasks[next].vm.activate(); }
             drop(inner);
             // before this, we should drop local variables that must be dropped manually
             unsafe {
@@ -236,6 +237,27 @@ impl TaskManager {
             // 已停机，被时钟中断等唤醒，do nothing
             loop {
             }
+        }
+    }
+    /*
+    fn get_mut_vm_now(&self, inner: &'_ TaskManagerInner) -> Option<&'_ mut MemorySet> {
+        let cpu_id = get_cpu_id();
+        let task_now = inner.current_task_at_cpu[cpu_id];
+        if task_now < get_num_app() && task_now >= 0 {
+            Some(&mut inner.tasks[task_now].vm)
+        } else {
+            None
+        }
+    }
+    */
+    fn handle_user_page_fault(&self, vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
+        let mut inner = self.inner.lock();
+        let cpu_id = get_cpu_id();
+        let task_now = inner.current_task_at_cpu[cpu_id];
+        if task_now < get_num_app() && task_now >= 0 {
+            inner.tasks[task_now].vm.handle_page_fault(vaddr, access_flags)
+        } else {
+            Err(OSError::Task_NoTrapHandler)
         }
     }
 }
@@ -273,3 +295,9 @@ pub fn exit_current_and_run_next() {
     //mark_current_exited();
     run_next_task(TaskStatus::Exited);
 }
+
+/// handle user page fault on this hart
+pub fn handle_user_page_fault(vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
+    TASK_MANAGER.handle_user_page_fault(vaddr, access_flags)
+}
+    

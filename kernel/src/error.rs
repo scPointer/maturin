@@ -49,6 +49,8 @@ pub enum OSError {
 
     Loader_ParseElfFailed,
     Loader_InvalidSegment,
+
+    Task_NoTrapHandler,
 }
 
 pub type OSResult<T = ()> = Result<T, OSError>;

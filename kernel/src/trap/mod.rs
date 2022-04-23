@@ -15,7 +15,7 @@
 mod context;
 
 use crate::syscall::syscall;
-use crate::task::{exit_current_and_run_next, suspend_current_and_run_next};
+use crate::task::{exit_current_and_run_next, suspend_current_and_run_next, handle_user_page_fault};
 use crate::memory::{handle_kernel_page_fault, PTEFlags};
 use crate::timer::set_next_trigger;
 use crate::arch::get_cpu_id;
@@ -67,21 +67,24 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         // 临时的错误实现：不应该在此用handle_kernel_page_fault
         Trap::Exception(Exception::InstructionPageFault) => {
             println!("[kernel] InstructionPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", stval, cx.sepc);
-            handle_kernel_page_fault(stval, PTEFlags::USER | PTEFlags::EXECUTE);
+            
+            handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::EXECUTE);
             //PageFault(stval, PTEFlags::USER | PTEFlags::EXECUTE)
         }
         Trap::Exception(Exception::LoadPageFault) => {
             println!("[kernel] LoadPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", stval, cx.sepc);
-            handle_kernel_page_fault(stval, PTEFlags::USER | PTEFlags::READ);
+            handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::READ);
             //PageFault(stval, PTEFlags::USER | PTEFlags::READ)
         }
         Trap::Exception(Exception::StorePageFault) => {
             println!("[kernel] StorePageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", stval, cx.sepc);
             //panic!("..");
+            /*
             if cx.sepc == 0xffff_ffff_8020_999a {
                 panic!("...");
             }
-            handle_kernel_page_fault(stval, PTEFlags::USER | PTEFlags::WRITE);
+            */
+            handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::WRITE);
             //PageFault(stval, PTEFlags::USER | PTEFlags::WRITE)
         }
         
