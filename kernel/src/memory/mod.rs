@@ -4,10 +4,10 @@ use core::ops::Range;
 
 mod allocator;
 pub mod addr;
-#[cfg(target_arch = "riscv64")]
+//#[cfg(target_arch = "riscv64")]
 mod page_table;
-#[cfg(target_arch = "riscv64")]
-mod page_table_impl_rv64_sv39;
+//#[cfg(target_arch = "riscv64")]
+//mod page_table_impl_rv64_sv39;
 //#[cfg(target_arch = "riscv64")]
 mod areas;
 mod vmm;
@@ -35,6 +35,8 @@ pub use addr::{
     align_down,
     virt_to_phys,
     phys_to_virt,
+    page_id_to_addr,
+    pte_idx_of_virt_addr,
 };
 
 pub use allocator::{
@@ -42,19 +44,20 @@ pub use allocator::{
     allocator_init,
 };
 
-#[cfg(target_arch = "riscv64")]
+//#[cfg(target_arch = "riscv64")]
 pub use page_table::{
-    MMUFlags, 
+    PTEFlags, 
     PageTable, 
     PageTableEntry,
-    PTETranslator,
 };
 
+/*
 #[cfg(target_arch = "riscv64")]
 pub use page_table_impl_rv64_sv39::{
     RvPageTable,
     RvPTETranslator,
 };
+*/
 
 pub use areas::{
     VmArea,
@@ -101,7 +104,7 @@ pub fn create_mapping(ms: &mut MemorySet) -> OSResult {
         DEVICE_START,
         DEVICE_END,
         PHYS_VIRT_OFFSET,
-        MMUFlags::READ | MMUFlags::WRITE,
+        PTEFlags::READ | PTEFlags::WRITE,
         "ramdisk",
     )?)
 }

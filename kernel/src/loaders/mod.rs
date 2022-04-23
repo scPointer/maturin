@@ -6,7 +6,7 @@ use core::convert::From;
 use crate::error::{OSError, OSResult};
 use crate::memory::addr::{page_count, page_offset, VirtAddr};
 use crate::memory::{PmArea, PmAreaLazy, VmArea};
-use crate::memory::{MMUFlags, MemorySet};
+use crate::memory::{PTEFlags, MemorySet};
 use crate::constants::{PAGE_SIZE, USER_STACK_OFFSET, USER_STACK_SIZE};
 
 use lock::mutex::Mutex;
@@ -120,7 +120,7 @@ impl<'a> ElfLoader<'a> {
         let stack_vma = VmArea::new(
             stack_bottom,
             stack_top,
-            MMUFlags::READ | MMUFlags::WRITE | MMUFlags::USER,
+            PTEFlags::READ | PTEFlags::WRITE | PTEFlags::USER,
             Arc::new(Mutex::new(stack_pma)),
             "user_stack",
         )?;
@@ -130,17 +130,17 @@ impl<'a> ElfLoader<'a> {
     }
 }
 
-impl From<Flags> for MMUFlags {
+impl From<Flags> for PTEFlags {
     fn from(f: Flags) -> Self {
-        let mut ret = MMUFlags::USER;
+        let mut ret = PTEFlags::USER;
         if f.is_read() {
-            ret |= MMUFlags::READ;
+            ret |= PTEFlags::READ;
         }
         if f.is_write() {
-            ret |= MMUFlags::WRITE;
+            ret |= PTEFlags::WRITE;
         }
         if f.is_execute() {
-            ret |= MMUFlags::EXECUTE;
+            ret |= PTEFlags::EXECUTE;
         }
         ret
     }

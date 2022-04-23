@@ -8,7 +8,7 @@ use super::{PmArea, VmArea};
 use crate::error::{OSError, OSResult};
 use crate::memory::{
     addr::{self, align_down},
-    Frame, MMUFlags, PhysAddr, VirtAddr, PAGE_SIZE, USER_VIRT_ADDR_LIMIT,
+    Frame, PTEFlags, PhysAddr, VirtAddr, PAGE_SIZE, USER_VIRT_ADDR_LIMIT,
 };
 
 /// A discontiguous PMA which perform lazy allocation (e.g. in page fault handler).
@@ -127,7 +127,7 @@ impl VmArea {
     pub fn from_delay_pma(
         start_vaddr: VirtAddr,
         size: usize,
-        flags: MMUFlags,
+        flags: PTEFlags,
         name: &'static str,
     ) -> OSResult<Self> {
         Self::new(

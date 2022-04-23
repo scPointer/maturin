@@ -7,8 +7,7 @@ use core::fmt::{Debug, Formatter, Result};
 use lock::mutex::Mutex;
 
 use super::{align_down, align_up, virt_to_phys, VirtAddr};
-use super::{VmArea, MMUFlags, PageTable};
-use super::RvPageTable;
+use super::{VmArea, PTEFlags, PageTable};
 use super::{
     get_phys_memory_regions,
     create_mapping,
@@ -24,25 +23,25 @@ use crate::constants::{
 use crate::error::{OSError, OSResult};
 
 /// A set of virtual memory areas with the associated page table.
-pub struct MemorySet<PT: PageTable = RvPageTable> {
+pub struct MemorySet {
     areas: BTreeMap<usize, VmArea>,
-    pt: PT,
+    pt: PageTable,
     is_user: bool,
 }
 
-impl<PT: PageTable> MemorySet<PT> {
+impl MemorySet {
     pub fn new_kernel() -> Self {
         Self {
             areas: BTreeMap::new(),
-            pt: PT::new(),
+            pt: PageTable::new().unwrap(),
             is_user: false,
         }
     }
 
     
     pub fn new_user() -> Self {
-        let mut pt = PT::new();
-        pt.map_kernel();
+        let mut pt = PageTable::new().unwrap();
+        //pt.map_kernel();
         //println!("new user page table at {:x}", pt.root_paddr());
         Self {
             areas: BTreeMap::new(),
@@ -100,7 +99,7 @@ impl<PT: PageTable> MemorySet<PT> {
         start_vaddr: VirtAddr,
         end_vaddr: VirtAddr,
         offset: usize,
-        flags: MMUFlags,
+        flags: PTEFlags,
         name: &'static str,
     ) -> OSResult {
         self.push(VmArea::from_fixed_pma(
@@ -152,7 +151,7 @@ impl<PT: PageTable> MemorySet<PT> {
     }
 
     /// Handle page fault.
-    pub fn handle_page_fault(&mut self, vaddr: VirtAddr, access_flags: MMUFlags) -> OSResult {
+    pub fn handle_page_fault(&mut self, vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
         if let Some((_, area)) = self.areas.range(..=vaddr).last() {
             if area.contains(vaddr) {
                 return area.handle_page_fault(vaddr - area.start, access_flags, &mut self.pt);
@@ -186,7 +185,7 @@ impl<PT: PageTable> MemorySet<PT> {
         &self,
         start: VirtAddr,
         len: usize,
-        access_flags: MMUFlags,
+        access_flags: PTEFlags,
         mut op: impl FnMut(&VmArea, usize, usize, usize) -> OSResult,
     ) -> OSResult {
         let mut start = start;
@@ -217,7 +216,7 @@ impl<PT: PageTable> MemorySet<PT> {
         start: VirtAddr,
         len: usize,
         dst: &mut [u8],
-        access_flags: MMUFlags,
+        access_flags: PTEFlags,
     ) -> OSResult {
         self.read_write(start, len, access_flags, |area, offset, len, processed| {
             area.pma
@@ -232,7 +231,7 @@ impl<PT: PageTable> MemorySet<PT> {
         start: VirtAddr,
         len: usize,
         src: &[u8],
-        access_flags: MMUFlags,
+        access_flags: PTEFlags,
     ) -> OSResult {
         self.read_write(start, len, access_flags, |area, offset, len, processed| {
             area.pma
@@ -243,17 +242,17 @@ impl<PT: PageTable> MemorySet<PT> {
     }
 }
 
-impl<PT: PageTable> Drop for MemorySet<PT> {
+impl Drop for MemorySet {
     fn drop(&mut self) {
         self.clear()
     }
 }
 
-impl<PT: PageTable> Debug for MemorySet<PT> {
+impl Debug for MemorySet {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.debug_struct("MemorySet")
             .field("areas", &self.areas.values())
-            .field("page_table_root", &self.pt.root_paddr())
+            .field("page_table_root", &self.pt.get_root_paddr())
             .finish()
     }
 }
@@ -278,28 +277,28 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         virt_to_phys(stext as usize),
         virt_to_phys(etext as usize),
         PHYS_VIRT_OFFSET,
-        MMUFlags::READ | MMUFlags::EXECUTE,
+        PTEFlags::READ | PTEFlags::EXECUTE,
         "ktext",
     )?;
     ms.init_a_kernel_region(
         virt_to_phys(sdata as usize),
         virt_to_phys(edata as usize),
         PHYS_VIRT_OFFSET,
-        MMUFlags::READ | MMUFlags::WRITE,
+        PTEFlags::READ | PTEFlags::WRITE,
         "kdata",
     )?;
     ms.init_a_kernel_region(
         virt_to_phys(srodata as usize),
         virt_to_phys(erodata as usize),
         PHYS_VIRT_OFFSET,
-        MMUFlags::READ | MMUFlags::WRITE | MMUFlags::EXECUTE,
+        PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE,
         "krodata",
     )?;
     ms.init_a_kernel_region(
         virt_to_phys(sbss as usize),
         virt_to_phys(ebss as usize),
         PHYS_VIRT_OFFSET,
-        MMUFlags::READ | MMUFlags::WRITE,
+        PTEFlags::READ | PTEFlags::WRITE,
         "kbss",
     )?;
     let kernel_stack = boot_stack as usize;
@@ -314,7 +313,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
             virt_to_phys(per_cpu_stack_bottom),
             virt_to_phys(per_cpu_stack_top),
             PHYS_VIRT_OFFSET,
-            MMUFlags::READ | MMUFlags::WRITE,
+            PTEFlags::READ | PTEFlags::WRITE,
             "kstack",
         )?;
     }
@@ -327,7 +326,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
             region.end,
             //0x8600_0000,
             PHYS_VIRT_OFFSET,
-            MMUFlags::READ | MMUFlags::WRITE,
+            PTEFlags::READ | PTEFlags::WRITE,
             "physical_memory",
         )?;
     }
@@ -337,14 +336,14 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         APP_BASE_ADDRESS,
         APP_ADDRESS_END,
         PHYS_VIRT_OFFSET,
-        MMUFlags::READ | MMUFlags::WRITE | MMUFlags::EXECUTE,
+        PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE,
         "users",
     )?;
     */
     ms.push(VmArea::from_identical_pma(
         APP_BASE_ADDRESS,
         APP_ADDRESS_END,
-        MMUFlags::READ | MMUFlags::WRITE | MMUFlags::EXECUTE | MMUFlags::USER,
+        PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE | PTEFlags::USER,
         "users",
     )?)?;
     
@@ -355,7 +354,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         APP_BASE_ADDRESS,
         APP_ADDRESS_END,
         0x8010_0000 - 0x2_0000,
-        MMUFlags::READ | MMUFlags::WRITE | MMUFlags::EXECUTE | MMUFlags::USER,
+        PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE | PTEFlags::USER,
         "users",
     )?)?;
     /*
@@ -363,7 +362,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         0x8600_0000,
         0x8700_0000,
         PHYS_VIRT_OFFSET,
-        MMUFlags::READ | MMUFlags::WRITE | MMUFlags::EXECUTE,
+        PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE,
         "user",
     )?;
     */
@@ -381,7 +380,7 @@ lazy_static::lazy_static! {
     };
 }
 
-pub fn handle_kernel_page_fault(vaddr: VirtAddr, access_flags: MMUFlags) -> OSResult {
+pub fn handle_kernel_page_fault(vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
     println!(
         "kernel page fault @ {:#x} with access {:?}",
         vaddr, access_flags

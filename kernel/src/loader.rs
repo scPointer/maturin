@@ -66,7 +66,7 @@ lazy_static! {
 
     pub static ref USER_STACK: Vec<UserStack> = {
         let mut stacks: Vec<UserStack> = Vec::new();
-        for i in 0..MAX_APP_NUM {
+        for _i in 0..MAX_APP_NUM {
             stacks.push(UserStack {
                 frame: Frame::new_contiguous(USER_STACK_SIZE / PAGE_SIZE, 9).unwrap(),
                 // data: [0; KERNEL_STACK_SIZE],

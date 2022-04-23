@@ -10,7 +10,7 @@ use alloc::sync::Arc;
 use lock::mutex::Mutex;
 
 use super::addr::{align_down, align_up, PhysAddr, VirtAddr};
-use super::{MMUFlags, PageTable, PTETranslator};
+use super::{PTEFlags, PageTable};
 use super::PAGE_SIZE;
 use crate::error::{OSError, OSResult};
 
@@ -36,7 +36,7 @@ pub trait PmArea: core::fmt::Debug + Send + Sync {
 pub struct VmArea {
     pub(super) start: VirtAddr,
     pub(super) end: VirtAddr,
-    pub(super) flags: MMUFlags,
+    pub(super) flags: PTEFlags,
     pub(super) pma: Arc<Mutex<dyn PmArea>>,
     name: &'static str,
 }
@@ -45,7 +45,7 @@ impl VmArea {
     pub fn new(
         start: VirtAddr,
         end: VirtAddr,
-        flags: MMUFlags,
+        flags: PTEFlags,
         pma: Arc<Mutex<dyn PmArea>>,
         name: &'static str,
     ) -> OSResult<Self> {
@@ -90,7 +90,7 @@ impl VmArea {
     }
 
     /// Create mapping between this VMA to the associated PMA.
-    pub fn map_area(&self, pt: &mut impl PageTable) -> OSResult {
+    pub fn map_area(&self, pt: &mut PageTable) -> OSResult {
         //println!("create mapping: {:#x?}", self);
         let mut pma = self.pma.lock();
         for vaddr in (self.start..self.end).step_by(PAGE_SIZE) {
@@ -98,7 +98,7 @@ impl VmArea {
             let res = if let Some(paddr) = page {
                 pt.map(vaddr, paddr, self.flags)
             } else {
-                pt.map(vaddr, 0, MMUFlags::empty())
+                pt.map(vaddr, 0, PTEFlags::empty())
             };
             res.map_err(|e| {
                 println!(
@@ -112,7 +112,7 @@ impl VmArea {
     }
 
     /// Destory mapping of this VMA.
-    pub fn unmap_area(&self, pt: &mut impl PageTable) -> OSResult {
+    pub fn unmap_area(&self, pt: &mut PageTable) -> OSResult {
         //println!("destory mapping: {:#x?}", self);
         let mut pma = self.pma.lock();
         for vaddr in (self.start..self.end).step_by(PAGE_SIZE) {
@@ -134,8 +134,8 @@ impl VmArea {
     pub fn handle_page_fault(
         &self,
         offset: usize,
-        access_flags: MMUFlags,
-        pt: &mut impl PageTable,
+        access_flags: PTEFlags,
+        pt: &mut PageTable,
     ) -> OSResult {
         debug_assert!(offset < self.end - self.start);
         println!(
@@ -146,12 +146,15 @@ impl VmArea {
         );
         let mut pma = self.pma.lock();
         if !self.flags.contains(access_flags) {
-            if access_flags.contains(MMUFlags::USER) {
+            if access_flags.contains(PTEFlags::USER) {
                 let offset = align_down(offset);
                 let vaddr = self.start + offset;
-                let entry = pt.get_entry(vaddr)?;
-                PTETranslator::set_flags(entry, self.flags | MMUFlags::USER);
-                return Ok(());
+                if let Some(entry) = pt.get_entry(vaddr) {
+                    entry.set_flags(entry.flags() | PTEFlags::USER);
+                    return Ok(());
+                } else {
+                    return Err(OSError::PageTable_PageNotMapped);
+                }
             }
             return Err(OSError::PageFaultHandler_AccessDenied);
         }
@@ -161,14 +164,16 @@ impl VmArea {
             .get_frame(offset / PAGE_SIZE, true)?
             .ok_or(OSError::Memory_RunOutOfMemory)?;
 
-        let entry = pt.get_entry(vaddr)?;
-        if PTETranslator::is_present(entry) {
-            Err(OSError::PageFaultHandler_TrapAtValidPage)
+        if let Some(entry) = pt.get_entry(vaddr) {
+            if entry.is_valid() {
+                Err(OSError::PageFaultHandler_TrapAtValidPage)
+            } else {
+                entry.set_all(paddr, self.flags);
+                pt.flush_tlb(Some(vaddr));
+                Ok(())
+            }
         } else {
-            PTETranslator::set_addr(entry, paddr);
-            PTETranslator::set_flags(entry, self.flags);
-            pt.flush_tlb(Some(vaddr));
-            Ok(())
+            Err(OSError::PageTable_PageNotMapped)
         }
     }
 }
