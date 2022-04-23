@@ -8,7 +8,7 @@ pub const CLOCK_FREQ: usize = 1250_0000; //freq for qemu -m virt
 //这些常量是临时的，仅在相当于rcore-ch3的版本使用
 pub const KERNEL_STACK_SIZE: usize = 0x20_0000; // 2 MB, per CPU
 
-pub const MAX_APP_NUM: usize = 8; // 应用程序个数限制
+pub const MAX_APP_NUM: usize = 10; // 应用程序个数限制
 pub const APP_BASE_ADDRESS: usize = 0x8010_0000;
 pub const APP_SIZE_LIMIT: usize = 0x2_0000;
 pub const APP_ADDRESS_END: usize = APP_BASE_ADDRESS + MAX_APP_NUM * APP_SIZE_LIMIT;

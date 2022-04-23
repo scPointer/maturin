@@ -340,6 +340,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         "users",
     )?;
     */
+    /*
     ms.push(VmArea::from_identical_pma(
         APP_BASE_ADDRESS,
         APP_ADDRESS_END,
@@ -357,6 +358,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE | PTEFlags::USER,
         "users",
     )?)?;
+    */
     /*
     ms.init_a_kernel_region(
         0x8600_0000,

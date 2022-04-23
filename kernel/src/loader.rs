@@ -151,3 +151,12 @@ pub fn init_app_cx(app_id: usize) -> usize {
         USER_STACK[app_id].get_sp(),
     ))
 }
+
+/// 同 init_app_cx，但由外部给出用户栈和程序入口
+/// 一般是由其他程序调用 get_app_data() 分析后再调用这个函数
+pub fn init_app_cx_by_entry_and_stack(app_id: usize, user_entry: usize, user_stack: usize) -> usize{
+    KERNEL_STACK[app_id].push_context(TrapContext::app_init_context(
+        user_entry,
+        user_stack,
+    ))
+}

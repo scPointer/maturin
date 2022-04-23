@@ -12,6 +12,7 @@
 use lazy_static::*;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use alloc::string::String;
 use lock::mutex::Mutex;
 
 mod context;
@@ -22,7 +23,8 @@ mod task;
 
 use crate::constants::{CPU_NUM, EMPTY_TASK};
 use crate::error::{OSResult, OSError};
-use crate::loader::{get_num_app, init_app_cx};
+use crate::loader::{get_num_app, get_app_data, init_app_cx, init_app_cx_by_entry_and_stack};
+use crate::loaders::ElfLoader;
 use crate::memory::{MemorySet, new_memory_set_for_task, VirtAddr, PTEFlags};
 use crate::arch::get_cpu_id;
 use switch::__switch;
@@ -68,10 +70,16 @@ lazy_static! {
         let mut tasks: Vec<TaskControlBlock> = Vec::new();
         //println!("now");
         for i in 0..num_app {
+            let mut vm = new_memory_set_for_task().unwrap();
+            let raw_data = get_app_data(i);
+            let loader = ElfLoader::new(raw_data).unwrap();
+            let args = vec![String::from(".")];
+            let (user_entry, user_stack) = loader.init_vm(&mut vm, args).unwrap();
+            let trap_cx_ptr_in_kernel_stack = init_app_cx_by_entry_and_stack(i, user_entry, user_stack);
             tasks.push(TaskControlBlock{
-                task_cx: TaskContext::goto_restore(init_app_cx(i)),
+                task_cx: TaskContext::goto_restore(trap_cx_ptr_in_kernel_stack),
                 task_status: TaskStatus::Ready,
-                vm: new_memory_set_for_task().unwrap()//MemorySet::new_user()//,
+                vm: vm,//MemorySet::new_user()
             });
         }
         //println!("now");
@@ -300,4 +308,3 @@ pub fn exit_current_and_run_next() {
 pub fn handle_user_page_fault(vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
     TASK_MANAGER.handle_user_page_fault(vaddr, access_flags)
 }
-    

@@ -63,17 +63,21 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             println!("[kernel] IllegalInstruction in application, kernel killed it.");
             exit_current_and_run_next();
         }
-
-        // 临时的错误实现：不应该在此用handle_kernel_page_fault
         Trap::Exception(Exception::InstructionPageFault) => {
             println!("[kernel] InstructionPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", stval, cx.sepc);
             
-            handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::EXECUTE);
+            if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::EXECUTE) {
+                println!("{:#?}", e);
+                exit_current_and_run_next();
+            }
             //PageFault(stval, PTEFlags::USER | PTEFlags::EXECUTE)
         }
         Trap::Exception(Exception::LoadPageFault) => {
             println!("[kernel] LoadPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", stval, cx.sepc);
-            handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::READ);
+            if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::READ) {
+                println!("{:#?}", e);
+                exit_current_and_run_next();
+            }
             //PageFault(stval, PTEFlags::USER | PTEFlags::READ)
         }
         Trap::Exception(Exception::StorePageFault) => {
@@ -84,7 +88,10 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
                 panic!("...");
             }
             */
-            handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::WRITE);
+            if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::WRITE) {
+                println!("{:#?}", e);
+                exit_current_and_run_next();
+            }
             //PageFault(stval, PTEFlags::USER | PTEFlags::WRITE)
         }
         
