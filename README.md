@@ -69,6 +69,10 @@ panic时的处理，主要是`panic_handler`
 
 系统调用处理
 
+#### /loaders
+
+从 `.elf` 文件中读取用户程序信息并生成对应的VMA
+
 #### /memory
 
 页表虚拟地址空间管理
