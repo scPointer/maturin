@@ -4,7 +4,7 @@ use crate::constants::CLOCK_FREQ;
 use crate::arch::set_timer;
 use riscv::register::time;
 
-const TICKS_PER_SEC: usize = 100;
+const TICKS_PER_SEC: usize = 10;
 const MSEC_PER_SEC: usize = 1000;
 
 /// read the `mtime` register

@@ -29,7 +29,7 @@ mod arch;
 //在引入 mod arch 时已经加入了 entry.S
 core::arch::global_asm!(include_str!("link_app.S"));
 
-//use core::sync::atomic::{Ordering, AtomicUsize};
+use core::sync::atomic::{Ordering, AtomicBool, AtomicUsize};
 use core::hint::spin_loop;
 
 #[macro_use]
@@ -44,9 +44,10 @@ use lock::mutex::Mutex;
 
 extern crate lazy_static;
 
-//static AP_CAN_INIT: AtomicUsize = AtomicUsize::new(0);
+static AP_CAN_INIT: AtomicBool = AtomicBool::new(false);
+
 lazy_static::lazy_static! {
-    static ref AP_CAN_INIT: Arc<Mutex<usize>> = Arc::new(Mutex::new(0));
+    static ref BOOTED_CPU_NUM: AtomicUsize = AtomicUsize::new(0);
 }
 
 #[no_mangle]
@@ -54,13 +55,17 @@ lazy_static::lazy_static! {
 pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     let cpu_id = arch::get_cpu_id();
     if cpu_id == constants::BOOTSTRAP_CPU_ID {
-        //memory::clear_bss();
+        memory::clear_bss();
         memory::allocator_init();
         memory::kernel_page_table_init();
         println!("[CPU {}] page table enabled", cpu_id);
         trap::init();
 
-        arch::setSUMAccessOpen(); //开启内核直接访问用户地址空间的权限
+        //risc-v ISA manual 建议尽量不设SUM位，防止内核不小心修改用户地址中的内容
+        //所以现在默认不开启这个权限
+        //只在需要读取用户地址空间的数据(如系统调用 sys_write)时开启
+
+        //arch::setSUMAccessOpen(); //开启内核直接访问用户地址空间的权限
         //loader::load_apps();
         //arch::setSUMAccessClose();
 
@@ -68,11 +73,11 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
         timer::set_next_trigger();
         
         //AP_CAN_INIT.compare_exchange(cpu_id, cpu_id + 1, Ordering::Relaxed, Ordering::Relaxed).unwrap();
-        check_and_finish_init(cpu_id);
+        first_cpu_bootstrap_finish(cpu_id);
 
     } else {
         //while cpu_id != AP_CAN_INIT.compare_exchange(cpu_id, cpu_id + 1, Ordering::Relaxed, Ordering::Relaxed).unwrap() {
-        while !check_and_finish_init(cpu_id) {
+        while !first_cpu_bootstrap_finish(cpu_id) {
             spin_loop();
         }
         memory::kernel_page_table_init();
@@ -81,18 +86,16 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
         timer::set_next_trigger();
     }
     
-    // In fact, it is unnecessary to check all cpu booted before respective initialization
-    // this is just to make a pretty output 
+    // 等待所有核启动完成
+    // 这一步是为了进行那些**需要所有CPU都启动后才能进行的全局初始化操作**
+    // 然而目前还没有这样的操作，所以现在这里只是用来展示无锁的原子变量操作(参见下面两个函数)
+    bootstrap_finish();
     while !check_all_cpu_started() {
         spin_loop();
     }
-    // 
     println!("I'm CPU [{}]", cpu_id);
-    /*
-    for _i in 0..100 {
-        arch::io::console_putint(cpu_id);
-    };
-    */
+
+    // 全局初始化结束
     
     match cpu_id {
         constants::BOOTSTRAP_CPU_ID => boot_main(),
@@ -101,23 +104,25 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     
 }
 
-/// 检查是否*可以*初始化，如可则返回 true
-/// 这个函数制定了内核必须由 cpu_id 等于 AP_CAN_INIT 初始值的核先启动，然后启动的 cpu_id 依次递增
-/// 也即如有 N 个核启动，要求其 cpu_id 必须为 [0,N-1]
-pub fn check_and_finish_init(cpu_id: usize) -> bool {
-    let mut id_now = AP_CAN_INIT.lock();
-    if *id_now != cpu_id {
-        false
-    } else {
-        arch::cpu_init(cpu_id);
-        *id_now += 1;
+/// 检查第一个核是否初始化完成，如是则返回 true
+/// 内核必须由 cpu_id 等于 AP_CAN_INIT 初始值的核先启动，然后其他的核才能启动 
+pub fn first_cpu_bootstrap_finish(cpu_id: usize) -> bool {
+    if cpu_id == constants::BOOTSTRAP_CPU_ID {
+        AP_CAN_INIT.compare_exchange(false, true, Ordering::Release, Ordering::Relaxed).unwrap();
         true
+    } else {
+        AP_CAN_INIT.load(Ordering::Acquire)
     }
+}
+
+/// 确认当前核已启动(BOOTSTRAP_CPU 也需要调用)
+pub fn bootstrap_finish() {
+    BOOTED_CPU_NUM.fetch_add(1, Ordering::Relaxed);
 }
 
 /// 检查是否所有核已启动，如是则返回 true
 pub fn check_all_cpu_started() -> bool {
-    *AP_CAN_INIT.lock() == constants::LAST_CPU_ID + 1
+    BOOTED_CPU_NUM.load(Ordering::Relaxed) == constants::CPU_NUM
 }
 
 /// 第一个核启动后的任务
