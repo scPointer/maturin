@@ -5,11 +5,13 @@ _start:
     # pc == 0x80200000
     mv tp, a0
 
+    # 1. init per core boot_stack
     add t0, a0, 1
     slli t0, t0, 18
     la sp, boot_stack
     add sp, sp, t0
 
+    # 2. enable page table
     la      t0, boot_page_table_sv39
     srli    t0, t0, 12
     li      t1, 8 << 60

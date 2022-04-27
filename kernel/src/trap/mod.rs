@@ -96,6 +96,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         }
         
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            // 之后需要判断如果是在内核态，则不切换任务
             set_next_trigger();
             suspend_current_and_run_next();
         }
