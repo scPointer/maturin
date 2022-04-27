@@ -27,11 +27,13 @@ pub struct KernelStack {
     //data: [u8; KERNEL_STACK_SIZE],
 }
 
+/*
 //#[repr(align(4096))]
 pub struct UserStack {
     frame: Frame,
     //data: [u8; USER_STACK_SIZE],
 }
+*/
 
 impl KernelStack {
     fn get_sp(&self) -> usize {
@@ -46,11 +48,13 @@ impl KernelStack {
     }
 }
 
+/*
 impl UserStack {
     fn get_sp(&self) -> usize {
         self.frame.as_ptr() as usize + USER_STACK_SIZE
     }
 }
+*/
 
 lazy_static! {
     pub static ref KERNEL_STACK: Vec<KernelStack> = {
@@ -63,7 +67,7 @@ lazy_static! {
         }
         stacks
     };
-
+/*
     pub static ref USER_STACK: Vec<UserStack> = {
         let mut stacks: Vec<UserStack> = Vec::new();
         for _i in 0..MAX_APP_NUM {
@@ -74,12 +78,15 @@ lazy_static! {
         }
         stacks
     };
+    */
 }
 
+/*
 /// Get base address of app i.
 fn get_base_i(app_id: usize) -> usize {
     APP_BASE_ADDRESS + app_id * APP_SIZE_LIMIT
 }
+*/
 
 /// Get the total number of applications.
 pub fn get_num_app() -> usize {
@@ -89,6 +96,7 @@ pub fn get_num_app() -> usize {
     unsafe { (_num_app as usize as *const usize).read_volatile() }
 }
 
+/*
 /// Load nth user app at
 /// [APP_BASE_ADDRESS + n * APP_SIZE_LIMIT, APP_BASE_ADDRESS + (n+1) * APP_SIZE_LIMIT).
 pub fn load_apps() {
@@ -125,6 +133,7 @@ pub fn load_apps() {
         println!("load {}", i);
     }
 }
+*/
 
 /// get applications data
 pub fn get_app_data(app_id: usize) -> &'static [u8] {
@@ -143,6 +152,7 @@ pub fn get_app_data(app_id: usize) -> &'static [u8] {
     }
 }
 
+/*
 /// get app info with entry and sp and save `TrapContext` in kernel stack
 pub fn init_app_cx(app_id: usize) -> usize {
     println!("user stack bottom at {:x}", USER_STACK[app_id].get_sp());
@@ -151,10 +161,12 @@ pub fn init_app_cx(app_id: usize) -> usize {
         USER_STACK[app_id].get_sp(),
     ))
 }
+*/
 
 /// 同 init_app_cx，但由外部给出用户栈和程序入口
 /// 一般是由其他程序调用 get_app_data() 分析后再调用这个函数
-pub fn init_app_cx_by_entry_and_stack(app_id: usize, user_entry: usize, user_stack: usize) -> usize{
+pub fn init_app_cx_by_entry_and_stack(app_id: usize, user_entry: usize, user_stack: usize) -> usize {
+    println!("kernel stack at: {:x}", KERNEL_STACK[app_id].get_sp() - KERNEL_STACK_SIZE);
     KERNEL_STACK[app_id].push_context(TrapContext::app_init_context(
         user_entry,
         user_stack,

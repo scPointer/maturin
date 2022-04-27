@@ -146,6 +146,7 @@ impl VmArea {
         );
         let mut pma = self.pma.lock();
         if !self.flags.contains(access_flags) {
+            /*
             if access_flags.contains(PTEFlags::USER) {
                 let offset = align_down(offset);
                 let vaddr = self.start + offset;
@@ -156,6 +157,7 @@ impl VmArea {
                     return Err(OSError::PageTable_PageNotMapped);
                 }
             }
+            */
             return Err(OSError::PageFaultHandler_AccessDenied);
         }
         let offset = align_down(offset);

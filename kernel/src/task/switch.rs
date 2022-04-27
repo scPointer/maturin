@@ -1,9 +1,7 @@
-//! Rust wrapper around `__switch`.
+//! 关于切换执行流的汇编 `__switch` 
 //!
-//! Switching to a different task's context happens here. The actual
-//! implementation must not be in Rust and (essentially) has to be in assembly
-//! language (Do you know why?), so this module really is just a wrapper around
-//! `switch.S`.
+//! 通过内核栈，将当前 cpu 的寄存器切换到另一个任务的寄存器，包括 ra 和 sp
+//! 也就是说调用 __switch 的位置和从 __switch 返回的地址可能不同
 
 use super::TaskContext;
 use core::arch::global_asm;

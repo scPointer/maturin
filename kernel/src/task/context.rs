@@ -1,6 +1,6 @@
-//! Implementation of [`TaskContext`]
+//! 保存/恢复一个用户栈所必要的信息
 
-/// Task Context
+/// 一个任务的上下文信息，包含所有必要的寄存器
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct TaskContext {
@@ -13,7 +13,7 @@ pub struct TaskContext {
 }
 
 impl TaskContext {
-    /// init task context
+    /// 初始化一个 TaskContext，其中所有值为 0
     pub fn zero_init() -> Self {
         Self {
             ra: 0,
@@ -22,7 +22,8 @@ impl TaskContext {
         }
     }
 
-    /// set task context {__restore ASM funciton, kernel stack, s_0..12 }
+    /// 初始化一个 TaskContext，其中 ra 为 __restore() 地址， sp 为输入的内核栈地址，
+    /// 其余所有值为 0
     pub fn goto_restore(kstack_ptr: usize) -> Self {
         extern "C" {
             fn __restore();

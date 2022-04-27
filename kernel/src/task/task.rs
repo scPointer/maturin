@@ -1,4 +1,5 @@
-//! Types related to task management
+//! 用户程序的数据及状态信息
+//! 一个 TaskControlBlock 包含了一个任务(之后会是进程)的所有信息
 
 use super::TaskContext;
 use super::{Arc, Mutex, MemorySet};
