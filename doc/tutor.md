@@ -59,16 +59,16 @@ boot_page_table_sv39:
 
 其中特别加了以下映射：
 
-- 内核栈：每个核的内核栈的最后一页不写进 VmArea 和页表里，这意味着内核栈用到最后一页时会触发内核的缺页异常。这是为了不让一个核的内核栈溢出到其他核的栈里。
+- 内核栈：每个核的内核栈的最后一页不写进 MemorySet 和页表里，这意味着内核栈用到最后一页时会触发内核的缺页异常。这是为了不让一个核的内核栈溢出到其他核的栈里。
 - `"phys_memory"` ：OS认为物理内存的空间是从 `0x80200000` 到 `PHYS_MEMORY_END`(=`0x8800_0000`，是 `constants.rs` 里的常数)，这段地址在内核态都可以直接访问。所以初始化会把除了 linker 中指定的内核代码段外的所有空间，也就是 [`kernel_end`, `PHYS_MEMORY_END`] 写进页表并赋读和写的权限。
 
 ##### 3. 每个用户程序的页表(内核态和用户态共用)
 
-在任务管理器`TASK_MANAGER` 初始化时，会给每个用户程序初始化 VmArea 和对应页表。其中内核态的部分和上面所述相同，用户态的部分是由 `/loader` 子模块中的 `ElfLoader`读取用户程序信息后映射的。这段代码在 `/task/mod.rs` 的 `lazy_static! { pub  static ref TASK_MANAGER...` 定义中。
+在任务管理器`TASK_MANAGER` 初始化时，会给每个用户程序初始化 MemorySet 和对应页表。其中内核态的部分和上面所述相同，用户态的部分是由 `/loader` 子模块中的 `ElfLoader`读取用户程序信息后映射的。这段代码在 `/task/mod.rs` 的 `lazy_static! { pub  static ref TASK_MANAGER...` 定义中。
 
 为了实现对用户程序以 4KB 页为粒度的权限控制，需要修改用户库的代码，在用户库中的 linker.ld 里每段加上 `ALIGN(4K)`。详见`/user/src/linker.ld`
 
-用户程序申请的新的内存空间实际上是在`phys_memory`段里的。因为用户态访问时的虚拟地址和内核态直接访问`phys_memory`段的虚拟地址不同（后者一定有前缀 `0xffff_ffff`），所以这它们都放在 VmArea 里并不冲突。
+用户程序申请的新的内存空间实际上是在`phys_memory`段里的。因为用户态访问时的虚拟地址和内核态直接访问`phys_memory`段的虚拟地址不同（后者一定有前缀 `0xffff_ffff`），所以这它们都放在 MemorySet 里并不冲突。
 
 ### `main.rs`中的初始化流程
 
@@ -94,7 +94,7 @@ boot_page_table_sv39:
 - 其他核各自完成自己的初始化
 
 ```rust
-    memory::kernel_page_table_init(); // 构造内核态页表与 VmArea
+    memory::kernel_page_table_init(); // 构造内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec
     trap::enable_timer_interrupt(); // 开启时钟中断
     timer::set_next_trigger(); // 设置时钟中断频率
@@ -225,11 +225,174 @@ if 找不到用户程序可以执行 {
 
 ### 多核下的任务调度模块 /task
 
+/task 模块对外暴露的接口主要就是全局变量 TASK_MANAGER，它是 lazy_static，所以会在第一个核尝试进入用户程序时被初始化。 
+
+TASK_NAMAGER 是由所有核共用的，对这个结构的锁的争用可能是OS效率的瓶颈。但是“任务切换”本身是一个比较复杂的过程，每个核既从任务队列里拿任务也可能把任务放回队列里，还要求取任务与暂停任务的操作合起来是一个原子操作，所以不能简单看成一个多生产者多消费者队列。
+
+#### 主要结构
+
+任务调度器的主体是以下三个结构体
+
+```rust
+// at /task/mod.rs
+/// 任务管理器，管理所有用户程序
+pub struct TaskManager {
+    /// 任务数
+    num_app: usize,
+    /// 可变部分用锁保护，每次只能有一个核在访问
+    inner: Arc<Mutex<TaskManagerInner>>,
+    /// 已经完成任务的核数。不放在inner里检查是为了避免干扰其他核调度
+    /// 也不放在panic里是因为：
+    ///     默认情况下，只要一个核panic，OS必须停机，方便debug
+    ///     而任务调度是特殊情况，所有核调度完才panic，所以在调度里写
+    finished_core_cnt: AtomicUsize,
+}
+```
+
+其中 num_app 是由 `/src/loader.rs` 模块提供的，实际上是 kernel/ 下的 build.rs 生成了包括所有用户程序的汇编 `link_app.S`，然后 loader 从中获取用户程序信息并包装成函数。任务调度器需要和用户程序有关的信息时，都会通过 loader 获取。
+
+`finished_core_cnt` 是一个原子变量，可以无锁地被各个核更新。
+
+整个 OS 中使用 `TaskManager` 类型只有一个全局变量`TASK_MANAGER`，task 模块的所有对外暴露的接口实质上都会转到这个 TASK_NAMAGER 中执行。
+
+```rust
+// at /task/mod.rs
+/// 任务管理器的可变部分
+pub struct TaskManagerInner {
+    /// 每个用户程序的所有信息放在一个 TCB 中
+    tasks: Vec<TaskControlBlock>,
+    /// 对每个核，存储当前正在运行哪个任务
+    /// 我们约定每个核只修改自己对应的 usize，所以对这个数组的访问其实是不会冲突的
+    /// 不过它是 TaskManager 中的可变部分，为了省去调用时候的 mut 姑且放在 inner 里
+    current_task_at_cpu: [usize; CPU_NUM],
+}
+```
+
+`TaskManagerInner` 被锁保护，所以目前的代码实现中，每次最多只有一个核进入 TASK_NAMAGER。
+
+```rust
+// at /task/task.rs
+/// 任务控制块，包含一个用户程序的所有状态信息，但不包括与调度有关的信息
+// 默认在TCB的外层有 Arc<Mutex<>>，所以内部的结构没有用锁保护
+pub struct TaskControlBlock {
+    /// 任务执行状态
+    pub task_status: TaskStatus,
+    /// 上下文信息，用于切换，包含所有必要的寄存器
+    /// 实际在第一次初始化时还包含了用户程序的入口地址和用户栈
+    pub task_cx: TaskContext,
+    /// 任务的内存段(内含页表)，同时包括用户态和内核态
+    pub vm: MemorySet,
+}
+```
+
+`TaskControlBlock` 类型目前没有 impl 任何方法，所以对其的操作都是由它外层的 `TaskManager` 和 inner 进行的。
+
+##### 相比 `rCore` 的实现
+
+任务控制块中没有 trap context ：
+
+- 用户态和内核态共用页表，所以用户`ecall`时可以跳转到内核在初始化时设的 trap 地址，这样就不需要为每个用户程序配置 trap 对应的虚拟地址映射了
+
+同理，也不需要单独配置 kernel stack 在用户地址空间中的映射。这点和本项目参考的 `rCore-tutorial` 有明显的不同
+
+> `rCore-tutorial` 的内核态与用户态使用的页表不同，所以它的 trap 进入内核(见 https://rcore-os.github.io/rCore-Tutorial-Book-v3/chapter3/2task-switching.html) 过程大致是
+>
+> 1. 把sp换到”内核栈在用户地址空间中的地址"
+> 2. 保存需要的寄存器
+> 3. 读取 rust 函数 trap_handler 的地址，切换到内核栈
+> 4. 切换到内核的页表，刷新TLB
+> 5. 跳转到 trap_handler 
+
+需要说明的是，`rCore` 使用内核态与用户态的设计是比我们设计的这个OS更安全的，但这个特性也使得 **切换用户态/内核态的地点与切换用户页表/内核页表的地点不一致，所以 trap.S 中进入内核时，需要在用户地址空间+内核态下工作。**为了实现这个事情， `rCore` 需要在地址空间映射中做特殊约定(见 https://rcore-os.github.io/rCore-Tutorial-Book-v3/chapter4/5kernel-app-spaces.html)，同时在页表/任务管理/trap的代码实现中插入很多关于这个约定的特殊代码。
+
+而[本项目中 trap 进入内核的实现](#trap_procedure)不用切换页表，所以也简化了配置用户页表特殊页面、trap 反复折腾等等事情。
+
+#### 调度器初始化
+
+上面已经介绍过 `TaskManager` 的结构，内部大部分结构的初始化都比较显然，参见 `task/mod.rs` 的代码即可。下面仅介绍一个 TCB(`TaskControlBlock`) 的初始化（它不在 `impl TaskControlBlock`里，目前只在 `task/mod.rs` 中的 `TASK_MANAGER`初始化中，且下面代码在 `for i in 0..num_app`中，会用到变量 i）：
+
+```rust
+			// 新建页表，包含内核段
+            let mut vm = new_memory_set_for_task().unwrap();
+            // 获取用户库编译链接好的(elf 格式的)用户数据，然后插入页表和 VmArea
+            let raw_data = get_app_data(i);
+            let loader = ElfLoader::new(raw_data).unwrap();
+            let args = vec![String::from(".")];
+            let (user_entry, user_stack) = loader.init_vm(&mut vm, args).unwrap();
+            // 初始化内核栈，它包含关于进入用户程序的所有信息
+            let trap_cx_ptr_in_kernel_stack = init_app_cx_by_entry_and_stack(i, user_entry, user_stack);
+            tasks.push(TaskControlBlock{
+                task_cx: TaskContext::goto_restore(trap_cx_ptr_in_kernel_stack),
+                task_status: TaskStatus::Ready,
+                vm: vm,
+            });
+```
+
+首先新建一个`MemorySet`和对应的页表，包含内核段的所有地址映射。目前每个任务在内核中(或者说所有不带 USER 标记的页表项)的映射是相同的。
+
+> 如果内核里需要申请新的空间来放新的东西，那么有以下三种可能的情况
+>
+> 1. 在局部变量通过某个结构体的 fn new () -> Self {...} 构造。这种情况下结构本身在内核栈上
+> 2. 通过 Vec 等构造一个变长的数据结构。这种情况下结构在堆上
+> 3. 直接向页帧分配器要一个帧，然后自己存起来。**在这种情况下，可以说这个结构"拥有"它申请的页，但页表和 `MemorySet` 里不会添加这一项。**事实上，申请到的页是在 physical_memory 段里的，详见[页帧分配器](#frame_alloc)。理论上来说，内核里的代码可以任意读写 physical_memory 段中的地址，但只要"约定"每个结构在需要内存时都先申请空间再使用，就至少可以保证不会错误读写到别的数据
+
+> 注解的注解：
+>
+> 为什么要有第三种申请空间方式而不是把这样的申请都放在堆上？
+>
+> 因为堆内部的空间不大，目前设定为 4MB。[堆分配器](#heap_alloc)占用的空间在 `bss` 里，而一般来说我们不太希望内核编译出来的文件里本身就带一堆大“数组”，所以不会把堆开得特别大。
+
+然后读取 ELF 格式的用户数据，用它来初始化一个 loader 类型，再用这个 loader 来读取用户程序信息，将其分段填入 `MemorySet` 和页表，最后返回用户程序入口地址 user_entry 和 用户栈地址 user_stack。
+
+> 在 rCore 中，初始化这一步是放在拆在  TaskControlBlock::new() 与 MemorySet::from_elf() 中完成的。但我们认为 Loader 应该是一个独立的模块
+
+之后利用用户程序入口地址和用户栈地址来初始化内核栈，分别对应第一次切换到用户态开始执行时的 ra 和 sp
+
+#### 任务调度过程
+
+
+
 ### 内存管理模块 /memory
+
+#### 分配器子模块 /allocator
+
+##### 堆分配器
+
+<div id="heap_alloc">初始化：</div>
+
+
+
+目前堆的大小在 `constants.rs`中设定为 4 MB，如果后续添加比较大的结构时发现 heap alloc 分配失败，那大概率是堆不够用了，建议增大堆的大小（或者起页表后把堆从 `bss` 段中移出，不过这时堆里已经有一些内容了，可能做这件事会比较头疼）
+
+
+
+##### 页帧分配器
+
+初始化：
+
+<div id="frame_alloc">页帧分配的是哪里的内存？</div>
+
+
+
+#### 内存段子模块 /areas
+
+#### 地址空间 addr.rs
+
+#### 页表与页表项
+
+#### 虚存管理 `struct MemorySet`
 
 ### 与架构和`sbi`相关的模块 /arch (以及 timer.rs)
 
 ### 中断异常处理模块 /trap
+
+<div id="trap_procedure">trap.S 的大致过程</div>
+
+1. 通过 sscratch ，从用户栈切换到内核栈
+2. 手动压栈(`addi sp, sp, -34*8`)，然后保存需要的寄存器
+3. 跳转到 trap_handler 
+
+
 
 ### 系统调用模块 /syscall
 

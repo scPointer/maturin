@@ -65,7 +65,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     // 等待第一个核执行完上面的全局初始化
     wait_global_init_finished();
 
-    memory::kernel_page_table_init(); // 构造内核态页表与 VmArea
+    memory::kernel_page_table_init(); // 构造内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec
     trap::enable_timer_interrupt(); // 开启时钟中断
     timer::set_next_trigger(); // 设置时钟中断频率
