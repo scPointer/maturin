@@ -374,11 +374,11 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
 
 lazy_static::lazy_static! {
     #[repr(align(64))]
-    pub static ref KERNEL_MEMORY_SET: Arc<Mutex<MemorySet>> = {
+    pub static ref KERNEL_MEMORY_SET: Mutex<MemorySet> = {
         let mut ms = MemorySet::new_kernel();
         init_kernel_memory_set(&mut ms).unwrap();
         println!("kernel memory set init end:\n{:#x?}", ms);
-        Arc::new(Mutex::new(ms))
+        Mutex::new(ms)
     };
 }
 
