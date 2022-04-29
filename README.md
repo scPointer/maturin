@@ -1,6 +1,8 @@
-# maturin
+# maturin:static-task
 
-An SMP OS written in Rust.
+Static task 是指所有用户程序都会被加载并执行一次。相对应地，在主分支上的实现仅加载一个名为 `start` 的用户程序，由它(在用户态)通过 `fork` `exec` 等系统调用来生成其他进程。
+
+如果你了解过 `rCore` ，那么这个分支的代码对标 `rCore-toturial-ch4` 及之前的实现。
 
 ## Usage
 
