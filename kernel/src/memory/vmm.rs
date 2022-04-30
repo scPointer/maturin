@@ -273,6 +273,8 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
     }
 
     use super::PHYS_VIRT_OFFSET;
+
+    
     ms.init_a_kernel_region(
         virt_to_phys(stext as usize),
         virt_to_phys(etext as usize),
@@ -280,6 +282,16 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::EXECUTE,
         "ktext",
     )?;
+    /*
+    ms.push(VmArea::from_fixed_pma(
+        virt_to_phys(stext as usize),
+        virt_to_phys(etext as usize),
+        PHYS_VIRT_OFFSET,
+        PTEFlags::READ | PTEFlags::EXECUTE,
+        "ktext",
+    )?)?;
+    */
+    /*
     ms.init_a_kernel_region(
         virt_to_phys(sdata as usize),
         virt_to_phys(edata as usize),
@@ -287,6 +299,14 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::WRITE,
         "kdata",
     )?;
+    */
+    ms.push(VmArea::from_fixed_pma(
+        virt_to_phys(sdata as usize),
+        virt_to_phys(edata as usize),
+        PHYS_VIRT_OFFSET,
+        PTEFlags::READ | PTEFlags::WRITE,
+        "kdata",
+    )?)?;
     ms.init_a_kernel_region(
         virt_to_phys(srodata as usize),
         virt_to_phys(erodata as usize),
@@ -294,6 +314,16 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE,
         "krodata",
     )?;
+    /*
+    ms.push(VmArea::from_fixed_pma(
+        virt_to_phys(srodata as usize),
+        virt_to_phys(erodata as usize),
+        PHYS_VIRT_OFFSET,
+        PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE,
+        "krodata",
+    )?)?;
+    */
+    
     ms.init_a_kernel_region(
         virt_to_phys(sbss as usize),
         virt_to_phys(ebss as usize),
@@ -301,6 +331,16 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::WRITE,
         "kbss",
     )?;
+    
+    /*
+    ms.push(VmArea::from_fixed_pma(
+        virt_to_phys(sbss as usize),
+        virt_to_phys(ebss as usize),
+        PHYS_VIRT_OFFSET,
+        PTEFlags::READ | PTEFlags::WRITE,
+        "kbss",
+    )?)?;
+    */
     let kernel_stack = boot_stack as usize;
     let kernel_stack_top = boot_stack_top as usize;
     let size_per_cpu = (kernel_stack_top - kernel_stack) / CPU_NUM;
@@ -321,14 +361,13 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
     
     for region in get_phys_memory_regions() {
         println!("init region {:x}, {:x}", region.start, region.end);
-        ms.init_a_kernel_region(
+        ms.push(VmArea::from_fixed_pma(
             region.start,
             region.end,
-            //0x8600_0000,
             PHYS_VIRT_OFFSET,
             PTEFlags::READ | PTEFlags::WRITE,
             "physical_memory",
-        )?;
+        )?)?;
     }
     
     /*

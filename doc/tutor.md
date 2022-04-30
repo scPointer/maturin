@@ -96,6 +96,7 @@ boot_page_table_sv39:
 ```rust
     memory::kernel_page_table_init(); // 构造内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec
+    arch::setSUMAccessOpen(); // 修改 sstatus 的 SUM 位，使内核可以读写USER页表项中的数据
     trap::enable_timer_interrupt(); // 开启时钟中断
     timer::set_next_trigger(); // 设置时钟中断频率
 ```
@@ -115,7 +116,15 @@ boot_page_table_sv39:
 
 ```rust
 	// 全局初始化结束
-    task::run_first_task();
+    if constants::IS_SINGLE_CORE {
+        if cpu_id ==  constants::BOOTSTRAP_CPU_ID {
+            task::run_first_task();
+        } else {
+            loop {}
+        }
+    } else {
+        task::run_first_task();
+    }
     unreachable!();
 ```
 

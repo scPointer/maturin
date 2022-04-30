@@ -80,7 +80,15 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     println!("I'm CPU [{}]", cpu_id);
 
     // 全局初始化结束
-    task::run_first_task();
+    if constants::IS_SINGLE_CORE {
+        if cpu_id ==  constants::BOOTSTRAP_CPU_ID {
+            task::run_first_task();
+        } else {
+            loop {}
+        }
+    } else {
+        task::run_first_task();
+    }
     unreachable!();
 }
 

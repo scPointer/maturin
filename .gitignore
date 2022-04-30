@@ -1,6 +1,7 @@
 .vscode
 target
 kernel/src/link_app.S
+/kernel/dbg.txt
 user/build
 user/target/*
 user/Cargo.lock

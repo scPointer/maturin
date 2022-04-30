@@ -1,5 +1,5 @@
 ARCH ?= riscv64
-MODE ?= debug
+MODE ?= release
 SMP ?= 4
 
 OBJDUMP ?= rust-objdump

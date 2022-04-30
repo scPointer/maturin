@@ -16,7 +16,11 @@ mod context;
 
 use crate::syscall::syscall;
 use crate::task::{exit_current_and_run_next, suspend_current_and_run_next, handle_user_page_fault};
-use crate::memory::{handle_kernel_page_fault, PTEFlags};
+use crate::memory::{
+    handle_kernel_page_fault,
+    phys_to_virt,
+    PTEFlags
+};
 use crate::timer::set_next_trigger;
 use crate::arch::get_cpu_id;
 use core::arch::global_asm;
@@ -47,11 +51,18 @@ pub fn enable_timer_interrupt() {
 
 #[no_mangle]
 /// handle an interrupt, exception, or system call from user space
-pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
+pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {  
     let scause = scause::read(); // get trap cause
     let stval = stval::read(); // get extra value
+
+    //extern "C" { fn _num_app(); }
+    //println!("[trap test outer = {:x}]", _num_app as usize);
+
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
+            //extern "C" { fn _num_app(); }
+            //println!("[trap test syscall = {:x}]", _num_app as usize);
+
             cx.sepc += 4;
             cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
         }
@@ -60,11 +71,11 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             exit_current_and_run_next();
         }
         Trap::Exception(Exception::IllegalInstruction) => {
-            println!("[kernel] IllegalInstruction in application, kernel killed it.");
+            println!("[cpu {}] IllegalInstruction in application, kernel killed it.", get_cpu_id());
             exit_current_and_run_next();
         }
         Trap::Exception(Exception::InstructionPageFault) => {
-            println!("[kernel] InstructionPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", stval, cx.sepc);
+            println!("[cpu {}] InstructionPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
             
             if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::EXECUTE) {
                 println!("{:#?}", e);
@@ -73,7 +84,9 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             //PageFault(stval, PTEFlags::USER | PTEFlags::EXECUTE)
         }
         Trap::Exception(Exception::LoadPageFault) => {
-            println!("[kernel] LoadPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", stval, cx.sepc);
+            //extern "C" { fn _num_app(); }
+            //println!("[here is trap {:x}]", _num_app as usize);
+            println!("[cpu {}] LoadPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
             if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::READ) {
                 println!("{:#?}", e);
                 exit_current_and_run_next();
@@ -81,7 +94,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             //PageFault(stval, PTEFlags::USER | PTEFlags::READ)
         }
         Trap::Exception(Exception::StorePageFault) => {
-            println!("[kernel] StorePageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", stval, cx.sepc);
+            println!("[cpu {}] StorePageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
             //panic!("..");
             /*
             if cx.sepc == 0xffff_ffff_8020_999a {
@@ -96,6 +109,8 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         }
         
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            //extern "C" { fn _num_app(); }
+            //println!("[trap test timer = {:x}]", _num_app as usize);
             // 之后需要判断如果是在内核态，则不切换任务
             set_next_trigger();
             suspend_current_and_run_next();

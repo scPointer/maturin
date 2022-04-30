@@ -18,7 +18,7 @@ use crate::constants::{
     PHYS_VIRT_OFFSET,
 };
 use crate::trap::TrapContext;
-use crate::memory::Frame;
+use crate::memory::{Frame, phys_to_virt};
 use core::arch::asm;
 
 //#[repr(align(4096))]
@@ -140,13 +140,15 @@ pub fn get_app_data(app_id: usize) -> &'static [u8] {
     extern "C" {
         fn _num_app();
     }
+    //println!("_num_app at {:x}", _num_app as usize);
     let num_app_ptr = _num_app as usize as *const usize;
     let num_app = get_num_app();
     let app_start = unsafe { core::slice::from_raw_parts(num_app_ptr.add(1), num_app + 1) };
     assert!(app_id < num_app);
+    //println!("raw part is {:x} to {:x}", app_start[app_id], app_start[app_id + 1]);
     unsafe {
         core::slice::from_raw_parts(
-            app_start[app_id] as *const u8,
+            phys_to_virt(app_start[app_id]) as *const u8,
             app_start[app_id + 1] - app_start[app_id],
         )
     }

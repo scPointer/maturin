@@ -34,4 +34,9 @@ impl TaskContext {
             s: [0; 12],
         }
     }
+
+    /// 获取Context中 ra 寄存器的值
+    pub fn get_ra(&self) -> usize {
+        self.ra
+    }
 }
