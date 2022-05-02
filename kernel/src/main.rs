@@ -40,7 +40,7 @@ extern crate alloc;
 use alloc::sync::Arc;
 
 extern crate lock;
-use lock::mutex::Mutex;
+use lock::Mutex;
 
 extern crate lazy_static;
 
@@ -64,7 +64,6 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     }
     // 等待第一个核执行完上面的全局初始化
     wait_global_init_finished();
-
     memory::kernel_page_table_init(); // 构造内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec
     arch::setSUMAccessOpen(); // 修改 sstatus 的 SUM 位，使内核可以读写USER页表项中的数据
@@ -81,7 +80,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
 
     // 全局初始化结束
     if constants::IS_SINGLE_CORE {
-        if cpu_id ==  constants::BOOTSTRAP_CPU_ID {
+        if cpu_id == constants::BOOTSTRAP_CPU_ID {
             task::run_first_task();
         } else {
             loop {}
@@ -94,7 +93,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
 
 /// 是否还没有核进行全局初始化，如是则返回 true
 fn can_do_global_init() -> bool {
-    GLOBAL_INIT_STARTED.compare_exchange(false, true, Ordering::Release, Ordering::Relaxed).is_ok()
+    GLOBAL_INIT_STARTED.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed).is_ok()
 }
 
 /// 标记那些全局只执行一次的启动步骤已完成。

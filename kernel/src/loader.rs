@@ -148,7 +148,7 @@ pub fn get_app_data(app_id: usize) -> &'static [u8] {
     //println!("raw part is {:x} to {:x}", app_start[app_id], app_start[app_id + 1]);
     unsafe {
         core::slice::from_raw_parts(
-            phys_to_virt(app_start[app_id]) as *const u8,
+            app_start[app_id] as *const u8,
             app_start[app_id + 1] - app_start[app_id],
         )
     }

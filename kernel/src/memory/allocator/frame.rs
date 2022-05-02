@@ -8,7 +8,7 @@ use bitmap_allocator::BitAlloc;
 
 use core::mem::ManuallyDrop;
 
-use lock::mutex::Mutex;
+use lock::Mutex;
 
 use super::phys_to_virt;
 use super::{PhysAddr, PAGE_SIZE, PHYS_MEMORY_OFFSET};

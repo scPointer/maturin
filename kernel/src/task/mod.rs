@@ -12,7 +12,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use alloc::string::String;
 use core::sync::atomic::{Ordering, AtomicUsize};
-use lock::mutex::Mutex;
+use lock::Mutex;
 
 mod context;
 mod switch;

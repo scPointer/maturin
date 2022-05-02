@@ -1,9 +1,10 @@
 ARCH ?= riscv64
-MODE ?= release
+MODE ?= debug
 SMP ?= 4
 
 OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy
+GDB ?= riscv64-unknown-elf-gdb
 
 ifeq ($(ARCH), riscv64)
 target := riscv64imac-unknown-none-elf
@@ -47,7 +48,13 @@ qemu:
 	$(qemu) $(qemu_args)
 
 asm:
-	$(OBJDUMP) -d $(kernel) | less
+	$(OBJDUMP) -ld $(kernel) > dbg.S
+
+gdb-runner:
+	$(qemu) $(qemu_args) -s -S
+
+gdb-listener:
+	$(GDB) -ex 'file $(kernel)'  -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
 
 clean:
 	cargo clean

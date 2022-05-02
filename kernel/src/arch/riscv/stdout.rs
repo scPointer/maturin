@@ -1,8 +1,9 @@
 use core::fmt::{Arguments, Result, Write};
 
-use lock::mutex::Mutex;
+use lock::Mutex;
+use lazy_static::*;
 
-struct Stdout;
+pub struct Stdout;
 
 fn putchar(c: u8) {
     super::sbi::console_putchar(c as usize);
@@ -23,7 +24,14 @@ impl Write for Stdout {
     }
 }
 
+lazy_static::lazy_static! {
+    pub static ref STDOUT: Mutex<Stdout> = Mutex::new(Stdout);
+    pub static ref STDERR: Mutex<Stdout> = Mutex::new(Stdout);
+}
 pub fn stdout_puts(fmt: Arguments) {
-    static STDOUT: Mutex<Stdout> = Mutex::new(Stdout);
     STDOUT.lock().write_fmt(fmt).unwrap();
+}
+
+pub fn stderr_puts(fmt: Arguments) {
+    STDERR.lock().write_fmt(fmt).unwrap();
 }

@@ -4,7 +4,7 @@ use alloc::collections::{btree_map::Entry, BTreeMap};
 use alloc::sync::Arc;
 use core::fmt::{Debug, Formatter, Result};
 
-use lock::mutex::Mutex;
+use lock::Mutex;
 
 use super::{align_down, align_up, virt_to_phys, VirtAddr};
 use super::{VmArea, PTEFlags, PageTable};
@@ -93,7 +93,7 @@ impl MemorySet {
         self.areas.insert(vma.start, vma);
         Ok(())
     }
-
+    /*
     pub fn init_a_kernel_region(
         &mut self,
         start_vaddr: VirtAddr,
@@ -119,7 +119,7 @@ impl MemorySet {
         
         Ok(())
     }
-
+    */
     /// Remove the area `[start_addr, end_addr)` from `MemorySet`.
     pub fn pop(&mut self, start: VirtAddr, end: VirtAddr) -> OSResult {
         if start >= end {
@@ -273,8 +273,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
     }
 
     use super::PHYS_VIRT_OFFSET;
-
-    
+    /*
     ms.init_a_kernel_region(
         virt_to_phys(stext as usize),
         virt_to_phys(etext as usize),
@@ -282,7 +281,8 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::EXECUTE,
         "ktext",
     )?;
-    /*
+    */
+    
     ms.push(VmArea::from_fixed_pma(
         virt_to_phys(stext as usize),
         virt_to_phys(etext as usize),
@@ -290,7 +290,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::EXECUTE,
         "ktext",
     )?)?;
-    */
+    
     /*
     ms.init_a_kernel_region(
         virt_to_phys(sdata as usize),
@@ -300,6 +300,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         "kdata",
     )?;
     */
+    
     ms.push(VmArea::from_fixed_pma(
         virt_to_phys(sdata as usize),
         virt_to_phys(edata as usize),
@@ -307,6 +308,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::WRITE,
         "kdata",
     )?)?;
+    /*
     ms.init_a_kernel_region(
         virt_to_phys(srodata as usize),
         virt_to_phys(erodata as usize),
@@ -314,7 +316,8 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE,
         "krodata",
     )?;
-    /*
+    */
+    
     ms.push(VmArea::from_fixed_pma(
         virt_to_phys(srodata as usize),
         virt_to_phys(erodata as usize),
@@ -322,8 +325,8 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE,
         "krodata",
     )?)?;
-    */
     
+    /*
     ms.init_a_kernel_region(
         virt_to_phys(sbss as usize),
         virt_to_phys(ebss as usize),
@@ -331,8 +334,8 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::WRITE,
         "kbss",
     )?;
+    */
     
-    /*
     ms.push(VmArea::from_fixed_pma(
         virt_to_phys(sbss as usize),
         virt_to_phys(ebss as usize),
@@ -340,7 +343,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::WRITE,
         "kbss",
     )?)?;
-    */
+    
     let kernel_stack = boot_stack as usize;
     let kernel_stack_top = boot_stack_top as usize;
     let size_per_cpu = (kernel_stack_top - kernel_stack) / CPU_NUM;
@@ -349,6 +352,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         // 加一页是为了保证内核栈溢出时可以触发异常，而不是跑到其他核的栈去
         let per_cpu_stack_bottom = kernel_stack + size_per_cpu * cpu_id + PAGE_SIZE;
         let per_cpu_stack_top = kernel_stack + size_per_cpu * (cpu_id + 1);
+        /*
         ms.init_a_kernel_region(
             virt_to_phys(per_cpu_stack_bottom),
             virt_to_phys(per_cpu_stack_top),
@@ -356,6 +360,14 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
             PTEFlags::READ | PTEFlags::WRITE,
             "kstack",
         )?;
+        */
+        ms.push(VmArea::from_fixed_pma(
+            virt_to_phys(per_cpu_stack_bottom),
+            virt_to_phys(per_cpu_stack_top),
+            PHYS_VIRT_OFFSET,
+            PTEFlags::READ | PTEFlags::WRITE,
+            "kstack",
+        )?)?;
     }
     
     

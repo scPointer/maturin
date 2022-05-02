@@ -45,8 +45,16 @@ pub fn console_putchar(c: usize) {
     sbi_call(SBI_CONSOLE_PUTCHAR, c, 0, 0);
 }
 
-pub fn console_putint(val: usize) {
-    console_putchar(b'0' as usize + val);
+pub fn console_put_usize_in_hex(val: usize) {
+    for x in 0..16 {
+        let bit4 = ((val>>((15-x)*4)) & 0xf) as u8;
+        let c = if bit4 < 10 { b'0' + bit4 } else { b'A' + bit4 - 10 };
+        console_putchar(c as usize);
+    };
+    for i in 0..10 {
+        console_putchar(b'-' as usize);
+    }
+    console_putchar(b'\n' as usize);
 }
 
 pub fn print(s: &str) {

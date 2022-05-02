@@ -33,8 +33,10 @@ boot_page_table_sv39:
     .quad 0
     # 0x00000000_80000000 -> 0x80000000 (1G, VRWXAD)
     .quad (0x80000 << 10) | 0xcf
+    # removed
+    #.quad 0
     .zero 8 * 507
-    # 0xffffffff_80000000 -> 0x80000000 (1G, VRWXAD)
+    # 0xffffffff_80000000 -> 0xffffffff_80000000 (1G, VRWXAD)
     .quad (0x80000 << 10) | 0xcf
     .quad 0
 
