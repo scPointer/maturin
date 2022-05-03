@@ -11,6 +11,6 @@ buddy_system_allocator = "0.5"
 bitflags = "1.2.1"
 xmas-elf = "0.7"
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
-lock = { git = "https://github.com/DeathWish5/kernel-sync.git"}
-riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
-bitmap-allocator = { git = "https://github.com/rcore-os/bitmap-allocator", rev = "03bd9909" }
+lock = { git = "https://gitee.com/chyyuu/kernel-sync.git"}
+riscv = { git = "https://gitee.com/chyyuu/riscv.git", features = ["inline-asm"] }
+bitmap-allocator = { git = "https://gitee.com/chyyuu/bitmap-allocator.git" }

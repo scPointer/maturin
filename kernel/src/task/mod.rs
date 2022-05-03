@@ -12,7 +12,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use alloc::string::String;
 use core::sync::atomic::{Ordering, AtomicUsize};
-use lock::mutex::Mutex;
+use lock::Mutex;
 
 mod context;
 mod switch;
@@ -142,7 +142,9 @@ impl TaskManager {
     /// 如有可运行的任务则将其状态置为 Running 并进入执行，
     /// 如没有可运行的任务则无限 loop {} 直到所有核完成所有任务
     fn run_next_task(&self, new_status_for_current: TaskStatus) {
+        //println!("[cpu {}] into next", get_cpu_id());
         let mut inner = self.inner.lock();
+        //println!("[cpu {}] get lock", get_cpu_id());
         let cpu_id = get_cpu_id();
         //在寻找下一个任务前先修改current状态。这一步需要在inner.lock()保护下进行
         let current = inner.current_task_at_cpu[cpu_id];
@@ -157,6 +159,10 @@ impl TaskManager {
             let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
             // 切换页表。所有 TCB 中的页表在内核中的地址映射必须相同，否则换页表的时候pc可能跑飞
             unsafe {inner.tasks[next].vm.activate(); }
+            extern "C" {
+                fn _num_app();
+            }
+            // println!("_num_app {:x}", _num_app as usize);
             // 在 switch 换内核栈之前必须先 drop 掉当前拿着的锁
             drop(inner);
             unsafe {
@@ -186,10 +192,14 @@ impl TaskManager {
     */
     /// 处理用户程序的缺页异常
     fn handle_user_page_fault(&self, vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
+        //println!("into task pf");
         let mut inner = self.inner.lock();
         let cpu_id = get_cpu_id();
         let task_now = inner.current_task_at_cpu[cpu_id];
-        if task_now < get_num_app() && task_now >= 0 {
+
+        //extern "C" {fn _num_app();}
+        //println!("into task pf {} {:x}", task_now, _num_app as usize );
+        if /* task_now < get_num_app()  && */ task_now >= 0 {
             inner.tasks[task_now].vm.handle_page_fault(vaddr, access_flags)
         } else {
             Err(OSError::Task_NoTrapHandler)
@@ -207,6 +217,7 @@ impl TaskManager {
         if self.mark_finish() == CPU_NUM {
             panic!("All applications completed!");
         }
+        println!("[cpu {}] is idle now.", get_cpu_id());
         loop {
         }
     }

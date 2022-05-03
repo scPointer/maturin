@@ -4,8 +4,8 @@ pub const CPU_NUM: usize =  4;
 pub const LAST_CPU_ID: usize = CPU_NUM - 1;
 pub const KERNEL_HEAP_SIZE: usize = 0x40_0000; // 4 MB
 pub const CLOCK_FREQ: usize = 1250_0000; //freq for qemu -m virt
+pub const IS_SINGLE_CORE: bool = false;
 
-//这些常量是临时的，仅在相当于rcore-ch3的版本使用
 pub const KERNEL_STACK_SIZE: usize = 0x20_0000; // 2 MB, per CPU
 
 pub const MAX_APP_NUM: usize = 10; // 应用程序个数限制

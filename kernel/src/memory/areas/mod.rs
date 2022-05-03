@@ -7,7 +7,7 @@ pub use lazy::PmAreaLazy;
 use alloc::sync::Arc;
 
 //use spin::Mutex;
-use lock::mutex::Mutex;
+use lock::Mutex;
 
 use super::addr::{align_down, align_up, PhysAddr, VirtAddr};
 use super::{PTEFlags, PageTable};

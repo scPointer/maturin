@@ -11,8 +11,15 @@
     .align 2
 __alltraps:
     csrrw sp, sscratch, sp
-    # now sp->kernel stack, sscratch->user stack
-    # allocate a TrapContext on kernel stack
+    # when sscratch == 0, trap is from kernel space
+    # then switch sp and sscratch again
+    beqz sp, __kernel_trap
+
+    # now:
+    # sp = kernel stack
+    # sscratch = if trap from user (user stack) else (kernel stack)
+__real_trap_entry:
+# allocate a TrapContext on kernel stack
     addi sp, sp, -34*8
     # save general-purpose registers
     sd x1, 1*8(sp)
@@ -56,6 +63,18 @@ __restore:
     .endr
     # release TrapContext on kernel stack
     addi sp, sp, 34*8
-    # now sp->kernel stack, sscratch->user stack
+    # when sscratch == 0, trap is from kernel space
+    # then switch sp and sscratch again
     csrrw sp, sscratch, sp
+    beqz sp, __kernel_trap_end
+    # return to user
+    sret
+
+__kernel_trap:
+    csrrw sp, sscratch, sp
+    j __real_trap_entry
+
+__kernel_trap_end:
+    csrrw sp, sscratch, sp
+    # return to kernel
     sret

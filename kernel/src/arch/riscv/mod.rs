@@ -5,7 +5,8 @@ mod page_control;
 
 pub use sbi::{
     set_timer,
-    shutdown,   
+    shutdown,
+    console_put_usize_in_hex,
 };
 
 pub use page_control::{

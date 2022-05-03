@@ -9,7 +9,7 @@ use crate::memory::{PmArea, PmAreaLazy, VmArea};
 use crate::memory::{PTEFlags, MemorySet};
 use crate::constants::{PAGE_SIZE, USER_STACK_OFFSET, USER_STACK_SIZE};
 
-use lock::mutex::Mutex;
+use lock::Mutex;
 use xmas_elf::{
     header,
     program::{Flags, SegmentData, Type},
@@ -64,7 +64,7 @@ impl<'a> ElfLoader<'a> {
             if ph.get_type() != Ok(Type::Load) {
                 continue;
             }
-            println!("page at {:x}, page to {:x}", ph.virtual_addr() as usize, (ph.virtual_addr() + ph.mem_size()) as VirtAddr);
+            //println!("page at {:x}, page to {:x}", ph.virtual_addr() as usize, (ph.virtual_addr() + ph.mem_size()) as VirtAddr);
             let pgoff = page_offset(ph.virtual_addr() as usize);
             let page_count = page_count(ph.mem_size() as usize + pgoff);
             let mut pma = PmAreaLazy::new(page_count)?;
@@ -81,7 +81,6 @@ impl<'a> ElfLoader<'a> {
                 Arc::new(Mutex::new(pma)),
                 "elf_segment",
             )?;
-            println!("{:#x?}", seg);
             vm.push(seg)?;
             if ph.offset() == 0 {
                 elf_base_vaddr = ph.virtual_addr() as usize;
