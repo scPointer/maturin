@@ -1,7 +1,7 @@
 import os
 
-origin_base_address = 0x80100000
-new_base_address = 0x80100000
+origin_base_address = 0x80200000
+new_base_address = 0x80200000
 step = 0x0
 linker = 'src/linker.ld'
 
