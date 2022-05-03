@@ -51,6 +51,8 @@ pub enum OSError {
     Loader_InvalidSegment,
 
     Task_NoTrapHandler,
+    // 申请 physical memory 中的物理页面失败
+    Task_RunOutOfMemory,
 }
 
 pub type OSResult<T = ()> = Result<T, OSError>;

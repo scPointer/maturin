@@ -17,8 +17,6 @@ use crate::constants::{
     CPU_NUM, 
     PAGE_SIZE, 
     USER_VIRT_ADDR_LIMIT,
-    APP_BASE_ADDRESS,
-    APP_ADDRESS_END,
 };
 use crate::error::{OSError, OSResult};
 
@@ -273,16 +271,6 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
     }
 
     use super::PHYS_VIRT_OFFSET;
-    /*
-    ms.init_a_kernel_region(
-        virt_to_phys(stext as usize),
-        virt_to_phys(etext as usize),
-        PHYS_VIRT_OFFSET,
-        PTEFlags::READ | PTEFlags::EXECUTE,
-        "ktext",
-    )?;
-    */
-    
     ms.push(VmArea::from_fixed_pma(
         virt_to_phys(stext as usize),
         virt_to_phys(etext as usize),
@@ -290,17 +278,6 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::EXECUTE,
         "ktext",
     )?)?;
-    
-    /*
-    ms.init_a_kernel_region(
-        virt_to_phys(sdata as usize),
-        virt_to_phys(edata as usize),
-        PHYS_VIRT_OFFSET,
-        PTEFlags::READ | PTEFlags::WRITE,
-        "kdata",
-    )?;
-    */
-    
     ms.push(VmArea::from_fixed_pma(
         virt_to_phys(sdata as usize),
         virt_to_phys(edata as usize),
@@ -308,16 +285,6 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::WRITE,
         "kdata",
     )?)?;
-    /*
-    ms.init_a_kernel_region(
-        virt_to_phys(srodata as usize),
-        virt_to_phys(erodata as usize),
-        PHYS_VIRT_OFFSET,
-        PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE,
-        "krodata",
-    )?;
-    */
-    
     ms.push(VmArea::from_fixed_pma(
         virt_to_phys(srodata as usize),
         virt_to_phys(erodata as usize),
@@ -325,17 +292,6 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE,
         "krodata",
     )?)?;
-    
-    /*
-    ms.init_a_kernel_region(
-        virt_to_phys(sbss as usize),
-        virt_to_phys(ebss as usize),
-        PHYS_VIRT_OFFSET,
-        PTEFlags::READ | PTEFlags::WRITE,
-        "kbss",
-    )?;
-    */
-    
     ms.push(VmArea::from_fixed_pma(
         virt_to_phys(sbss as usize),
         virt_to_phys(ebss as usize),
@@ -352,15 +308,6 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         // 加一页是为了保证内核栈溢出时可以触发异常，而不是跑到其他核的栈去
         let per_cpu_stack_bottom = kernel_stack + size_per_cpu * cpu_id + PAGE_SIZE;
         let per_cpu_stack_top = kernel_stack + size_per_cpu * (cpu_id + 1);
-        /*
-        ms.init_a_kernel_region(
-            virt_to_phys(per_cpu_stack_bottom),
-            virt_to_phys(per_cpu_stack_top),
-            PHYS_VIRT_OFFSET,
-            PTEFlags::READ | PTEFlags::WRITE,
-            "kstack",
-        )?;
-        */
         ms.push(VmArea::from_fixed_pma(
             virt_to_phys(per_cpu_stack_bottom),
             virt_to_phys(per_cpu_stack_top),
@@ -381,44 +328,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
             "physical_memory",
         )?)?;
     }
-    
-    /*
-    ms.init_a_kernel_region(
-        APP_BASE_ADDRESS,
-        APP_ADDRESS_END,
-        PHYS_VIRT_OFFSET,
-        PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE,
-        "users",
-    )?;
-    */
-    /*
-    ms.push(VmArea::from_identical_pma(
-        APP_BASE_ADDRESS,
-        APP_ADDRESS_END,
-        PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE | PTEFlags::USER,
-        "users",
-    )?)?;
-    
-    // 其实不该有这一段的。这是因为某次修改用户库时设 base_address = (app_id + 1 ) * 0x20000
-    // 所以用户库有时候会跳转到这个位置
-    // 在 kernel/user 下进行 make clean 都有概率还是生成旧版本的代码，原因暂时不明。
-    ms.push(VmArea::from_fixed_pma_negative_offset(
-        APP_BASE_ADDRESS,
-        APP_ADDRESS_END,
-        0x8010_0000 - 0x2_0000,
-        PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE | PTEFlags::USER,
-        "users",
-    )?)?;
-    */
-    /*
-    ms.init_a_kernel_region(
-        0x8600_0000,
-        0x8700_0000,
-        PHYS_VIRT_OFFSET,
-        PTEFlags::READ | PTEFlags::WRITE | PTEFlags::EXECUTE,
-        "user",
-    )?;
-    */
+
     //create_mapping(ms)?;
     Ok(())
 }

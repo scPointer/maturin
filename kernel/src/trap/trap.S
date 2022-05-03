@@ -17,7 +17,7 @@ __alltraps:
 
     # now:
     # sp = kernel stack
-    # sscratch = if trap from user (user stack) else (kernel stack)
+    # sscratch = if trap from user (user stack) else ( if task is idle (0) else (kernel stack))
 __real_trap_entry:
 # allocate a TrapContext on kernel stack
     addi sp, sp, -34*8

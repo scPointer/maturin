@@ -8,12 +8,11 @@ pub const IS_SINGLE_CORE: bool = false;
 
 pub const KERNEL_STACK_SIZE: usize = 0x20_0000; // 2 MB, per CPU
 
-pub const MAX_APP_NUM: usize = 10; // 应用程序个数限制
-pub const APP_BASE_ADDRESS: usize = 0x8010_0000;
-pub const APP_SIZE_LIMIT: usize = 0x2_0000;
-pub const APP_ADDRESS_END: usize = APP_BASE_ADDRESS + MAX_APP_NUM * APP_SIZE_LIMIT;
+//pub const MAX_APP_NUM: usize = 10; // 应用程序个数限制
+//pub const APP_BASE_ADDRESS: usize = 0x8020_0000;
+//pub const APP_SIZE_LIMIT: usize = 0x2_0000;
+//pub const APP_ADDRESS_END: usize = APP_BASE_ADDRESS + MAX_APP_NUM * APP_SIZE_LIMIT;
 
-//pub const MEMORY_END: usize = 0x80800000; //128MB
 pub const PAGE_SIZE: usize = 0x1000; // 4 KB
 pub const PAGE_SIZE_BITS: usize = 0xc; // 4 KB = 2^12
 pub const EMPTY_TASK: usize = usize::MAX;
