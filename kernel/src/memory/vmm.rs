@@ -38,14 +38,19 @@ impl MemorySet {
 
     
     pub fn new_user() -> Self {
+        Self {
+            areas: BTreeMap::new(),
+            pt: PageTable::new().unwrap(),
+            is_user: true,
+        }
+        /*
         let mut pt = PageTable::new().unwrap();
-        //pt.map_kernel();
-        //println!("new user page table at {:x}", pt.root_paddr());
         Self {
             areas: BTreeMap::new(),
             pt,
             is_user: true,
         }
+        */
     }
     
 
@@ -162,14 +167,16 @@ impl MemorySet {
         Err(OSError::PageFaultHandler_Unhandled)
     }
 
-    /// Clear and unmap all areas.
-    pub fn clear(&mut self) {
+    /// 清空用户段的地址映射
+    pub fn clear_user(&mut self) {
         if !self.is_user {
             println!("cannot clear kernel memory set");
             return;
         }
         for area in self.areas.values() {
-            area.unmap_area(&mut self.pt).unwrap();
+            if area.is_user() {
+                area.unmap_area(&mut self.pt).unwrap();
+            }
         }
         self.areas.clear();
     }
@@ -242,7 +249,7 @@ impl MemorySet {
 
 impl Drop for MemorySet {
     fn drop(&mut self) {
-        self.clear()
+        self.clear_user()
     }
 }
 
@@ -352,12 +359,12 @@ pub fn handle_kernel_page_fault(vaddr: VirtAddr, access_flags: PTEFlags) -> OSRe
 }
 
 /// Initialize the kernel memory set and activate kernel page table.
-pub fn kernel_page_table_init() {
+pub fn enable_kernel_page_table() {
     unsafe { KERNEL_MEMORY_SET.lock().activate() };
 }
 
 pub fn new_memory_set_for_task() -> OSResult<MemorySet> {
-    let mut ms = MemorySet::new_kernel();
+    let mut ms = MemorySet::new_user();
     init_kernel_memory_set(&mut ms).unwrap();
     Ok(ms)
 }

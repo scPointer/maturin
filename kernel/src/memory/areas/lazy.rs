@@ -32,7 +32,7 @@ impl PmArea for PmAreaLazy {
         Ok(self.frames[idx].as_ref().map(|f| f.start_paddr()))
     }
     fn release_frame(&mut self, idx: usize) -> OSResult {
-        self.frames[idx].take().ok_or(OSError::PmArea_InvalidRelease)?;
+        self.frames[idx].take().ok_or(OSError::PmAreaLazy_ReleaseNotAllocatedPage)?;
         Ok(())
     }
     fn read(&mut self, offset: usize, dst: &mut [u8]) -> OSResult<usize> {

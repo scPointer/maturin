@@ -190,7 +190,7 @@ impl PageTable {
     #[allow(unused)]
     pub fn unmap(&mut self, vaddr: VirtAddr) -> OSResult {
         if let Some(pte) = self.find_pte(vaddr) {
-            if pte.is_valid() {
+            if !pte.is_valid() {
                 println!("vaddr {:x} is invalid before unmapping", vaddr);
                 Err(OSError::PageTable_PageNotMapped)
             } else {

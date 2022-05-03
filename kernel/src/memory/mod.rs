@@ -41,6 +41,7 @@ pub use addr::{
 
 pub use allocator::{
     Frame,
+    Pid,
     allocator_init,
 };
 
@@ -68,7 +69,7 @@ pub use areas::{
 
 pub use vmm::{
     MemorySet,
-    kernel_page_table_init,
+    enable_kernel_page_table,
     handle_kernel_page_fault,
     new_memory_set_for_task,
 };

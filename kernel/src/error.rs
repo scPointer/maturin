@@ -33,7 +33,7 @@ pub enum OSError {
 
     PmArea_OutOfRange,
     PmArea_InvalidRange,
-    PmArea_InvalidRelease,
+    PmAreaLazy_ReleaseNotAllocatedPage,
 
     
     // 没有空的*物理*页

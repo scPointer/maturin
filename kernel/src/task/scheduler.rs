@@ -3,20 +3,77 @@
 use lazy_static::*;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use alloc::collections::VecDeque;
 use core::sync::atomic::{Ordering, AtomicUsize};
 use lock::Mutex;
 
 
-use crate::constants::{CPU_NUM, EMPTY_TASK};
+use crate::constants::{CPU_NUM, EMPTY_TASK, ORIGIN_USER_PROC_NAME};
 use crate::error::{OSResult, OSError};
-use crate::loader::{get_num_app};
+use crate::loader::{get_num_app, get_app_name};
 use crate::memory::{VirtAddr, PTEFlags};
 use crate::arch::get_cpu_id;
 
 use super::__switch;
 use super::{TaskControlBlock, TaskStatus, TaskContext};
-use super::START_USER_PROC;
+use super::ORIGIN_USER_PROC;
 
+
+lazy_static! {
+    /// 任务调度器。它是全局的，每次只能有一个核访问它
+    /// 它启动时会自动在队列中插入 ORIGIN_USER_PROC 作为第一个用户程序
+    pub static ref GLOBAL_TASK_SCHEDULER: Mutex<Scheduler> = {
+        let mut scheduler = Scheduler::new();
+        scheduler.push(ORIGIN_USER_PROC.clone());
+
+        // 其他应用程序本来应该由 origin_user_proc 引入
+        // 这里为了单独测试新调度器，手动输入了这些程序
+        let app_num = get_num_app();
+        for i in 0..app_num {
+            if get_app_name(i) != ORIGIN_USER_PROC_NAME {
+                scheduler.push(Arc::new(TaskControlBlock::from_app_id(i)))
+            }
+        }
+
+        Mutex::new(scheduler)
+    };
+}
+
+/// 任务调度器，目前采用 Round-Robin 算法
+/// 在 struct 外部会加一个 Mutex 锁
+pub struct Scheduler {
+    ready_queue: VecDeque<Arc<TaskControlBlock>>,
+}
+
+impl Scheduler {
+    /// 新建一个空的调度器
+    pub fn new() -> Self {
+        Self {
+            ready_queue: VecDeque::new(),
+        }
+    }
+    /// 添加一个任务到队列中
+    pub fn push(&mut self, task: Arc<TaskControlBlock>) {
+        self.ready_queue.push_back(task);
+    }
+    /// 从队列中获取一个任务
+    pub fn pop(&mut self) -> Option<Arc<TaskControlBlock>> {
+        self.ready_queue.pop_front()
+    }
+}
+
+/// 向任务队列里插入一个任务
+pub fn push_task_to_scheduler(task: Arc<TaskControlBlock>) {
+    GLOBAL_TASK_SCHEDULER.lock().push(task)
+}
+
+/// 从任务队列中拿一个任务，返回其TCB。
+/// 非阻塞，即如果没有任务可取，则直接返回 None
+pub fn fetch_task_from_scheduler() -> Option<Arc<TaskControlBlock>> {
+    GLOBAL_TASK_SCHEDULER.lock().pop()
+}
+
+/*
 /// 任务管理器，管理所有用户程序
 pub struct TaskManager {
     /// 任务数
@@ -53,11 +110,7 @@ lazy_static! {
         for i in 0..num_app {
             tasks.push(Arc::new(TaskControlBlock::from_app_id(i)));
         }
-        /*
-        let num_app = 1;
-        tasks.push(START_USER_PROC.clone());
-        */
-        
+
         TaskManager {
             num_app,
             inner: Arc::new(Mutex::new(TaskManagerInner {
@@ -160,17 +213,6 @@ impl TaskManager {
             unreachable!();
         }
     }
-    /*
-    fn get_mut_vm_now(&self, inner: &'_ TaskManagerInner) -> Option<&'_ mut MemorySet> {
-        let cpu_id = get_cpu_id();
-        let task_now = inner.current_task_at_cpu[cpu_id];
-        if task_now < get_num_app() && task_now >= 0 {
-            Some(&mut inner.tasks[task_now].vm)
-        } else {
-            None
-        }
-    }
-    */
     /// 处理用户程序的缺页异常
     fn handle_user_page_fault(&self, vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
         //println!("into task pf");
@@ -180,7 +222,7 @@ impl TaskManager {
 
         //extern "C" {fn _num_app();}
         //println!("into task pf {} {:x}", task_now, _num_app as usize );
-        if /* task_now < get_num_app()  && */ task_now >= 0 {
+        if task_now >= 0 {
             inner.tasks[task_now].inner.lock().vm.handle_page_fault(vaddr, access_flags)
         } else {
             Err(OSError::Task_NoTrapHandler)
@@ -232,14 +274,4 @@ pub fn exit_current_and_run_next() {
 pub fn handle_user_page_fault(vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
     TASK_MANAGER.handle_user_page_fault(vaddr, access_flags)
 }
-
-/// 从任务队列中拿一个任务，返回其TCB。
-/// 非阻塞，即如果没有任务可取，则直接返回 None
-pub fn fetch_task_from_scheduler() -> Option<Arc<TaskControlBlock>> {
-    unimplemented!();
-}
-
-/// 向任务队列里插入一个任务
-pub fn push_task_to_scheduler(task: Arc<TaskControlBlock>) {
-    unimplemented!();
-}
+*/

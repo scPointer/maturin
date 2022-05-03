@@ -175,6 +175,7 @@ impl Drop for Frame {
     fn drop(&mut self) {
         unsafe {
             if self.frame_count == 1 {
+                //println!("dealloc page {:x}", self.start_paddr);
                 dealloc_frame(self.start_paddr)
             } else {
                 dealloc_frame_contiguous(self.start_paddr, self.frame_count)

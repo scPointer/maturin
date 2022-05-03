@@ -65,7 +65,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     }
     // 等待第一个核执行完上面的全局初始化
     wait_global_init_finished();
-    memory::kernel_page_table_init(); // 构造内核态页表与 MemorySet
+    memory::enable_kernel_page_table(); // 构造并切换到内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec
     arch::setSUMAccessOpen(); // 修改 sstatus 的 SUM 位，使内核可以读写USER页表项中的数据
     trap::enable_timer_interrupt(); // 开启时钟中断
@@ -82,12 +82,12 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     // 全局初始化结束
     if constants::IS_SINGLE_CORE {
         if cpu_id == constants::BOOTSTRAP_CPU_ID {
-            task::run_first_task();
+            task::run_tasks();
         } else {
             loop {}
         }
     } else {
-        task::run_first_task();
+        task::run_tasks();
     }
     unreachable!();
 }

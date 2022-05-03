@@ -79,3 +79,7 @@ pub fn list_app_names() {
     println!("**************/");
 }
 
+/// 获取一个用户程序的名字
+pub fn get_app_name(app_id: usize) -> &'static str {
+    APP_NAMES[app_id]
+}

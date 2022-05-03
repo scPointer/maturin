@@ -7,17 +7,18 @@ use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
 use alloc::string::String;
 use lock::Mutex;
+use core::slice::Iter;
 
 use crate::loader::{get_app_data, get_app_data_by_name};
 use crate::loaders::ElfLoader;
-use crate::memory::{MemorySet, new_memory_set_for_task};
+use crate::memory::{MemorySet, Pid, new_memory_set_for_task};
 use crate::trap::TrapContext;
 use crate::arch::get_cpu_id;
 
 use super::{TaskContext, KernelStack};
 
 /// 任务控制块，包含一个用户程序的所有状态信息，但不包括与调度有关的信息。
-/// 默认在TCB的外层对其的访问不会冲突，所以外部没有用锁保护，内部的 mutex 仅提供可变性
+/// 默认在TCB的外层对其的访问不会冲突，所以外部没有用锁保护，内部的 mutex 仅用来提供可变性
 /// 
 /// 目前来说，TCB外层可能是调度器或者 CpuLocal：
 /// 1. 如果它在调度器里，则 Scheduler 内部不会修改它，且从 Scheduler 里取出或者放入 TCB 是由调度器外部的 Mutex 保护的；
@@ -26,6 +27,8 @@ pub struct TaskControlBlock {
     /// 用户程序的内核栈，内部包含申请的内存空间
     /// 因为 struct 内部保存了页帧 Frame，所以 Drop 这个结构体时也会自动释放这段内存
     pub kernel_stack: KernelStack,
+    // 进程 id
+    pub pid: Pid,
     /// 任务的状态信息
     pub inner: Mutex<TaskControlBlockInner>,
 }
@@ -71,9 +74,12 @@ impl TaskControlBlock {
         let loader = ElfLoader::new(raw_data).unwrap();
         let args = vec![String::from(".")];
         let (user_entry, user_stack) = loader.init_vm(&mut vm, args).unwrap();
+        //println!("user MemorySet {:#x?}", vm);
         // 初始化内核栈，它包含关于进入用户程序的所有信息
         let kernel_stack = KernelStack::new().unwrap();
         kernel_stack.print_info();
+        let pid = Pid::new().unwrap();
+        // println!("pid = {}", pid.0);
         let stack_top = kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
         let inner = Mutex::new(TaskControlBlockInner {
             task_cx: TaskContext::goto_restore(stack_top),
@@ -85,6 +91,7 @@ impl TaskControlBlock {
         });
         TaskControlBlock {
             kernel_stack: kernel_stack,
+            pid: pid,
             inner: inner,
         }
     }
@@ -101,6 +108,11 @@ impl TaskControlBlock {
         let mut inner = self.inner.lock();
         inner.task_status = new_status;
     }
+    /// 输入 exit code
+    pub fn set_exit_code(&self, exit_code: i32) {
+        let mut inner = self.inner.lock();
+        inner.exit_code = exit_code;
+    }
     /// 读取任务状态
     pub fn get_status(&self) -> TaskStatus {
         let inner = self.inner.lock();
@@ -110,6 +122,10 @@ impl TaskControlBlock {
     pub fn get_task_cx_ptr(&self) -> *const TaskContext {
         let inner = self.inner.lock();
         &inner.task_cx
+    }
+    /// 获取 pid 的值，不会转移或释放 Pid 的所有权
+    pub fn get_pid_num(&self) -> usize {
+        self.pid.0
     }
 }
 

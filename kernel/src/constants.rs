@@ -30,4 +30,7 @@ pub const DEVICE_END: usize = 0x9800_0000;
 
 /// 入口用户程序。OS启动后，只会启动以此为名的用户程序。
 /// 一般来说，这个程序会通过 fork / exec 启动终端和其他程序
-pub const START_USER_PROC_NAME: &str = "01power_5";
+pub const ORIGIN_USER_PROC_NAME: &str = "03sleep";
+
+// 最小的 pid(进程号) 是 0，最大的 pid 是 PID_LIMIT-1
+pub const PID_LIMIT: usize = 4096;

@@ -96,6 +96,7 @@ impl VmArea {
         for vaddr in (self.start..self.end).step_by(PAGE_SIZE) {
             let page = pma.get_frame((vaddr - self.start) / PAGE_SIZE, false)?;
             let res = if let Some(paddr) = page {
+                //if vaddr == 0x3fff_f000 { println!("create mapping {:x}->{:x} at {:x}", vaddr, paddr, pt.get_root_paddr()); }
                 pt.map(vaddr, paddr, self.flags)
             } else {
                 pt.map(vaddr, 0, PTEFlags::empty())
@@ -117,7 +118,11 @@ impl VmArea {
         let mut pma = self.pma.lock();
         for vaddr in (self.start..self.end).step_by(PAGE_SIZE) {
             let res = pma.release_frame((vaddr - self.start) / PAGE_SIZE);
-            if res != Err(OSError::VmArea_InvalidUnmap) {
+            //if vaddr == 0x3fff_f000 { println!("page {:#x?} at {:x}", res, pt.get_root_paddr()); }
+            // 如果触发 OSError::PmAreaLazy_ReleaseNotAllocatedPage，
+            // 说明这段 area 是 Lazy 分配的，且这一页还没被用到
+            // 这种情况下不需要报错，也不需要修改页表
+            if res != Err(OSError::PmAreaLazy_ReleaseNotAllocatedPage) {
                 if res.is_err() {
                     return res;
                 }
@@ -128,6 +133,10 @@ impl VmArea {
             }
         }
         Ok(())
+    }
+
+    pub fn is_user(&self) -> bool {
+        self.flags.contains(PTEFlags::USER)
     }
 
     /// Handle page fault.
@@ -146,18 +155,6 @@ impl VmArea {
         );
         let mut pma = self.pma.lock();
         if !self.flags.contains(access_flags) {
-            /*
-            if access_flags.contains(PTEFlags::USER) {
-                let offset = align_down(offset);
-                let vaddr = self.start + offset;
-                if let Some(entry) = pt.get_entry(vaddr) {
-                    entry.set_flags(entry.flags() | PTEFlags::USER);
-                    return Ok(());
-                } else {
-                    return Err(OSError::PageTable_PageNotMapped);
-                }
-            }
-            */
             return Err(OSError::PageFaultHandler_AccessDenied);
         }
         let offset = align_down(offset);
