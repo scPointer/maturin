@@ -32,3 +32,20 @@ __switch:
     ld sp, 8(a1)
     ret
 
+    .section .text
+    .globl __move_to_context
+__move_to_context:
+    # __move_to_context(
+    #     next_task_cx_ptr: *const TaskContext
+    # )
+    # move to context given in a0, discard current context
+    # load ra & s0~s11 of next execution
+    ld ra, 0(a0)
+    .set n, 0
+    .rept 12
+        LOAD_SN %n
+        .set n, n + 1
+    .endr
+    # restore kernel stack of next task
+    ld sp, 8(a0)
+    ret

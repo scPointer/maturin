@@ -53,6 +53,9 @@ pub enum OSError {
     Task_NoTrapHandler,
     // 申请 physical memory 中的物理页面失败
     Task_RunOutOfMemory,
+
+    // cpu 找不到刚刚切换出来的任务
+    CpuLocal_SwitchedFromEmptyTask,
 }
 
 pub type OSResult<T = ()> = Result<T, OSError>;

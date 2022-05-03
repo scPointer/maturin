@@ -60,6 +60,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     if can_do_global_init() {
         memory::clear_bss(); // 清空 bss 段
         memory::allocator_init(); // 初始化堆分配器和页帧分配器
+        loader::list_app_names(); // 展示所有用户程序的名字
         mark_global_init_finished(); // 通知全局初始化已完成
     }
     // 等待第一个核执行完上面的全局初始化

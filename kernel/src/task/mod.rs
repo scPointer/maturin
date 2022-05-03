@@ -18,15 +18,35 @@ mod context;
 mod switch;
 mod kernel_stack;
 mod scheduler;
+mod cpu_local;
 
 
 #[allow(clippy::module_inception)]
 mod task;
 
 use crate::arch::get_cpu_id;
+use crate::constants::START_USER_PROC_NAME;
+use crate::loader::{get_app_data_by_name};
+
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
 
 pub use context::TaskContext;
 pub use kernel_stack::KernelStack;
 pub use scheduler::*;
+
+
+lazy_static! {
+    /// 第一个用户程序
+    pub static ref START_USER_PROC: Arc<TaskControlBlock> = Arc::new(
+        TaskControlBlock::from_app_name(START_USER_PROC_NAME).unwrap()
+    );
+}
+
+/*
+/// 启动第一个用户程序
+pub fn add_initproc() {
+    add_task(START_USER_PROC.clone());
+}
+
+*/

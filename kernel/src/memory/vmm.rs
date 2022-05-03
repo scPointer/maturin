@@ -266,8 +266,8 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         fn erodata();
         fn sbss();
         fn ebss();
-        fn boot_stack();
-        fn boot_stack_top();
+        fn idle_stack();
+        fn idle_stack_top();
     }
 
     use super::PHYS_VIRT_OFFSET;
@@ -300,8 +300,8 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         "kbss",
     )?)?;
     
-    let kernel_stack = boot_stack as usize;
-    let kernel_stack_top = boot_stack_top as usize;
+    let kernel_stack = idle_stack as usize;
+    let kernel_stack_top = idle_stack_top as usize;
     let size_per_cpu = (kernel_stack_top - kernel_stack) / CPU_NUM;
     // 这里默认每个核的栈等长，且依次排列在 kernel_stack 中。且默认栈的开头恰好是页面的开头(entry.S中保证)
     for cpu_id in 0..CPU_NUM {

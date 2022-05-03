@@ -5,7 +5,12 @@
 //! app to load them. We also allocate fixed spaces for each task's
 //! [`KernelStack`] and [`UserStack`].
 
-/// Get the total number of applications.
+#![deny(missing_docs)]
+
+use lazy_static::*;
+use alloc::vec::Vec;
+
+/// 获取用户程序数量
 pub fn get_num_app() -> usize {
     extern "C" {
         fn _num_app();
@@ -13,7 +18,7 @@ pub fn get_num_app() -> usize {
     unsafe { (_num_app as usize as *const usize).read_volatile() }
 }
 
-/// get applications data
+/// 获取用户程序，以二进制串形式返回
 pub fn get_app_data(app_id: usize) -> &'static [u8] {
     extern "C" {
         fn _num_app();
@@ -31,3 +36,46 @@ pub fn get_app_data(app_id: usize) -> &'static [u8] {
         )
     }
 }
+
+lazy_static! {
+    ///All of app's name
+    static ref APP_NAMES: Vec<&'static str> = {
+        let num_app = get_num_app();
+        extern "C" {
+            fn _app_names();
+        }
+        let mut start = _app_names as usize as *const u8;
+        let mut v = Vec::new();
+        unsafe {
+            for _ in 0..num_app {
+                let mut end = start;
+                while end.read_volatile() != b'\0' {
+                    end = end.add(1);
+                }
+                let slice = core::slice::from_raw_parts(start, end as usize - start as usize);
+                let str = core::str::from_utf8(slice).unwrap();
+                v.push(str);
+                start = end.add(1);
+            }
+        }
+        v
+    };
+}
+
+#[allow(unused)]
+/// 根据名字获取二进制串形式的用户程序，如找不到，则返回 None
+pub fn get_app_data_by_name(name: &str) -> Option<&'static [u8]> {
+    let num_app = get_num_app();
+    (0..num_app)
+        .find(|&i| APP_NAMES[i] == name)
+        .map(get_app_data)
+}
+/// 输出所有用户程序的名字
+pub fn list_app_names() {
+    println!("/**** NAMES OF APPS ****");
+    for app in APP_NAMES.iter() {
+        println!("{}", app);
+    }
+    println!("**************/");
+}
+

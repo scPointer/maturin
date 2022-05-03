@@ -8,7 +8,7 @@ _start:
     # 1. init per core boot_stack
     add t0, a0, 1
     slli t0, t0, 18
-    la sp, boot_stack
+    la sp, idle_stack
     add sp, sp, t0
 
     # 2. enable page table
@@ -41,8 +41,8 @@ boot_page_table_sv39:
     .quad 0
 
     .section .bss.stack
-    .global boot_stack
-    .global boot_stack_top
-boot_stack:
+    .global idle_stack
+    .global idle_stack_top
+idle_stack:
     .space 256 * 1024 * 4    # 256 K per core * 4
-boot_stack_top:
+idle_stack_top:

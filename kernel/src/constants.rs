@@ -27,3 +27,7 @@ pub const PHYS_MEMORY_END: usize = 0x8800_0000;
 
 pub const DEVICE_START: usize = 0x9000_0000;
 pub const DEVICE_END: usize = 0x9800_0000;
+
+/// 入口用户程序。OS启动后，只会启动以此为名的用户程序。
+/// 一般来说，这个程序会通过 fork / exec 启动终端和其他程序
+pub const START_USER_PROC_NAME: &str = "01power_5";

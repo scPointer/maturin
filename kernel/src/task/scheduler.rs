@@ -15,6 +15,7 @@ use crate::arch::get_cpu_id;
 
 use super::__switch;
 use super::{TaskControlBlock, TaskStatus, TaskContext};
+use super::START_USER_PROC;
 
 /// 任务管理器，管理所有用户程序
 pub struct TaskManager {
@@ -32,7 +33,7 @@ pub struct TaskManager {
 /// 任务管理器的可变部分
 pub struct TaskManagerInner {
     /// 每个用户程序的所有信息放在一个 TCB 中
-    tasks: Vec<TaskControlBlock>,
+    tasks: Vec<Arc<TaskControlBlock>>,
     /// 对每个核，存储当前正在运行哪个任务
     /// 我们约定每个核只修改自己对应的 usize，所以对这个数组的访问其实是不会冲突的
     /// 不过它是 TaskManager 中的可变部分，为了省去调用时候的 mut 姑且放在 inner 里
@@ -42,13 +43,21 @@ pub struct TaskManagerInner {
 lazy_static! {
     /// Global variable: TASK_MANAGER
     pub static ref TASK_MANAGER: TaskManager = {
+        
+        let mut tasks: Vec<Arc<TaskControlBlock>> = Vec::new();
+
+        
         // 通过 loader 获取用户程序数
         let num_app = get_num_app();
-        let mut tasks: Vec<TaskControlBlock> = Vec::new();
         // 初始化每个用户程序的 TCB
         for i in 0..num_app {
-            tasks.push(TaskControlBlock::from_app_id(i));
+            tasks.push(Arc::new(TaskControlBlock::from_app_id(i)));
         }
+        /*
+        let num_app = 1;
+        tasks.push(START_USER_PROC.clone());
+        */
+        
         TaskManager {
             num_app,
             inner: Arc::new(Mutex::new(TaskManagerInner {
@@ -73,11 +82,11 @@ impl TaskManager {
 
         if let Some(next) = self.find_next_task(&inner, cpu_id) { // 如果找到任务则进入执行
             println!("[cpu {}] running task {}", cpu_id, next);
-            inner.tasks[next].task_status = TaskStatus::Running;
+            inner.tasks[next].inner.lock().task_status = TaskStatus::Running;
             inner.current_task_at_cpu[cpu_id] = next;
-            let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
+            let next_task_cx_ptr = inner.tasks[next].get_task_cx_ptr();
             // 切换页表。所有 TCB 中的页表在内核中的地址映射必须相同，否则换页表的时候pc可能跑飞
-            unsafe {inner.tasks[next].vm.activate(); }
+            unsafe {inner.tasks[next].inner.lock().vm.activate(); }
             // 在 switch 换内核栈之前必须先 drop 掉当前拿着的锁
             drop(inner);
             let mut _unused = TaskContext::zero_init();
@@ -106,7 +115,7 @@ impl TaskManager {
         } else {
             (current + 1..current + self.num_app + 1)
                 .map(|id| id % self.num_app)
-                .find(|id| inner.tasks[*id].task_status == TaskStatus::Ready)
+                .find(|id| inner.tasks[*id].inner.lock().task_status == TaskStatus::Ready)
         }
     }
 
@@ -120,17 +129,17 @@ impl TaskManager {
         let cpu_id = get_cpu_id();
         //在寻找下一个任务前先修改current状态。这一步需要在inner.lock()保护下进行
         let current = inner.current_task_at_cpu[cpu_id];
-        inner.tasks[current].task_status = new_status_for_current;
+        inner.tasks[current].inner.lock().task_status = new_status_for_current;
 
         if let Some(next) = self.find_next_task(&inner, cpu_id) { // 如果找到任务则进入执行
-            println!("[cpu {}] leaving task {}", cpu_id, current);
-            println!("[cpu {}] running task {}", cpu_id, next);
-            inner.tasks[next].task_status = TaskStatus::Running;
+            //println!("[cpu {}] leaving task {}", cpu_id, current);
+            //println!("[cpu {}] running task {}", cpu_id, next);
+            inner.tasks[next].inner.lock().task_status = TaskStatus::Running;
             inner.current_task_at_cpu[cpu_id] = next;
-            let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
-            let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
+            let current_task_cx_ptr =inner.tasks[current].get_task_cx_ptr() as *mut TaskContext;
+            let next_task_cx_ptr = inner.tasks[next].get_task_cx_ptr();
             // 切换页表。所有 TCB 中的页表在内核中的地址映射必须相同，否则换页表的时候pc可能跑飞
-            unsafe {inner.tasks[next].vm.activate(); }
+            unsafe {inner.tasks[next].inner.lock().vm.activate(); }
             extern "C" {
                 fn _num_app();
             }
@@ -165,14 +174,14 @@ impl TaskManager {
     /// 处理用户程序的缺页异常
     fn handle_user_page_fault(&self, vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
         //println!("into task pf");
-        let mut inner = self.inner.lock();
+        let inner = self.inner.lock();
         let cpu_id = get_cpu_id();
         let task_now = inner.current_task_at_cpu[cpu_id];
 
         //extern "C" {fn _num_app();}
         //println!("into task pf {} {:x}", task_now, _num_app as usize );
         if /* task_now < get_num_app()  && */ task_now >= 0 {
-            inner.tasks[task_now].vm.handle_page_fault(vaddr, access_flags)
+            inner.tasks[task_now].inner.lock().vm.handle_page_fault(vaddr, access_flags)
         } else {
             Err(OSError::Task_NoTrapHandler)
         }
@@ -222,4 +231,15 @@ pub fn exit_current_and_run_next() {
 /// 不需要指定是哪个用户程序，函数内部会根据调用函数的核的 cpu_id 去查找
 pub fn handle_user_page_fault(vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
     TASK_MANAGER.handle_user_page_fault(vaddr, access_flags)
+}
+
+/// 从任务队列中拿一个任务，返回其TCB。
+/// 非阻塞，即如果没有任务可取，则直接返回 None
+pub fn fetch_task_from_scheduler() -> Option<Arc<TaskControlBlock>> {
+    unimplemented!();
+}
+
+/// 向任务队列里插入一个任务
+pub fn push_task_to_scheduler(task: Arc<TaskControlBlock>) {
+    unimplemented!();
 }
