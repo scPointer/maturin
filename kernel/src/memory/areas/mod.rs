@@ -1,18 +1,20 @@
 mod fixed;
 mod lazy;
 
-pub use fixed::PmAreaFixed;
-pub use lazy::PmAreaLazy;
-
 use alloc::sync::Arc;
-
 //use spin::Mutex;
 use lock::Mutex;
+use core::slice;
+
+use crate::error::{OSError, OSResult};
+use crate::memory::phys_to_virt;
 
 use super::addr::{align_down, align_up, PhysAddr, VirtAddr};
 use super::{PTEFlags, PageTable};
 use super::PAGE_SIZE;
-use crate::error::{OSError, OSResult};
+
+pub use fixed::PmAreaFixed;
+pub use lazy::PmAreaLazy;
 
 /// A physical memory area with same MMU flags, can be discontiguous and lazy allocated,
 /// or shared by multi-threads.
@@ -137,6 +139,49 @@ impl VmArea {
 
     pub fn is_user(&self) -> bool {
         self.flags.contains(PTEFlags::USER)
+    }
+
+    /// 从已有 VmArea 复制一个新的 VmArea ，其中虚拟地址段和权限相同，但没有实际分配物理页
+    pub fn copy_to_new_area_empty(&self) -> OSResult<VmArea> {
+        let page_count = (self.end - self.start) / PAGE_SIZE;
+        Ok(VmArea {
+            start: self.start,
+            end: self.end,
+            flags: self.flags,
+            pma: Arc::new(Mutex::new(PmAreaLazy::new(page_count)?)),
+            name: self.name,
+        })
+    }
+
+    /// 从已有 VmArea 复制一个新的 VmArea ，复制所有的数据，但是用不同的物理地址
+    /// 
+    /// Todo: 可以改成 Copy on write 的方式
+    /// 需要把 WRITE 权限关掉，然后等到写这段内存发生 Page Fault 再实际写入数据。
+    /// 但是这需要建立一种映射关系，帮助在之后找到应该映射到同一块数据的所有 VmArea。
+    /// 
+    /// 而且不同进程中进行 mmap / munmap 等操作时也可能会修改这样的对应关系，
+    /// 不是只有写这段内存才需要考虑 Copy on write，所以真正实现可能比想象的要复杂。
+    pub fn copy_to_new_area_with_data(&self) -> OSResult<VmArea> {
+        let new_area = self.copy_to_new_area_empty()?;
+        let mut new_pma = new_area.pma.lock();
+        let mut old_pma = self.pma.lock();
+        for vaddr in (self.start..self.end).step_by(PAGE_SIZE) {
+            // 获取当前 VmArea 的所有页
+            let old_page = old_pma.get_frame((vaddr - self.start) / PAGE_SIZE, false)?;
+            if let Some(old_paddr) = old_page { // 如果这个页已被分配
+                // 在新 VmArea 中分配一个新页
+                // 这里不会出现 Ok(None) 的情况，因为 new_area 是刚生成的，所以 new_pma 里面为空。
+                // PmAreaLazy::get_frame 里的实现在这种情况下要么返回内存溢出错误，要么返回新获取的帧的物理地址
+                let new_paddr = new_pma.get_frame((vaddr - self.start) / PAGE_SIZE, true)?.unwrap();
+                // 手动复制这个页的内存。
+                // 其实可以利用 trait 的 write/read 接口，但是那样会需要两次内存复制操作
+                let src = unsafe { slice::from_raw_parts(phys_to_virt(old_paddr) as *const u8, PAGE_SIZE) };
+                let dst = unsafe { slice::from_raw_parts_mut(phys_to_virt(new_paddr) as *mut u8, PAGE_SIZE) };
+                dst.copy_from_slice(src);
+            }
+        }
+        drop(new_pma);
+        Ok(new_area)
     }
 
     /// Handle page fault.

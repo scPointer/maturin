@@ -54,7 +54,7 @@ impl CpuLocal {
 
 lazy_static! {
     /// 所有 CPU 的上下文信息
-    pub static ref CPU_CONTEXTS: Vec<Mutex<CpuLocal>> = unsafe {
+    pub static ref CPU_CONTEXTS: Vec<Mutex<CpuLocal>> = {
         let mut cpu_contexts: Vec<Mutex<CpuLocal>> = Vec::new();
         for i in 0..CPU_NUM {
             cpu_contexts.push(Mutex::new(CpuLocal::new()));
@@ -97,7 +97,7 @@ pub fn run_tasks() -> ! {
                         // 将暂停的用户程序塞回任务队列
                         push_task_to_scheduler(task);
                     }
-                    TaskStatus::Zombie => {
+                    TaskStatus::Dying => {
                         if task.get_pid_num() == 0 { // 这是初始进程
                             panic!("origin user proc exited, All applications completed.");
                         } else {
@@ -145,7 +145,7 @@ pub fn exit_current_task(exit_code: i32) {
     let mut cpu_local = CPU_CONTEXTS[cpu_id].lock();
     let task = cpu_local.current().unwrap();
     // let task_inner = task.lock();
-    task.set_status(TaskStatus::Zombie);
+    task.set_status(TaskStatus::Dying);
     task.set_exit_code(exit_code);
     println!("[cpu {}] pid {} exited with code {}", cpu_id, task.get_pid_num(), exit_code);
     let idle_task_cx_ptr = cpu_local.get_idle_task_cx_ptr();
@@ -160,8 +160,8 @@ pub fn exit_current_task(exit_code: i32) {
 }
 
 /// 处理退出的进程：
-/// 将它的子进程全部交给初始进程 ORIGIN_USER_PROC
-/// 这里会需要获取当前核正在运行的用户程序、ORIGIN_USER_PROC、所有子进程
+/// 将它的子进程全部交给初始进程 ORIGIN_USER_PROC，然后标记当前进程的状态为 Zombie。
+/// 这里会需要获取当前核正在运行的用户程序、ORIGIN_USER_PROC、所有子进程的锁。
 /// 
 /// 这里每修改一个子进程的 parent 指针，都要重新用 try_lock 拿子进程的锁和 ORIGIN_USER_PROC 的锁。
 /// 
@@ -201,6 +201,7 @@ fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
         }
     }
     tcb_inner.children.clear();
+    tcb_inner.task_status = TaskStatus::Zombie;
     /*
     // 释放用户段占用的物理页面
     // 如果这里不释放，等僵尸进程被回收时 MemorySet 被 Drop，也可以释放这些页面
@@ -211,10 +212,16 @@ fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
 /// 处理用户程序的缺页异常
 pub fn handle_user_page_fault(vaddr: VirtAddr, access_flags: PTEFlags)  -> OSResult {
     let cpu_id = get_cpu_id();
-    let mut cpu_local = CPU_CONTEXTS[cpu_id].lock();
+    let cpu_local = CPU_CONTEXTS[cpu_id].lock();
     if let Some(task) = cpu_local.current() {
         task.inner.lock().vm.handle_page_fault(vaddr, access_flags)
     } else {
         Err(OSError::Task_NoTrapHandler)
     }
+}
+
+/// 获取当前核正在运行的进程的TCB。
+/// 如果当前核没有任务，则返回 None
+pub fn get_current_task() -> Option<Arc<TaskControlBlock>> {
+    Some(CPU_CONTEXTS[get_cpu_id()].lock().current.as_ref()?.clone())
 }

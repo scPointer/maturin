@@ -1,6 +1,7 @@
 use riscv::register::sstatus::{self, Sstatus, SPP};
 /// Trap Context
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct TrapContext {
     /// general regs[0..31]
     pub x: [usize; 32],
@@ -11,9 +12,13 @@ pub struct TrapContext {
 }
 
 impl TrapContext {
-    /// set stack pointer to x_2 reg (sp)
+    /// 设置 sp 寄存器
     pub fn set_sp(&mut self, sp: usize) {
         self.x[2] = sp;
+    }
+    /// 设置 a0 寄存器
+    pub fn set_a0(&mut self, a0: usize) {
+        self.x[10] = a0;
     }
     /// init app context
     pub fn app_init_context(entry: usize, sp: usize) -> Self {
@@ -28,4 +33,13 @@ impl TrapContext {
         cx.set_sp(sp); // app's user stack pointer
         cx // return initial Trap Context of app
     }
+    /// 空的 TrapContext
+    pub fn new() -> Self {
+        Self {
+            x: [0; 32],
+            sstatus: sstatus::read(),
+            sepc: 0,
+        }
+    }
+    
 }

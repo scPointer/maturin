@@ -28,8 +28,7 @@ use crate::arch::get_cpu_id;
 use crate::constants::ORIGIN_USER_PROC_NAME;
 
 use switch::{__switch, __move_to_context};
-use task::{TaskControlBlock, TaskStatus};
-
+pub use task::{TaskControlBlock, TaskStatus};
 pub use context::TaskContext;
 pub use kernel_stack::KernelStack;
 pub use scheduler::{push_task_to_scheduler, fetch_task_from_scheduler};
@@ -38,6 +37,7 @@ pub use cpu_local::{
     exit_current_task,
     handle_user_page_fault,
     run_tasks,
+    get_current_task,
 };
 
 lazy_static! {

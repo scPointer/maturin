@@ -17,6 +17,7 @@ mod loader;
 mod timer;
 mod error;
 mod loaders;
+mod utils;
 
 pub mod syscall;
 pub mod task;

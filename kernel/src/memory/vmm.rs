@@ -86,7 +86,7 @@ impl MemorySet {
         true
     }
 
-    /// Add a VMA to this set.
+    /// 插入一段内存段，并将其映射到页表里
     pub fn push(&mut self, vma: VmArea) -> OSResult {
         if !self.test_free_area(vma.start, vma.end) {
             println!("VMA overlap: {:#x?}\n{:#x?}", vma, self);
@@ -244,6 +244,20 @@ impl MemorySet {
                 .write(offset, &src[processed..processed + len])?;
             Ok(())
         })
+    }
+
+    /// 从已有 MemorySet 按照 fork 的要求复制一个新的 MemorySet 。具体来说：
+    /// 
+    /// 1. 对内核的地址段，所有虚拟地址与物理地址的映射相同
+    /// 2. 对用户的地址段，所有虚拟地址和其中的数据相同，但对应的物理地址与 self 中的不同
+    pub fn copy_as_fork(&self) -> OSResult<MemorySet> {
+        let mut ms = new_memory_set_for_task()?;
+        for area in self.areas.values() {
+            if area.is_user() {
+                ms.push(area.copy_to_new_area_with_data()?)?;
+            }
+        }
+        Ok(ms)
     }
 }
 

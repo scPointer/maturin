@@ -1,5 +1,6 @@
 mod cpu;
 mod sbi;
+pub mod stdin;
 pub mod stdout;
 mod page_control;
 

@@ -30,13 +30,17 @@ impl KernelStack {
         self.frame.as_ptr() as usize + KERNEL_STACK_SIZE
     }
     /// 在空栈里压栈一个 TrapContext。
-    /// 之后如果发生内核异常中断，使得栈里有更多个 TrapContext，则由 trap.S 负责压栈
+    /// 之后如果发生内核异常中断，则 trap.S 会进行压栈，使得栈里有更多个 TrapContext。
     pub fn push_first_context(&self, trap_cx: TrapContext) -> usize {
         let trap_cx_ptr = (self.get_sp() - core::mem::size_of::<TrapContext>()) as *mut TrapContext;
         unsafe {
             *trap_cx_ptr = trap_cx;
         }
         trap_cx_ptr as usize
+    }
+    /// 获取第一个 TrapContext 的地址
+    pub fn get_first_context(&self) -> *mut TrapContext {
+        (self.get_sp() - core::mem::size_of::<TrapContext>()) as *mut TrapContext
     }
     /// 打印栈所占用的内存地址
     pub fn print_info(&self) {
