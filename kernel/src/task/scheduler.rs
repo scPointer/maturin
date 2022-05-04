@@ -26,6 +26,7 @@ lazy_static! {
         let mut scheduler = Scheduler::new();
         scheduler.push(ORIGIN_USER_PROC.clone());
 
+        /*
         // 其他应用程序本来应该由 origin_user_proc 引入
         // 这里为了单独测试新调度器，手动输入了这些程序
         let app_num = get_num_app();
@@ -34,7 +35,8 @@ lazy_static! {
                 scheduler.push(Arc::new(TaskControlBlock::from_app_id(i)))
             }
         }
-
+        */
+        
         Mutex::new(scheduler)
     };
 }

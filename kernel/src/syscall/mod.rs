@@ -22,7 +22,7 @@ use process::*;
 
 /// 处理系统调用
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
-    
+    //println!("syscall {}", syscall_id);
     match syscall_id {
         SYSCALL_READ => sys_read(args[0], args[1] as *mut u8, args[2]),
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2]),

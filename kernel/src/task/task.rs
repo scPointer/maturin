@@ -16,6 +16,7 @@ use crate::trap::TrapContext;
 use crate::arch::get_cpu_id;
 
 use super::{TaskContext, KernelStack};
+use super::__move_to_context;
 
 /// 任务控制块，包含一个用户程序的所有状态信息，但不包括与调度有关的信息。
 /// 默认在TCB的外层对其的访问不会冲突，所以外部没有用锁保护，内部的 mutex 仅用来提供可变性
@@ -99,6 +100,7 @@ impl TaskControlBlock {
     /// 这里只把父进程内核栈栈底的第一个 TrapContext 复制到子进程，
     /// 所以**必须保证对这个函数的调用是来自用户异常中断，而不是内核异常中断**。因为只有这时内核栈才只有一层 TrapContext。
     pub fn from_fork(self: &Arc<TaskControlBlock>) -> Arc<Self> {
+        //println!("start fork");
         let mut inner = self.inner.lock();
         // 与 new 方法不同，这里从父进程的 MemorySet 生成子进程的
         let mut vm = inner.vm.copy_as_fork().unwrap(); 
@@ -126,6 +128,7 @@ impl TaskControlBlock {
             },
         });
         inner.children.push(new_tcb.clone());
+        //println!("end fork");
         new_tcb
     }
     /// 从 exec 系统调用修改当前TCB：
@@ -134,13 +137,21 @@ impl TaskControlBlock {
     pub fn exec(&self, raw_data: &[u8]) {
         let mut inner = self.inner.lock();
         // 清空 MemorySet 中用户段的地址
-        inner.vm.clear_user();
+        inner.vm.clear_user_and_save_kernel();
+        
         // 然后把新的信息插入页表和 VmArea
         let loader = ElfLoader::new(raw_data).unwrap();
         let args = vec![String::from(".")];
         let (user_entry, user_stack) = loader.init_vm(&mut inner.vm, args).unwrap();
+        // 修改完 MemorySet 映射后要 flush 一次
+        inner.vm.flush_tlb();
+        //println!("user vm {:#x?}", inner.vm);
         // 此处实际上覆盖了 kernel_stack 中原有的 TrapContext，内部用 unsafe 规避了此处原本应有的 mut
-        self.kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
+        let stack_top = self.kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
+        inner.task_cx = TaskContext::goto_restore(stack_top);
+
+        //let trap_context = unsafe {*self.kernel_stack.get_first_context() };
+        //println!("sp = {:x}, entry = {:x}, sstatus = {:x}", trap_context.x[2], trap_context.sepc, trap_context.sstatus.bits());  
     }
     /// 修改任务状态
     pub fn set_status(&self, new_status: TaskStatus) {

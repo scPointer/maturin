@@ -10,6 +10,7 @@ use crate::task::{
     suspend_current_task, 
     get_current_task,
     push_task_to_scheduler,
+    exec_new_task,
 };
 use crate::task::TaskStatus;
 use crate::timer::get_time_ms;
@@ -54,7 +55,7 @@ pub fn sys_fork() -> isize {
 
 /// 将当前进程替换为指定用户程序。
 /// 
-/// 成功时返回 0 ; 如果没有找到这个名字的用户程序，则返回 -1
+/// 如果没有找到这个名字的用户程序，则返回 -1
 pub fn sys_exec(path: *const u8) -> isize {
     let len = unsafe { get_str_len(path) };
     // 因为这里直接用用户空间提供的虚拟地址来访问，所以一定能连续访问到字符串，不需要考虑物理地址是否连续
@@ -62,6 +63,7 @@ pub fn sys_exec(path: *const u8) -> isize {
     let string = core::str::from_utf8(slice).unwrap();
     if let Some(data) = get_app_data_by_name(string) {
         get_current_task().unwrap().exec(data);
+        exec_new_task();
         0
     } else {
         -1
@@ -81,9 +83,20 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
     // 如果找不到，它设为 -1; 如果找到了但没结束，它设为 -2
     let mut flag: isize = -1;
     let mut exit_code: i32 = -1;
+    let mut pid_found: isize = pid;
     for (idx, child) in tcb_inner.children.iter().enumerate() {
+        // 等待任意的子进程
+        if pid == -1 {
+            flag = -2;
+            if let Some(code) = child.get_code_if_exit() {
+                exit_code = code;
+                flag = idx as isize;
+                pid_found = child.get_pid_num() as isize;
+                break;
+            }
+        }
         // 找到这个子进程了
-        if child.get_pid_num() == request_pid {
+        else if child.get_pid_num() == request_pid {
             // 这里拿着当前进程的锁，要求获取子进程的锁
             // 其实内部用的是 try_lock：
             // 因为如果子进程已退出，则一定可以拿到锁;
@@ -97,12 +110,21 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
             break;
         }
     };
+    // println!("wait flag {} exit_code {} pid_found {}", flag, exit_code, pid_found);
+    /*
+    if task.get_pid_num() == 2 {
+        println!("sons = {}, flag {} code {}", tcb_inner.children.len(), flag, exit_code);
+        if flag >= 0 && exit_code < 0 {
+            panic!("");
+        }
+    }
+    */
     if flag >= 0 {
         let child = tcb_inner.children.remove(flag as usize);
         // 确认它没有其他引用了
         assert_eq!(Arc::strong_count(&child), 1);
         unsafe {*exit_code_ptr = exit_code; }
-        pid
+        pid_found
     } else {
         flag
     }

@@ -72,8 +72,8 @@ impl<'a> ElfLoader<'a> {
                 SegmentData::Undefined(data) => data,
                 _ => return Err(OSError::Loader_InvalidSegment),
             };
+            //println!("creating MemorySet from ELF");
             pma.write(pgoff, data)?;
-
             let seg = VmArea::new(
                 ph.virtual_addr() as VirtAddr,
                 (ph.virtual_addr() + ph.mem_size()) as VirtAddr,
@@ -86,7 +86,6 @@ impl<'a> ElfLoader<'a> {
                 elf_base_vaddr = ph.virtual_addr() as usize;
             }
         }
-
         let entry = self.elf.header.pt2.entry_point() as usize;
         let stack_bottom = USER_STACK_OFFSET;
         let mut stack_top = stack_bottom + USER_STACK_SIZE;

@@ -10,7 +10,7 @@ use crate::error::{OSError, OSResult};
 use crate::memory::phys_to_virt;
 
 use super::addr::{align_down, align_up, PhysAddr, VirtAddr};
-use super::{PTEFlags, PageTable};
+use super::{PTEFlags, PageTable, PageTableEntry};
 use super::PAGE_SIZE;
 
 pub use fixed::PmAreaFixed;
@@ -98,7 +98,7 @@ impl VmArea {
         for vaddr in (self.start..self.end).step_by(PAGE_SIZE) {
             let page = pma.get_frame((vaddr - self.start) / PAGE_SIZE, false)?;
             let res = if let Some(paddr) = page {
-                //if vaddr == 0x3fff_f000 { println!("create mapping {:x}->{:x} at {:x}", vaddr, paddr, pt.get_root_paddr()); }
+                // if vaddr < 0x9000_0000 { println!("create mapping {:x}->{:x} at {:x}", vaddr, paddr, pt.get_root_paddr()); }
                 pt.map(vaddr, paddr, self.flags)
             } else {
                 pt.map(vaddr, 0, PTEFlags::empty())
@@ -207,14 +207,17 @@ impl VmArea {
         let paddr = pma
             .get_frame(offset / PAGE_SIZE, true)?
             .ok_or(OSError::Memory_RunOutOfMemory)?;
-
+        // println!("paddr {:x}", paddr);
         if let Some(entry) = pt.get_entry(vaddr) {
-            if entry.is_valid() {
-                Err(OSError::PageFaultHandler_TrapAtValidPage)
-            } else {
-                entry.set_all(paddr, self.flags);
-                pt.flush_tlb(Some(vaddr));
-                Ok(())
+            unsafe {
+                if (*entry).is_valid() {
+                    // println!("entry flags {:x}", entry.bits);
+                    Err(OSError::PageFaultHandler_TrapAtValidPage)
+                } else {
+                    (*entry).set_all(paddr, self.flags | PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY);
+                    pt.flush_tlb(Some(vaddr));
+                    Ok(())
+                }
             }
         } else {
             Err(OSError::PageTable_PageNotMapped)

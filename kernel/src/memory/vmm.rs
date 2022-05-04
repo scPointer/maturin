@@ -2,6 +2,7 @@
 
 use alloc::collections::{btree_map::Entry, BTreeMap};
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use core::fmt::{Debug, Formatter, Result};
 
 use lock::Mutex;
@@ -181,6 +182,28 @@ impl MemorySet {
         self.areas.clear();
     }
 
+    /// 清空用户段的地址映射，但保留内核段的
+    pub fn clear_user_and_save_kernel(&mut self) {
+        if !self.is_user {
+            println!("cannot clear kernel memory set");
+            return;
+        }
+        let mut user_area_start: Vec<usize> = Vec::new();
+        for (start, area) in self.areas.iter() {
+            if area.is_user() {
+                area.unmap_area(&mut self.pt).unwrap();
+                user_area_start.push(*start);
+            }
+        }
+        for start in user_area_start.iter() {
+            self.areas.remove(start);
+        }
+    }
+
+    pub fn flush_tlb(&self) {
+        self.pt.flush_tlb(None);
+    }
+    
     /// Activate the associated page table.
     pub unsafe fn activate(&self) {
         self.pt.set_current()
@@ -263,6 +286,7 @@ impl MemorySet {
 
 impl Drop for MemorySet {
     fn drop(&mut self) {
+        //println!("MemorySet drop");
         self.clear_user()
     }
 }

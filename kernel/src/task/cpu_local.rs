@@ -159,6 +159,19 @@ pub fn exit_current_task(exit_code: i32) {
     }
 }
 
+/// 通过 exec 系统调用，直接切换到新的用户进程
+pub fn exec_new_task() {
+    let cpu_id = get_cpu_id();
+    let mut cpu_local = CPU_CONTEXTS[cpu_id].lock();
+    let task = cpu_local.current().unwrap();
+    //println!("user vm {:#x?}", task.inner.lock().vm);
+    let current_task_cx_ptr = task.get_task_cx_ptr() as *mut TaskContext;
+    drop(task);
+    drop(cpu_local);
+    unsafe {
+        __move_to_context(current_task_cx_ptr);
+    }   
+}
 /// 处理退出的进程：
 /// 将它的子进程全部交给初始进程 ORIGIN_USER_PROC，然后标记当前进程的状态为 Zombie。
 /// 这里会需要获取当前核正在运行的用户程序、ORIGIN_USER_PROC、所有子进程的锁。

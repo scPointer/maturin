@@ -10,10 +10,8 @@
     .globl __restore
     .align 2
 __alltraps:
-    csrrw sp, sscratch, sp
-    # when sscratch == 0, trap is from kernel space
-    # then switch sp and sscratch again
-    beqz sp, __kernel_trap
+
+    bgtz sp, __user_trap_start
 
     # now:
     # sp = kernel stack
@@ -53,6 +51,11 @@ __restore:
     csrw sstatus, t0
     csrw sepc, t1
     csrw sscratch, t2
+    # get SPP
+    andi t0, t0, 0x100
+    bnez t0, __kernel_trap_end
+
+__user_trap_end:
     # restore general-purpuse registers except sp/tp
     ld x1, 1*8(sp)
     ld x3, 3*8(sp)
@@ -63,18 +66,39 @@ __restore:
     .endr
     # release TrapContext on kernel stack
     addi sp, sp, 34*8
+
+    csrrw sp, sscratch, sp
     # when sscratch == 0, trap is from kernel space
     # then switch sp and sscratch again
-    csrrw sp, sscratch, sp
-    beqz sp, __kernel_trap_end
+    beqz sp, __idle_kernel_trap_end
     # return to user
     sret
 
-__kernel_trap:
+__user_trap_start:
+    csrrw sp, sscratch, sp
+    # when sscratch == 0, trap is from kernel space
+    # then switch sp and sscratch again
+    beqz sp, __idle_kernel_trap_start
+    j __real_trap_entry
+
+__idle_kernel_trap_start:
     csrrw sp, sscratch, sp
     j __real_trap_entry
 
-__kernel_trap_end:
+__idle_kernel_trap_end:
     csrrw sp, sscratch, sp
     # return to kernel
+    sret
+
+__kernel_trap_end:
+    # restore general-purpuse registers except sp/tp
+    ld x1, 1*8(sp)
+    ld x3, 3*8(sp)
+    .set n, 5
+    .rept 27
+        LOAD_GP %n
+        .set n, n+1
+    .endr
+    # release TrapContext on kernel stack
+    addi sp, sp, 34*8
     sret

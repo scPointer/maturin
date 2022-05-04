@@ -64,6 +64,13 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
 #[no_mangle]
 /// handle an interrupt, exception, or system call from user space
 pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext { 
+    /*
+    let mut sp: usize;
+    unsafe { core::arch::asm!("mv {0}, sp", out(reg) sp) };
+    println!("in sp {:x}", sp);
+    println!("user sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits()); 
+    */
+
     let scause = scause::read(); // get trap cause
     let stval = stval::read(); // get extra value
 
@@ -133,6 +140,12 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             );
         }
     }
+    /*
+    let mut sp: usize;
+    unsafe { core::arch::asm!("mv {0}, sp", out(reg) sp) };
+    println!("out sp {:x}", sp);
+    println!("user sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits()); 
+    */
     cx
 }
 

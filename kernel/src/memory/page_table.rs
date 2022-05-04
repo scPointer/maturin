@@ -29,7 +29,7 @@ bitflags! {
     }
 }
 
-#[derive(Copy, Clone)]
+//#[derive(Copy, Clone)]
 #[repr(C)]
 /// page table entry structure
 pub struct PageTableEntry {
@@ -45,6 +45,9 @@ impl PageTableEntry {
     }
     pub fn empty() -> Self {
         PageTableEntry { bits: 0 }
+    }
+    pub fn is_empty(&self) -> bool {
+        self.flags() == PTEFlags::empty()
     }
     pub fn addr(&self) -> PhysAddr {
         (self.bits >> 10 & ((1usize << 44) - 1)) << 12
@@ -98,7 +101,7 @@ impl PageTableEntry {
 
 /// 获取 paddr 页面上的第 idx 个页表项
 /// 因为 "paddr 页的内容是页表" 需要调用者保证，所以是unsafe
-unsafe fn get_pte_at(paddr: PhysAddr, idx: usize) -> &'static mut PageTableEntry {
+pub unsafe fn get_pte_at(paddr: PhysAddr, idx: usize) -> &'static mut PageTableEntry {
     unsafe {
         ((phys_to_virt(paddr) + core::mem::size_of::<usize>() * idx) as *mut PageTableEntry).as_mut().unwrap()
     }
@@ -157,7 +160,7 @@ impl PageTable {
         unsafe { Some(get_pte_at(paddr, line2)) }
     }
     /// 查找一个页表项，不申请新页面
-    fn find_pte(&self, vaddr: VirtAddr) -> Option<&mut PageTableEntry> {
+    fn find_pte(&self, vaddr: VirtAddr) -> Option<*mut PageTableEntry> {
         let (line0, line1, line2) = pte_idx_of_virt_addr(vaddr);
         //查第一级页表
         let pte = unsafe { get_pte_at(self.root_paddr, line0) };
@@ -178,8 +181,11 @@ impl PageTable {
                 println!("vaddr {:x} is mapped before mapping", vaddr);
                 Err(OSError::PageTable_PageAlreadyMapped)
             } else {
-                // 因为 U740 板子不支持处理器设置 A/D，所以需手动设置
-                pte.set_all(paddr, flags | PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY);
+                // flags 出现 empty 的情况是 VmArea 不希望现在分配这个物理页，但希望事先通过上面的函数分配前两级的页表页
+                if !flags.is_empty() {
+                    // 因为 U740 板子不支持处理器设置 A/D，所以需手动设置
+                    pte.set_all(paddr, flags | PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY);
+                }
                 Ok(())
             }
         } else {
@@ -190,21 +196,25 @@ impl PageTable {
     #[allow(unused)]
     pub fn unmap(&mut self, vaddr: VirtAddr) -> OSResult {
         if let Some(pte) = self.find_pte(vaddr) {
-            if !pte.is_valid() {
-                println!("vaddr {:x} is invalid before unmapping", vaddr);
-                Err(OSError::PageTable_PageNotMapped)
-            } else {
-                pte.clear();
-                Ok(())
+            unsafe {
+                if !(*pte).is_valid() {
+                    println!("vaddr {:x} is invalid before unmapping", vaddr);
+                    Err(OSError::PageTable_PageNotMapped)
+                } else {
+                    (*pte).clear();
+                    Ok(())
+                }
             }
         } else {
             Err(OSError::PageTable_VirtNotFound)
         }
     }
-    /// 手动查询页表
+    /*
+    /// 手动查询页表，需要页表项可 Copy
     pub fn translate(&self, vaddr: VirtAddr) -> Option<PageTableEntry> {
         self.find_pte(vaddr).map(|pte| *pte)
     }
+    */
     /// 生成该页表对应的 satp 寄存器的值(使用Sv39模式)
     pub fn token(&self) -> usize {
         8usize << 60 | self.root_paddr
@@ -213,12 +223,12 @@ impl PageTable {
 
 /// 页表的与硬件相关的功能
 impl PageTable {
-    pub fn get_entry(&self, vaddr: VirtAddr) -> Option<&mut PageTableEntry> {
+    pub fn get_entry(&self, vaddr: VirtAddr) -> Option<*mut PageTableEntry> {
         self.find_pte(vaddr)
     }
 
     pub fn query(&mut self, vaddr: VirtAddr) -> Option<PhysAddr> {
-        Some(self.find_pte(vaddr)?.addr())
+        unsafe { Some((*self.find_pte(vaddr)?).addr()) }
     }
 
     pub fn current_root_paddr() -> PhysAddr {

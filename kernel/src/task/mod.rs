@@ -38,6 +38,7 @@ pub use cpu_local::{
     handle_user_page_fault,
     run_tasks,
     get_current_task,
+    exec_new_task,
 };
 
 lazy_static! {

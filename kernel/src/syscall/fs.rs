@@ -17,7 +17,7 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
             let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
             slice[0] = loop {
                 let c = getchar();
-                if c == 0 {
+                if c == 0 || c == 255 {
                     // 如果串口目前没有东西可读，则应该先让给其他进程
                     // 这个设计是为了不让一个核因为等待输入阻塞在此
 
