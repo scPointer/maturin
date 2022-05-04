@@ -73,7 +73,7 @@ pub fn run_tasks() -> ! {
             let idle_task_cx_ptr = cpu_local.get_idle_task_cx_ptr();
             let next_task_cx_ptr = task.get_task_cx_ptr();
             task.set_status(TaskStatus::Running);
-            println!("[cpu {}] now running on pid = {}", cpu_id, task.get_pid_num());
+            //println!("[cpu {}] now running on pid = {}", cpu_id, task.get_pid_num());
             //drop(task_inner);
             unsafe { task.inner.lock().vm.activate(); }
             cpu_local.current = Some(task);
@@ -90,7 +90,7 @@ pub fn run_tasks() -> ! {
             enable_kernel_page_table();
             // 此时已切回空闲任务
             if let Some(task) = cpu_local.take_current() {
-                println!("[cpu {}] now leave pid = {}", cpu_id, task.get_pid_num());
+                //println!("[cpu {}] now leave pid = {}", cpu_id, task.get_pid_num());
                 let status = task.get_status();
                 match status {
                     TaskStatus::Ready => {

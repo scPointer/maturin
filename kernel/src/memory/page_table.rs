@@ -266,7 +266,7 @@ impl PageTable {
     pub unsafe fn set_current(&self) {
         let old_root = Self::current_root_paddr();
         let new_root = self.get_root_paddr();
-        println!("switch table {:#x?} -> {:#x?}", old_root, new_root);
+        //println!("switch table {:#x?} -> {:#x?}", old_root, new_root);
         if new_root != old_root {
             Self::set_current_root_paddr(new_root);
             self.flush_tlb(None);
