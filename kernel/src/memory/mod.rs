@@ -42,6 +42,7 @@ pub use addr::{
 pub use allocator::{
     Frame,
     Pid,
+    FdAllocator,
     allocator_init,
 };
 

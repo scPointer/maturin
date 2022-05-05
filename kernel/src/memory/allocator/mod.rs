@@ -1,6 +1,7 @@
 mod heap;
 mod frame;
 mod pid;
+mod fd;
 
 use super::{
     get_phys_memory_regions,
@@ -10,6 +11,7 @@ use super::{PhysAddr, PAGE_SIZE, PHYS_MEMORY_OFFSET};
 
 pub use frame::Frame;
 pub use pid::Pid;
+pub use fd::FdAllocator;
 
 /// 初始化堆分配器、页帧分配器和 PID 分配器。需由其中一个核调用且仅调用一次
 pub fn allocator_init() {

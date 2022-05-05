@@ -18,6 +18,8 @@ mod timer;
 mod error;
 mod loaders;
 mod utils;
+mod drivers;
+mod file;
 
 pub mod syscall;
 pub mod task;

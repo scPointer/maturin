@@ -17,9 +17,17 @@ $ make run
 
 用于测试的用户程序。部分参考了 `https://github.com/rcore-os/rCore`。
 
+### easy-fs
+
+目前使用的文件系统 `easy-fs` 来自 `rCore`
+
 ### /repo
 
 每周的进展交流
+
+### /doc
+
+帮助文档，定位是讲解OS设计
 
 ### /kernel/src
 
@@ -36,6 +44,10 @@ $ make run
 #### constants.rs
 
 代码中用到的几乎所有常量
+
+### utils.rs
+
+一些常用但跟 OS 设计关系不大的函数
 
 #### timer.rs
 
@@ -79,6 +91,14 @@ panic时的处理，主要是`panic_handler`
 
 ##### /memory/allocator
 
-堆与页帧的分配，需要在启动时由且仅由一个核进行初始化
+堆、页帧、进程号(PID)的分配，需要在启动时由且仅由一个核进行初始化
 
+##### /memory/areas
 
+表示一段有相同访问权限的内存区间，也负责处理区间内的缺页异常
+
+##### /memory/page_table_impl_rv64_sv39
+
+基于 `crate riscv` 实现的 `riscv64` 平台下`SV39`模式的页表。**目前已废弃**。
+
+目前使用的页表在 `/memory/page_table.rs` 中，是手写的`SV39`模式的页表。

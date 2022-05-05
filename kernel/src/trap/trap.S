@@ -78,12 +78,13 @@ __user_trap_start:
     csrrw sp, sscratch, sp
     # when sscratch == 0, trap is from kernel space
     # then switch sp and sscratch again
-    beqz sp, __idle_kernel_trap_start
+    # now it's impossible because here is __user_trap_start, so REAL sp is user's
+    # beqz sp, __idle_kernel_trap_start
     j __real_trap_entry
 
-__idle_kernel_trap_start:
-    csrrw sp, sscratch, sp
-    j __real_trap_entry
+#__idle_kernel_trap_start:
+#    csrrw sp, sscratch, sp
+#    j __real_trap_entry
 
 __idle_kernel_trap_end:
     csrrw sp, sscratch, sp

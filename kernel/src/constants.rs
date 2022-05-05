@@ -34,3 +34,5 @@ pub const ORIGIN_USER_PROC_NAME: &str = "start";
 
 // 最小的 pid(进程号) 是 0，最大的 pid 是 PID_LIMIT-1
 pub const PID_LIMIT: usize = 4096;
+// 最大的文件描述符
+pub const FD_LIMIT: usize = 256;

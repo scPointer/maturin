@@ -56,6 +56,11 @@ pub enum OSError {
 
     // cpu 找不到刚刚切换出来的任务
     CpuLocal_SwitchedFromEmptyTask,
+
+    // 文件描述符已满，无法再分配了
+    FdManager_NoAvailableFd,
+    // 找不到要求的文件描述符
+    FdManager_FdNotFound,
 }
 
 pub type OSResult<T = ()> = Result<T, OSError>;

@@ -13,6 +13,7 @@ use crate::loader::{get_app_data, get_app_data_by_name};
 use crate::loaders::ElfLoader;
 use crate::memory::{MemorySet, Pid, new_memory_set_for_task};
 use crate::trap::TrapContext;
+use crate::file::FdManager;
 use crate::arch::get_cpu_id;
 
 use super::{TaskContext, KernelStack};
@@ -43,12 +44,14 @@ pub struct TaskControlBlockInner {
     pub task_cx: TaskContext,
     /// 任务的内存段(内含页表)，同时包括用户态和内核态
     pub vm: MemorySet,
-    // 父进程
+    /// 父进程
     pub parent: Option<Weak<TaskControlBlock>>,
-    // 子进程
+    /// 子进程
     pub children: Vec<Arc<TaskControlBlock>>,
-    // sys_exit 时输出的值
+    /// sys_exit 时输出的值
     pub exit_code: i32,
+    /// 管理进程的所有文件描述符
+    pub fd_manager: FdManager,
 }
 
 impl TaskControlBlock {
@@ -91,7 +94,8 @@ impl TaskControlBlock {
                 vm: vm,
                 parent: None,
                 children: Vec::new(),
-                exit_code: 0
+                exit_code: 0,
+                fd_manager: FdManager::new()
             }),
         }
     }
@@ -124,6 +128,7 @@ impl TaskControlBlock {
                     parent: Some(Arc::downgrade(self)),
                     children: Vec::new(),
                     exit_code: 0,
+                    fd_manager: inner.fd_manager.copy_all()
                 })
             },
         });

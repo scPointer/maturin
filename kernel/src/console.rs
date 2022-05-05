@@ -18,6 +18,14 @@ macro_rules! print {
     }
 }
 
+/// 打印格式字串，使用与 print 不同的 Mutex 锁
+#[macro_export]
+macro_rules! error_print {
+    ($fmt: literal $(, $($arg: tt)+)?) => {
+        $crate::console::error_print(format_args!($fmt $(, $($arg)+)?));
+    }
+}
+
 /// 打印格式字串，有换行
 #[macro_export]
 macro_rules! println {
@@ -26,7 +34,7 @@ macro_rules! println {
     }
 }
 
-/// 打印格式字串，使用与 println 不同的 Error 锁
+/// 打印格式字串，使用与 println 不同的 Mutex 锁
 #[macro_export]
 macro_rules! error_println {
     ($fmt: literal $(, $($arg: tt)+)?) => {
