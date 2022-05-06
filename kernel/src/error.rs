@@ -1,10 +1,15 @@
+//! 错误类型
+
+#![deny(missing_docs)]
+
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 
-//错误类型的名字不一定代表发生错误的模块
 
+/// 内核中报错的类型。
+/// 错误类型的名字不一定代表发生错误的模块
 pub enum OSError {
     Ok = 0,
     PageTable_FlagUpdateError,

@@ -5,11 +5,13 @@
 
 #![deny(missing_docs)]
 
+use alloc::sync::Arc;
+
 use crate::arch::{get_cpu_id};
 use crate::arch::stdin::getchar;
 use crate::task::{get_current_task};
 use crate::utils::raw_ptr_to_ref_str;
-use crate::file::{OpenFlags, open_file};
+use crate::file::{OpenFlags, open_file, Pipe};
 
 const FD_STDIN: usize = 0;
 const FD_STDOUT: usize = 1;
@@ -23,6 +25,8 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
 
     // 尝试了一下用 .map 串来写，但实际效果好像不如直接 if... 好看
     if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
+        // 读文件可能触发进程切换
+        drop(tcb_inner);
         if let Some(read_len) = file.read(slice) {
             return read_len as isize
         }
@@ -37,6 +41,8 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     let slice = unsafe { core::slice::from_raw_parts(buf, len) };
 
     if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
+        // 写文件也可能触发进程切换
+        drop(tcb_inner);
         if let Some(write_len) = file.write(slice) {
             return write_len as isize
         }
@@ -71,3 +77,34 @@ pub fn sys_close(fd: usize) -> isize {
     }
 }
 
+/// 创建管道，在 *pipe 记录读管道的 fd，在 *(pipe+1) 记录写管道的 fd
+/// 成功时返回 0，失败则返回 -1
+pub fn sys_pipe(pipe: *mut usize) -> isize {
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+    let (pipe_read, pipe_write) = Pipe::new_pipe();
+    if let Ok(fd1) = tcb_inner.fd_manager.push(Arc::new(pipe_read)) {
+        if let Ok(fd2) = tcb_inner.fd_manager.push(Arc::new(pipe_write)) {
+            unsafe {
+                *pipe = fd1;
+                *pipe.add(1) = fd2;
+            }
+            return 0
+        } else {
+            // 只成功插入了一个 fd。这种情况下要把 pipe_read 退出来
+            tcb_inner.fd_manager.remove_file(fd1);
+        }
+    }
+    -1
+}
+
+/// 复制一个 fd 中的文件到一个新 fd 中，成功时返回 0，失败则返回 -1
+pub fn sys_dup(fd: usize) -> isize {
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+    if let Ok(new_fd) = tcb_inner.fd_manager.copy_fd(fd) {
+        new_fd as isize
+    } else {
+        -1
+    }
+}

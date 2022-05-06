@@ -58,6 +58,10 @@ impl FdManager {
         }
         new_manager
     }
+    /// 复制一个 fd 中的文件到新的 fd 上
+    pub fn copy_fd(&mut self, old_fd: usize) -> OSResult<usize> {
+        self.push(self.get_file(old_fd)?)
+    }
     /// 插入一个新文件
     pub fn push(&mut self, file: Arc<dyn File>) -> OSResult<usize> {
         if let Some(fd) = self.fd_allocator.alloc() {

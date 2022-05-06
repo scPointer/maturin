@@ -17,7 +17,7 @@ pub const PAGE_SIZE: usize = 0x1000; // 4 KB
 pub const PAGE_SIZE_BITS: usize = 0xc; // 4 KB = 2^12
 pub const EMPTY_TASK: usize = usize::MAX;
 
-pub const USER_STACK_SIZE: usize = 0x2000; // 8 KB,
+pub const USER_STACK_SIZE: usize = 0x1_0000; // 64 KB,
 pub const USER_STACK_OFFSET: usize = 0x4000_0000 - USER_STACK_SIZE;
 pub const USER_VIRT_ADDR_LIMIT: usize = 0xFFFF_FFFF;
 
@@ -36,6 +36,8 @@ pub const ORIGIN_USER_PROC_NAME: &str = "start";
 pub const PID_LIMIT: usize = 4096;
 /// 最大的文件描述符
 pub const FD_LIMIT: usize = 256;
+/// sys_pipe创建的管道的大小，单位为字节
+pub const PIPE_SIZE: usize = 4000;
 
 /// 一段左闭右开的地址区间，.0 为左端点， .1 为右端点，
 pub struct AddrArea(pub usize, pub usize);

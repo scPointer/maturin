@@ -2,7 +2,6 @@ mod fixed;
 mod lazy;
 
 use alloc::sync::Arc;
-//use spin::Mutex;
 use lock::Mutex;
 use core::slice;
 

@@ -1,7 +1,6 @@
 use alloc::sync::Arc;
 use core::slice;
 
-//use spin::Mutex;
 use lock::Mutex;
 
 use super::{PmArea, VmArea};

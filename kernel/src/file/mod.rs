@@ -5,10 +5,15 @@
 mod fd_manager;
 mod os_inode;
 mod stdio;
+mod pipe;
 
 /// 文件类抽象
 pub trait File: Send + Sync {
+    /// 读文件内容到 buf，返回读到的字节数。
+    /// 如文件不可读，返回 None。(相对应地，如果可读但没有读到内容，返回 Some(0))
     fn read(&self, buf: &mut [u8]) -> Option<usize>;
+    /// 写 buf 中的内容到文件中，返回写入的字节数。
+    /// 如文件不可写，返回 None。(相对应地，如果可写但无法继续写入内容，返回 Some(0))
     fn write(&self, buf: &[u8]) -> Option<usize>;
 }
 
@@ -20,5 +25,6 @@ pub use os_inode::{
     check_file_exists, 
 };
 pub use fd_manager::FdManager;
+pub use pipe::Pipe;
 
 

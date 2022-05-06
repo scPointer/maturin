@@ -1,7 +1,6 @@
 use alloc::{sync::Arc, vec::Vec};
 use core::fmt::{Debug, Formatter, Result};
 
-//use spin::Mutex;
 use lock::Mutex;
 
 use super::{PmArea, VmArea};

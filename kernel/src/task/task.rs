@@ -69,7 +69,7 @@ impl TaskControlBlock {
         }
         // 新建页表，包含内核段
         let mut vm = new_memory_set_for_task().unwrap();
-        let args = vec![String::from(".")];
+        let args = vec![String::from(app_name)];
         // 找到用户名对应的文件，将用户地址段信息插入页表和 VmArea
         parse_user_app(app_name, &mut vm, args)
             .map(|(user_entry, user_stack)| {
@@ -145,7 +145,7 @@ impl TaskControlBlock {
         let mut inner = self.inner.lock();
         // 清空 MemorySet 中用户段的地址
         inner.vm.clear_user_and_save_kernel();
-        let args = vec![String::from(".")];
+        let args = vec![String::from(app_name)];
         // 然后把新的信息插入页表和 VmArea
         parse_user_app(app_name, &mut inner.vm, args)
             .map(|(user_entry, user_stack)| {
