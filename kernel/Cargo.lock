@@ -60,11 +60,11 @@ dependencies = [
 
 [[package]]
 name = "buddy_system_allocator"
-version = "0.5.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "878f98e1ffe8407ab5e06c91715d45ca173d775c0fc77735c0b3ec88aa8161af"
+checksum = "52ab399d7f0b5ad02bbd9ffee6ff1844b84c3c336e0831f167e105ea866a2564"
 dependencies = [
- "spin 0.5.2",
+ "spin 0.7.1",
 ]
 
 [[package]]
@@ -261,6 +261,12 @@ name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
+
+[[package]]
+name = "spin"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13287b4da9d1207a4f4929ac390916d64eacfe236a487e9a9f5b3be392be5162"
 
 [[package]]
 name = "spin"

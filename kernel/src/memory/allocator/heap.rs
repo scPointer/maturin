@@ -15,5 +15,8 @@ pub fn init() {
             .lock()
             .init(HEAP.as_ptr() as usize, HEAP_BLOCK * MACHINE_ALIGN);
     }
-    ;
+    unsafe {
+        //println!("{:x}, {:x}", HEAP.as_ptr() as usize, HEAP.as_ptr() as usize + HEAP_BLOCK * MACHINE_ALIGN);
+};
+
 }

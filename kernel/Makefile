@@ -1,5 +1,5 @@
 ARCH ?= riscv64
-MODE ?= debug
+MODE ?= release
 USERMODE ?= release
 SMP ?= 4
 
