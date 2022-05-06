@@ -28,9 +28,6 @@ pub mod trap;
 #[path = "arch/riscv/mod.rs"]
 mod arch;
 
-//在引入 mod arch 时已经加入了 entry.S
-core::arch::global_asm!(include_str!("link_app.S"));
-
 use core::sync::atomic::{Ordering, AtomicBool, AtomicUsize};
 use core::hint::spin_loop;
 
