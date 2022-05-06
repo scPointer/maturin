@@ -2,6 +2,8 @@
 
 #![deny(missing_docs)]
 
+use alloc::string::String;
+
 /// 获取一个裸指针指向的字符串长度
 /// 
 /// 函数会从 start 往后不断读取内存，直到遇到 0 为止。
@@ -12,4 +14,22 @@ pub unsafe fn get_str_len(start: *const u8) -> usize {
         ptr += 1;
     };
     ptr - start as usize
+}
+
+/// 从一个裸指针获取一个 &str 类型
+/// 
+/// 注意这个函数没有复制字符串本身，只是换了个类型
+pub unsafe fn raw_ptr_to_ref_str(start: *const u8) -> &'static str {
+    let len = unsafe { get_str_len(start) };
+    // 因为这里直接用用户空间提供的虚拟地址来访问，所以一定能连续访问到字符串，不需要考虑物理地址是否连续
+    let slice = unsafe { core::slice::from_raw_parts(start, len) };
+    core::str::from_utf8(slice).unwrap()
+}
+
+/// 从一个裸指针获取一个 String 类型
+/// 
+/// 注意这个函数复制了字符串本身，所以返回的数据是在内核里的。
+/// 调用者必须保证内存空间足够以及 start 这个地址指向的是个合法的字符串
+pub unsafe fn raw_ptr_to_string(start: *const u8) -> String {
+    String::from(raw_ptr_to_ref_str(start))
 }

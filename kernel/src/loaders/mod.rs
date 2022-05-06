@@ -156,9 +156,7 @@ pub fn parse_user_app(
     open_file(app_name, OpenFlags::RDONLY)
         .map(|node| node.read_all())
         .map(|data| {
-            println!("exec4");
             let loader = ElfLoader::new(data.as_slice())?;
-            println!("exec5");
             loader.init_vm(&mut vm, args)
         })
         .unwrap_or(Err(OSError::Loader_AppNotFound))

@@ -15,7 +15,7 @@ use crate::task::{
 };
 use crate::task::TaskStatus;
 use crate::timer::get_time_ms;
-use crate::utils::get_str_len;
+use crate::utils::raw_ptr_to_string;
 
 /// 进程退出，并提供 exit_code 供 wait 等 syscall 拿取
 pub fn sys_exit(exit_code: i32) -> ! {
@@ -57,12 +57,10 @@ pub fn sys_fork() -> isize {
 /// 
 /// 如果没有找到这个名字的用户程序，则返回 -1
 pub fn sys_exec(path: *const u8) -> isize {
-    let len = unsafe { get_str_len(path) };
-    // 因为这里直接用用户空间提供的虚拟地址来访问，所以一定能连续访问到字符串，不需要考虑物理地址是否连续
-    let slice = unsafe { core::slice::from_raw_parts(path, len) };
-    let app_name = core::str::from_utf8(slice).unwrap();
-    // 把路径复制到内核里。因为上面的 slice 在用户空间中，在 exec 中会被 drop 掉
-    let app_name = String::from(app_name);
+    // 因为这里直接用用户空间提供的虚拟地址来访问，所以一定能连续访问到字符串，不需要考虑物理地址是否连续。
+    // 把路径复制到内核里。因为上面的 slice 在用户空间中，在 exec 中会被 drop 掉。
+    let app_name = unsafe { raw_ptr_to_string(path) };
+    // 而且目前认为所有用户程序在根目录下，所以直接把路径当作文件名
     if get_current_task().unwrap().exec(&app_name) {
         exec_new_task();
         0

@@ -61,7 +61,6 @@ pub extern "C" fn virtio_dma_alloc(pages: usize) -> PhysAddr {
 #[no_mangle]
 /// Frame 在 Drop 时会释放页帧，所以这里不用做其他处理
 pub extern "C" fn virtio_dma_dealloc(pa: PhysAddr, pages: usize) -> i32 {
-    println!("");
     *QUEUE_FRAMES.lock() = None;
     0
 }
