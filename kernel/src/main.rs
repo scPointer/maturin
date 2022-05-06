@@ -13,7 +13,6 @@ mod console;
 mod constants;
 mod lang;
 mod memory;
-mod loader;
 mod timer;
 mod error;
 mod loaders;
@@ -63,7 +62,6 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     if can_do_global_init() {
         memory::clear_bss(); // 清空 bss 段
         memory::allocator_init(); // 初始化堆分配器和页帧分配器
-        loader::list_app_names(); // 展示所有用户程序的名字
         mark_global_init_finished(); // 通知全局初始化已完成
     }
     // 等待第一个核执行完上面的全局初始化
@@ -77,6 +75,9 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     // 等待所有核启动完成
     // 这一步是为了进行那些**需要所有CPU都启动后才能进行的全局初始化操作**
     // 然而目前还没有这样的操作，所以现在这里只是用来展示无锁的原子变量操作(参见下面两个函数)
+    if arch::get_cpu_id() == constants::BOOTSTRAP_CPU_ID {
+        file::list_apps_names_at_root_dir(); // 展示所有用户程序的名字
+    }
     mark_bootstrap_finish();
     wait_all_cpu_started();
     let cpu_id = arch::get_cpu_id();
@@ -97,13 +98,21 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
 
 /// 是否还没有核进行全局初始化，如是则返回 true
 fn can_do_global_init() -> bool {
-    GLOBAL_INIT_STARTED.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed).is_ok()
+    // GLOBAL_INIT_STARTED.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed).is_ok()
+    match arch::get_cpu_id() {
+        constants::BOOTSTRAP_CPU_ID => {
+            GLOBAL_INIT_STARTED.store(true, Ordering::Release);
+            true
+        },
+        _ => false
+    } 
 }
 
 /// 标记那些全局只执行一次的启动步骤已完成。
 /// 内核必须由 cpu_id 等于 AP_CAN_INIT 初始值的核先启动并执行这些全局只需要一次的操作，然后其他的核才能启动 
 fn mark_global_init_finished() {
-    GLOBAL_INIT_FINISHED.compare_exchange(false, true, Ordering::Release, Ordering::Relaxed).unwrap();
+    // GLOBAL_INIT_FINISHED.compare_exchange(false, true, Ordering::Release, Ordering::Relaxed).unwrap();
+    GLOBAL_INIT_FINISHED.store(true, Ordering::Release);
 }
 
 /// 等待那些全局只执行一次的启动步骤是否完成

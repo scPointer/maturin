@@ -27,7 +27,6 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
-
     let slice = unsafe { core::slice::from_raw_parts(buf, len) };
     if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
         if let Some(write_len) = file.write(slice) {

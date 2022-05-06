@@ -4,11 +4,12 @@ use std::io::{Result, Write};
 fn main() {
     println!("cargo:rerun-if-changed=../user/src/");
     println!("cargo:rerun-if-changed={}", TARGET_PATH);
-    insert_app_data().unwrap();
+    //insert_app_data().unwrap();
 }
 
 static TARGET_PATH: &str = "../user/target/riscv64imac-unknown-none-elf/release/";
 
+/*
 fn insert_app_data() -> Result<()> {
     let mut f = File::create("src/link_app.S").unwrap();
     let mut apps: Vec<_> = read_dir("../user/src/bin")
@@ -65,3 +66,4 @@ app_{0}_end:"#,
     }
     Ok(())
 }
+*/

@@ -1,5 +1,6 @@
 ARCH ?= riscv64
-MODE ?= debug
+MODE ?= release
+USERMODE ?= release
 SMP ?= 4
 
 OBJDUMP ?= rust-objdump
@@ -16,6 +17,7 @@ qemu := qemu-system-$(ARCH)
 build_path := target/$(target)/$(MODE)
 kernel := $(build_path)/maturin
 kernel_img := $(build_path)/maturin.img
+fs_img := ../user/target/$(target)/$(USERMODE)/fs.img
 
 build_args := --target $(target)
 ifeq ($(MODE), release)
@@ -27,15 +29,23 @@ ifeq ($(ARCH), riscv64)
 qemu_args += \
 	-machine virt \
 	-bios default \
-	-device loader,file=$(kernel_img),addr=0x80200000
+	-device loader,file=$(kernel_img),addr=0x80200000 \
+	-drive file=$(fs_img),if=none,format=raw,id=x0 \
+    -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+
 endif
 
 .PHONY: build kernel run qemu asm clean
 
-build: $(kernel_img)
+build: $(kernel_img) fs-img
+
+fs-img: $(APPS)
+	@cd ../user && make build
+	@rm -f $(fs_img)
+	@cd ../easy-fs-fuse && cargo run --release -- -s ../user/src/bin/ -t ../user/target/$(target)/$(USERMODE)/
+
 
 kernel:
-	@cd ../user && make build
 	@echo Building maturin kernel
 	cargo build $(build_args)
 

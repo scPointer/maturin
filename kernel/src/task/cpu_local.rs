@@ -73,7 +73,10 @@ pub fn run_tasks() -> ! {
             let idle_task_cx_ptr = cpu_local.get_idle_task_cx_ptr();
             let next_task_cx_ptr = task.get_task_cx_ptr();
             task.set_status(TaskStatus::Running);
-            //println!("[cpu {}] now running on pid = {}", cpu_id, task.get_pid_num());
+
+            //let pid = task.get_pid_num();
+            // if pid == 1 { println!("[cpu {}] now running on pid = {}", cpu_id, pid);}
+
             //drop(task_inner);
             unsafe { task.inner.lock().vm.activate(); }
             cpu_local.current = Some(task);
@@ -147,7 +150,7 @@ pub fn exit_current_task(exit_code: i32) {
     // let task_inner = task.lock();
     task.set_status(TaskStatus::Dying);
     task.set_exit_code(exit_code);
-    println!("[cpu {}] pid {} exited with code {}", cpu_id, task.get_pid_num(), exit_code);
+    //println!("[cpu {}] pid {} exited with code {}", cpu_id, task.get_pid_num(), exit_code);
     let idle_task_cx_ptr = cpu_local.get_idle_task_cx_ptr();
     //println!("idle task context ptr {:x}", idle_task_cx_ptr as usize);
     //drop(task_inner);

@@ -4,7 +4,7 @@ use super::{
 };
 use crate::BLOCK_SZ;
 use alloc::sync::Arc;
-use spin::Mutex;
+use lock::Mutex;
 ///An easy file system on block
 pub struct EasyFileSystem {
     ///Real device

@@ -32,7 +32,12 @@ pub const DEVICE_END: usize = 0x9800_0000;
 /// 一般来说，这个程序会通过 fork / exec 启动终端和其他程序
 pub const ORIGIN_USER_PROC_NAME: &str = "start";
 
-// 最小的 pid(进程号) 是 0，最大的 pid 是 PID_LIMIT-1
+/// 最小的 pid(进程号) 是 0，最大的 pid 是 PID_LIMIT-1
 pub const PID_LIMIT: usize = 4096;
-// 最大的文件描述符
+/// 最大的文件描述符
 pub const FD_LIMIT: usize = 256;
+
+/// 一段左闭右开的地址区间，.0 为左端点， .1 为右端点，
+pub struct AddrArea(pub usize, pub usize);
+/// 用于设备 MMIO 的内存段。这些地址会在页表中做恒等映射
+pub const MMIO_REGIONS: &[AddrArea] = &[AddrArea(0x10001000, 0x10002000)];

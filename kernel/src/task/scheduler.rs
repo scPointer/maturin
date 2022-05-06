@@ -10,7 +10,6 @@ use lock::Mutex;
 
 use crate::constants::{CPU_NUM, EMPTY_TASK, ORIGIN_USER_PROC_NAME};
 use crate::error::{OSResult, OSError};
-use crate::loader::{get_num_app, get_app_name};
 use crate::memory::{VirtAddr, PTEFlags};
 use crate::arch::get_cpu_id;
 
@@ -25,18 +24,6 @@ lazy_static! {
     pub static ref GLOBAL_TASK_SCHEDULER: Mutex<Scheduler> = {
         let mut scheduler = Scheduler::new();
         scheduler.push(ORIGIN_USER_PROC.clone());
-
-        /*
-        // 其他应用程序本来应该由 origin_user_proc 引入
-        // 这里为了单独测试新调度器，手动输入了这些程序
-        let app_num = get_num_app();
-        for i in 0..app_num {
-            if get_app_name(i) != ORIGIN_USER_PROC_NAME {
-                scheduler.push(Arc::new(TaskControlBlock::from_app_id(i)))
-            }
-        }
-        */
-        
         Mutex::new(scheduler)
     };
 }

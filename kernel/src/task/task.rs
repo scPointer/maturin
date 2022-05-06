@@ -9,11 +9,10 @@ use alloc::string::String;
 use lock::Mutex;
 use core::slice::Iter;
 
-use crate::loader::{get_app_data, get_app_data_by_name};
-use crate::loaders::ElfLoader;
+use crate::loaders::{ElfLoader, parse_user_app};
 use crate::memory::{MemorySet, Pid, new_memory_set_for_task};
 use crate::trap::TrapContext;
-use crate::file::FdManager;
+use crate::file::{FdManager, check_file_exists};
 use crate::arch::get_cpu_id;
 
 use super::{TaskContext, KernelStack};
@@ -56,48 +55,46 @@ pub struct TaskControlBlockInner {
 
 impl TaskControlBlock {
     /// 从用户程序名生成 TCB
+    /// 
+    /// 在目前的实现下，如果生成 TCB 失败，只有以下情况：
+    /// 1. 找不到文件名所对应的文件
+    /// 2. 或者 loader 解析失败
+    /// 
+    /// 才返回 None，其他情况下生成失败会 Panic。
+    /// 因为上面这两种情况是用户输入可能带来的，要把结果反馈给用户程序；
+    /// 而其他情况(如 pid 分配失败、内核栈分配失败)是OS自己出了问题，应该停机。
     pub fn from_app_name(app_name: &str) -> Option<Self> {
-        if let Some(raw_data) = get_app_data_by_name(app_name) {
-            Some(Self::from_elf(raw_data))
-        } else {
-            None
+        if !check_file_exists(app_name) {
+            return None
         }
-    }
-    /// 从 app_id 生成 TCB
-    pub fn from_app_id(app_id: usize) -> Self {
-        // 获取用户库编译链接好的(elf 格式的)用户数据
-        let raw_data = get_app_data(app_id);
-        Self::from_elf(raw_data)
-    }
-    /// 从ELF文件初始化一个TCB。
-    /// 目前的实现返回 Self ，也就是说如果这个过程不成功，则直接 panic
-    pub fn from_elf(raw_data: &[u8]) -> Self {
         // 新建页表，包含内核段
         let mut vm = new_memory_set_for_task().unwrap();
-        // 然后将用户地址段信息插入页表和 VmArea
-        let loader = ElfLoader::new(raw_data).unwrap();
         let args = vec![String::from(".")];
-        let (user_entry, user_stack) = loader.init_vm(&mut vm, args).unwrap();
-        //println!("user MemorySet {:#x?}", vm);
-        // 初始化内核栈，它包含关于进入用户程序的所有信息
-        let kernel_stack = KernelStack::new().unwrap();
-        //kernel_stack.print_info();
-        let pid = Pid::new().unwrap();
-        // println!("pid = {}", pid.0);
-        let stack_top = kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
-        TaskControlBlock {
-            kernel_stack: kernel_stack,
-            pid: pid,
-            inner: Mutex::new(TaskControlBlockInner {
-                task_cx: TaskContext::goto_restore(stack_top),
-                task_status: TaskStatus::Ready,
-                vm: vm,
-                parent: None,
-                children: Vec::new(),
-                exit_code: 0,
-                fd_manager: FdManager::new()
-            }),
-        }
+        // 找到用户名对应的文件，将用户地址段信息插入页表和 VmArea
+        parse_user_app(app_name, &mut vm, args)
+            .map(|(user_entry, user_stack)| {
+            //println!("user MemorySet {:#x?}", vm);
+            // 初始化内核栈，它包含关于进入用户程序的所有信息
+            let kernel_stack = KernelStack::new().unwrap();
+            //kernel_stack.print_info();
+            let pid = Pid::new().unwrap();
+            // println!("pid = {}", pid.0);
+            let stack_top = kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
+            TaskControlBlock {
+                kernel_stack: kernel_stack,
+                pid: pid,
+                inner: Mutex::new(TaskControlBlockInner {
+                    task_cx: TaskContext::goto_restore(stack_top),
+                    task_status: TaskStatus::Ready,
+                    vm: vm,
+                    parent: None,
+                    children: Vec::new(),
+                    exit_code: 0,
+                    fd_manager: FdManager::new()
+                }),
+            }
+        }).ok()
+        
     }
     /// 从 fork 系统调用初始化一个TCB，并设置子进程对用户程序的返回值为0。
     /// 
@@ -139,24 +136,28 @@ impl TaskControlBlock {
     /// 从 exec 系统调用修改当前TCB：
     /// 1. 从 ELF 文件中生成新的 MemorySet 替代当前的
     /// 2. 修改内核栈栈底的第一个 TrapContext 为新的用户程序的入口
-    pub fn exec(&self, raw_data: &[u8]) {
+    /// 
+    /// 如找不到对应的用户程序，则不修改当前进程且返回 False
+    pub fn exec(&self, app_name: &str) -> bool {
+        if !check_file_exists(app_name) {
+            return false
+        }
         let mut inner = self.inner.lock();
         // 清空 MemorySet 中用户段的地址
         inner.vm.clear_user_and_save_kernel();
-        
-        // 然后把新的信息插入页表和 VmArea
-        let loader = ElfLoader::new(raw_data).unwrap();
         let args = vec![String::from(".")];
-        let (user_entry, user_stack) = loader.init_vm(&mut inner.vm, args).unwrap();
-        // 修改完 MemorySet 映射后要 flush 一次
-        inner.vm.flush_tlb();
-        //println!("user vm {:#x?}", inner.vm);
-        // 此处实际上覆盖了 kernel_stack 中原有的 TrapContext，内部用 unsafe 规避了此处原本应有的 mut
-        let stack_top = self.kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
-        inner.task_cx = TaskContext::goto_restore(stack_top);
-
-        //let trap_context = unsafe {*self.kernel_stack.get_first_context() };
-        //println!("sp = {:x}, entry = {:x}, sstatus = {:x}", trap_context.x[2], trap_context.sepc, trap_context.sstatus.bits());  
+        // 然后把新的信息插入页表和 VmArea
+        parse_user_app(app_name, &mut inner.vm, args)
+            .map(|(user_entry, user_stack)| {
+            // 修改完 MemorySet 映射后要 flush 一次
+            inner.vm.flush_tlb();
+            //println!("user vm {:#x?}", inner.vm);
+            // 此处实际上覆盖了 kernel_stack 中原有的 TrapContext，内部用 unsafe 规避了此处原本应有的 mut
+            let stack_top = self.kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
+            inner.task_cx = TaskContext::goto_restore(stack_top);
+            //let trap_context = unsafe {*self.kernel_stack.get_first_context() };
+            //println!("sp = {:x}, entry = {:x}, sstatus = {:x}", trap_context.x[2], trap_context.sepc, trap_context.sstatus.bits()); 
+        }).is_ok()
     }
     /// 修改任务状态
     pub fn set_status(&self, new_status: TaskStatus) {

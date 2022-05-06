@@ -64,7 +64,7 @@ lazy_static! {
 }
 
 /// 列出根目录下所有文件名
-pub fn list_apps() {
+pub fn list_apps_names_at_root_dir() {
     println!("/**** APPS ****");
     for app in ROOT_INODE.ls() {
         println!("{}", app);
@@ -100,7 +100,8 @@ impl OpenFlags {
         }
     }
 }
-/// 打开文件
+
+/// 打开(根目录下的)文件
 pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
     let (readable, writable) = flags.read_write();
     if flags.contains(OpenFlags::CREATE) {
@@ -122,6 +123,13 @@ pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
             Arc::new(OSInode::new(readable, writable, inode))
         })
     }
+}
+
+/// 检查(根目录下的)文件是否存在
+/// 
+/// Todo: 这个函数调用 Inode::find, 生成了找到的文件的 Inode 但没有用到，所以实际上有不必要的开销
+pub fn check_file_exists(name: &str) -> bool {
+    ROOT_INODE.find(name).is_some()
 }
 
 impl File for OSInode {

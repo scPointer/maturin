@@ -18,6 +18,7 @@ use crate::constants::{
     CPU_NUM, 
     PAGE_SIZE, 
     USER_VIRT_ADDR_LIMIT,
+    MMIO_REGIONS,
 };
 use crate::error::{OSError, OSResult};
 
@@ -314,7 +315,8 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         fn idle_stack();
         fn idle_stack_top();
     }
-
+    println!("data end {:x}, stack start {:x}", edata as usize, idle_stack as usize);
+    
     use super::PHYS_VIRT_OFFSET;
     ms.push(VmArea::from_fixed_pma(
         virt_to_phys(stext as usize),
@@ -345,6 +347,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         "kbss",
     )?)?;
     
+    // 插入内核栈映射
     let kernel_stack = idle_stack as usize;
     let kernel_stack_top = idle_stack_top as usize;
     let size_per_cpu = (kernel_stack_top - kernel_stack) / CPU_NUM;
@@ -362,7 +365,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         )?)?;
     }
     
-    
+    // 插入物理内存映射
     for region in get_phys_memory_regions() {
         println!("init region {:x}, {:x}", region.start, region.end);
         ms.push(VmArea::from_fixed_pma(
@@ -374,6 +377,16 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         )?)?;
     }
 
+    // 插入设备的 MMIO 映射
+    for region in MMIO_REGIONS {
+        // 这里选择恒等映射是为了兼容设备
+        ms.push(VmArea::from_identical_pma(
+            region.0,
+            region.1,
+            PTEFlags::READ | PTEFlags::WRITE,
+            "MMIO",
+        )?)?;
+    }
     //create_mapping(ms)?;
     Ok(())
 }

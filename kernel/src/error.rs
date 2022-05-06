@@ -49,6 +49,7 @@ pub enum OSError {
 
     Loader_ParseElfFailed,
     Loader_InvalidSegment,
+    Loader_AppNotFound,
 
     Task_NoTrapHandler,
     // 申请 physical memory 中的物理页面失败

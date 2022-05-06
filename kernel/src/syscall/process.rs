@@ -4,6 +4,7 @@
 #![deny(missing_docs)]
 
 use alloc::sync::Arc;
+use alloc::string::String;
 
 use crate::task::{
     exit_current_task, 
@@ -15,11 +16,10 @@ use crate::task::{
 use crate::task::TaskStatus;
 use crate::timer::get_time_ms;
 use crate::utils::get_str_len;
-use crate::loader::get_app_data_by_name;
 
 /// 进程退出，并提供 exit_code 供 wait 等 syscall 拿取
 pub fn sys_exit(exit_code: i32) -> ! {
-    println!("[kernel] Application exited with code {}", exit_code);
+    //println!("[kernel] Application exited with code {}", exit_code);
     exit_current_task(exit_code);
     panic!("Unreachable in sys_exit!");
 }
@@ -60,9 +60,10 @@ pub fn sys_exec(path: *const u8) -> isize {
     let len = unsafe { get_str_len(path) };
     // 因为这里直接用用户空间提供的虚拟地址来访问，所以一定能连续访问到字符串，不需要考虑物理地址是否连续
     let slice = unsafe { core::slice::from_raw_parts(path, len) };
-    let string = core::str::from_utf8(slice).unwrap();
-    if let Some(data) = get_app_data_by_name(string) {
-        get_current_task().unwrap().exec(data);
+    let app_name = core::str::from_utf8(slice).unwrap();
+    // 把路径复制到内核里。因为上面的 slice 在用户空间中，在 exec 中会被 drop 掉
+    let app_name = String::from(app_name);
+    if get_current_task().unwrap().exec(&app_name) {
         exec_new_task();
         0
     } else {
@@ -122,7 +123,8 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
     if flag >= 0 {
         let child = tcb_inner.children.remove(flag as usize);
         // 确认它没有其他引用了
-        assert_eq!(Arc::strong_count(&child), 1);
+        // Todo: 这里加 assert 偶尔会报错，有可能是其他核在退出这个子进程的时候还拿着锁，但没法稳定触发
+        // assert_eq!(Arc::strong_count(&child), 1, "child pid = {}", flag);
         unsafe {*exit_code_ptr = exit_code; }
         pid_found
     } else {

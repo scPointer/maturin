@@ -8,6 +8,7 @@ use crate::memory::addr::{page_count, page_offset, VirtAddr};
 use crate::memory::{PmArea, PmAreaLazy, VmArea};
 use crate::memory::{PTEFlags, MemorySet};
 use crate::constants::{PAGE_SIZE, USER_STACK_OFFSET, USER_STACK_SIZE};
+use crate::file::{open_file, OpenFlags};
 
 use lock::Mutex;
 use xmas_elf::{
@@ -142,4 +143,23 @@ impl From<Flags> for PTEFlags {
         }
         ret
     }
+}
+
+#[allow(unused)]
+/// 根据名字获取二进制串形式的用户程序，如找不到，则返回某种 OSError
+/// **这里默认所有用户程序在 make 的时候被放到了文件系统根目录**
+pub fn parse_user_app(
+    app_name: &str, 
+    mut vm: &mut MemorySet, 
+    args: Vec<String>
+) -> OSResult<(VirtAddr, VirtAddr)> {
+    open_file(app_name, OpenFlags::RDONLY)
+        .map(|node| node.read_all())
+        .map(|data| {
+            println!("exec4");
+            let loader = ElfLoader::new(data.as_slice())?;
+            println!("exec5");
+            loader.init_vm(&mut vm, args)
+        })
+        .unwrap_or(Err(OSError::Loader_AppNotFound))
 }
