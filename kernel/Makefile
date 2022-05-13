@@ -19,6 +19,7 @@ build_path := target/$(target)/$(MODE)
 kernel := $(build_path)/maturin
 kernel_img := $(build_path)/maturin.img
 fs_img := ../user/target/$(target)/$(USERMODE)/fs.img
+fat_fs_img := ../user/target/$(target)/$(USERMODE)/fat_fs.img
 
 build_args := --target $(target)
 ifeq ($(MODE), release)
@@ -40,11 +41,15 @@ endif
 
 build: $(kernel_img) fs-img
 
-fs-img: $(APPS)
+fs-img:
 	@cd ../user && make build
 	@rm -f $(fs_img)
 	@cd ../easy-fs-fuse && cargo run --release -- -s ../user/src/bin/ -t ../user/target/$(target)/$(USERMODE)/
 
+fat-fs-img:
+	@cd ../user && make build
+	@rm -f $(fat_fs_img)
+	@cd ../fs-init && cargo run --release -- -s ../user/src/bin/ -t ../user/target/$(target)/$(USERMODE)/
 
 kernel:
 	@echo Building maturin kernel
@@ -69,3 +74,6 @@ gdb-listener:
 
 clean:
 	cargo clean
+
+doc:
+	cargo doc $(build_args)
