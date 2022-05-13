@@ -13,7 +13,7 @@ pub fn main() -> i32 {
     if pid == 0 {
         // child process
         println!("pid {}: forked child start execing hello_world app ... ", getpid());
-        exec("hello_world");
+        exec("hello_world", &[core::ptr::null::<u8>()]);
         100
     } else {
         // parent process

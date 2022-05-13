@@ -9,6 +9,7 @@ GDB ?= riscv64-unknown-elf-gdb
 
 ifeq ($(ARCH), riscv64)
 target := riscv64imac-unknown-none-elf
+#target := riscv64.json
 else
 $(error Unsupported architecture $(ARCH))
 endif
@@ -29,7 +30,7 @@ ifeq ($(ARCH), riscv64)
 qemu_args += \
 	-machine virt \
 	-bios default \
-	-device loader,file=$(kernel_img),addr=0x80200000 \
+	-kernel $(kernel_img) \
 	-drive file=$(fs_img),if=none,format=raw,id=x0 \
     -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 

@@ -10,7 +10,7 @@ use user_lib::{exec, fork, wait};
 pub fn main() -> i32 {
     for i in 0..10 {
         if fork() == 0 {
-            exec("pipe_large_test\0");
+            exec("pipe_large_test\0", &[core::ptr::null::<u8>()]);
         } else {
             let mut _unused: i32 = 0;
             wait(&mut _unused);

@@ -56,7 +56,7 @@ pub fn sys_fork() -> isize {
 /// 将当前进程替换为指定用户程序。
 /// 
 /// 如果没有找到这个名字的用户程序，则返回 -1
-pub fn sys_exec(path: *const u8) -> isize {
+pub fn sys_exec(path: *const u8, mut args: *const usize) -> isize {
     // 因为这里直接用用户空间提供的虚拟地址来访问，所以一定能连续访问到字符串，不需要考虑物理地址是否连续。
     // 把路径复制到内核里。因为上面的 slice 在用户空间中，在 exec 中会被 drop 掉。
     let app_name = unsafe { raw_ptr_to_string(path) };

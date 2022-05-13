@@ -92,6 +92,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "fatfs"
+version = "0.4.0"
+dependencies = [
+ "bitflags",
+ "log",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -139,6 +147,7 @@ dependencies = [
  "bitmap-allocator",
  "buddy_system_allocator",
  "easy-fs",
+ "fatfs",
  "lazy_static",
  "lock",
  "riscv 0.6.0",
