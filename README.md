@@ -17,13 +17,24 @@ $ make run
 
 用于测试的用户程序。部分参考了 `https://github.com/rcore-os/rCore`。
 
-### easy-fs
+### /easy-fs
 
 目前使用的文件系统 `easy-fs` 来自 `rCore`
 
-### rust-fatfs
+### /rust-fatfs
 
 一个`FAT32`格式的文件系统示例，来自 `https://github.com/rafalh/rust-fatfs`
+
+#### /fs-init
+
+手写的工具，用于将用户程序加载到文件系统。
+
+启动的完整流程是：
+
+1. 在 `\kernel` 下编译内核；
+2. 先在 `\user` 下 `make` ，生成用户程序；
+3. 然后在 `\fs-init` 下 `make` ，生成文件系统镜像；
+4. 最后在 `\kernel` 下启动 qemu，加载内核和文件系统的镜像
 
 ### /repo
 
