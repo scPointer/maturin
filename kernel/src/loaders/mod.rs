@@ -51,7 +51,15 @@ impl<'a> ElfLoader<'a> {
         };
         Ok(Self { elf })
     }
-
+    /// 解析 elf 文件并初始化一个用户程序，其中 args 为用户程序执行时的参数。
+    /// 
+    /// 返回用户栈顶程序入口地址以及用户栈栈顶
+    /// 
+    /// 这里会把 argc 存在用户栈顶， argv 存在栈上第二个元素，**且用 usize(64位) 存储**，即相当于： 
+    /// 
+    /// argc = *sp;
+    /// 
+    /// argv = *(sp+4);
     pub fn init_vm(
         &self,
         vm: &mut MemorySet,

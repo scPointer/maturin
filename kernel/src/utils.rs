@@ -3,6 +3,7 @@
 #![deny(missing_docs)]
 
 use alloc::string::String;
+use alloc::vec::Vec;
 
 /// 获取一个裸指针指向的字符串长度
 /// 
@@ -32,4 +33,20 @@ pub unsafe fn raw_ptr_to_ref_str(start: *const u8) -> &'static str {
 /// 调用者必须保证内存空间足够以及 start 这个地址指向的是个合法的字符串
 pub unsafe fn raw_ptr_to_string(start: *const u8) -> String {
     String::from(raw_ptr_to_ref_str(start))
+}
+
+/// 从一个字符串指针数组(一般是用户程序执行时的参数)获取所有字符串，存入一个 Vec 中
+/// 
+/// 注意这个函数复制了字符串本身，所以返回的数据是在内核里的。
+/// 如果按C89的描述，传入的 str_ptr 的类型是 char**
+pub unsafe fn str_ptr_array_to_vec_string(str_ptr: *const usize) -> Vec<String> {
+    let mut strs = vec![];
+    let mut ptr_now = str_ptr;
+    while *ptr_now != 0 {
+        // println!("ptr_now {:x}, {:x}", ptr_now as usize, *ptr_now as usize);
+        // str_ptr 是个指向指针数组的指针，*ptr_now 是一个指向字符数组的指针
+        strs.push(raw_ptr_to_string(*ptr_now as *const u8));
+        ptr_now = ptr_now.add(1);
+    }
+    strs
 }

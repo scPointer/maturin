@@ -58,6 +58,13 @@ impl ProcInitInfo {
         writer.push_slice(argv.as_slice());
         // argc
         writer.push_slice(&[argv.len()]);
+        /*
+        println!("argv.len {}", argv.len());
+        for i in 0..argv.len() {
+            print!("{:x} ", argv[i]);
+        }
+        println!("");
+        */
         writer
     }
 }

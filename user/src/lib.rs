@@ -35,13 +35,16 @@ pub extern "C" fn _start(argc: usize, argv: usize) -> ! {
         HEAP.lock()
             .init(HEAP_SPACE.as_ptr() as usize, USER_HEAP_SIZE);
     }
+    //println!("read {} {:x}", argc, argv);
     let mut v: Vec<&'static str> = Vec::new();
     for i in 0..argc {
         let str_start =
             unsafe { ((argv + i * core::mem::size_of::<usize>()) as *const usize).read_volatile() };
+        //println!("get start {:x}", str_start);
         let len = (0usize..)
             .find(|i| unsafe { ((str_start + *i) as *const u8).read_volatile() == 0 })
             .unwrap();
+        //println!("get_len {}", len);
         v.push(
             core::str::from_utf8(unsafe {
                 core::slice::from_raw_parts(str_start as *const u8, len)

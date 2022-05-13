@@ -1,16 +1,23 @@
-//! Trap handling functionality
+//! 中断异常处理
 //!
-//! For rCore, we have a single trap entry point, namely `__alltraps`. At
-//! initialization in [`init()`], we set the `stvec` CSR to point to it.
+//! 所有中断和异常的入口在 trap.S 中的 __alltraps，它会在保存上下文信息后跳转到本文件中的 trap_handler 函数
 //!
-//! All traps go through `__alltraps`, which is defined in `trap.S`. The
-//! assembly language code does just enough work restore the kernel space
-//! context, ensuring that Rust code safely runs, and transfers control to
-//! [`trap_handler()`].
-//!
-//! It then calls different functionality based on what exactly the exception
-//! was. For example, timer interrupts trigger task preemption, and syscalls go
-//! to [`syscall()`].
+//! 在这个模块中，程序的执行流不一定正常。主要有三种可能：
+//! 
+//! 1. 用户程序中断：进入 __alltraps
+//!  -> 调用 trap_handler
+//!  -> trap_handler 返回到 __restore
+//! 
+//! 2. 第一次进入用户程序：生成一个 KernelStack，在栈顶构造一个 TrapContext
+//!  -> 设置 sp 为这个栈的栈顶
+//!  -> 直接跳转到 __restore，假装它是 trap_handler 返回的
+//! 
+//! 3. sys_exec 生成的用户程序：进入 __alltraps
+//!  -> 调用 trap_handler
+//!  -> 重写 KernelStack 栈顶的 TrapContext（不通过 trap_handler 的参数，而是直接写对应内存）
+//!  -> 和上一种情况一样，直接跳到 __restore
+
+#![deny(missing_docs)]
 
 mod context;
 
@@ -35,7 +42,7 @@ pub use context::TrapContext;
 
 global_asm!(include_str!("trap.S"));
 
-/// initialize CSR `stvec` as the entry of `__alltraps`
+/// 设置寄存器 stvec 指向 __alltraps，它定义在 trap.S 中
 pub fn init() {
     extern "C" {
         fn __alltraps();
@@ -45,7 +52,7 @@ pub fn init() {
     }
 }
 
-/// timer interrupt enabled
+/// 打开时间中断
 pub fn enable_timer_interrupt() {
     unsafe {
         sie::set_stimer();
@@ -54,6 +61,10 @@ pub fn enable_timer_interrupt() {
 
 #[no_mangle]
 /// 内核和用户Trap的共同入口
+/// 
+/// 参数 cx 是触发中断的程序的上下文信息，它在 trap.S 里被压在内核栈中。
+/// 注意，因为我们的实现没有一个专门的 "trap栈"，所以你可以认为进入该函数时 cx 就在 sp 的"脚底下"。
+/// 所以修改 cx 时一旦越界就可能改掉该函数的 ra/sp，要小心。
 pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {  
     match sstatus::read().spp() {
         sstatus::SPP::Supervisor => kernel_trap_handler(cx),
@@ -62,7 +73,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
 }
 
 #[no_mangle]
-/// handle an interrupt, exception, or system call from user space
+/// 处理来自用户程序的异常/中断
 pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext { 
     /*
     let mut sp: usize;
@@ -150,7 +161,7 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
 }
 
 #[no_mangle]
-/// handle an interrupt, exception, or system call from kernel
+/// 处理来自内核的异常/中断
 pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext { 
     let scause = scause::read(); // get trap cause
     let stval = stval::read(); // get extra value

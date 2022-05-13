@@ -21,6 +21,10 @@ $ make run
 
 目前使用的文件系统 `easy-fs` 来自 `rCore`
 
+### rust-fatfs
+
+一个`FAT32`格式的文件系统示例，来自 `https://github.com/rafalh/rust-fatfs`
+
 ### /repo
 
 每周的进展交流

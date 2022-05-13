@@ -63,6 +63,9 @@ impl TaskControlBlock {
     /// 才返回 None，其他情况下生成失败会 Panic。
     /// 因为上面这两种情况是用户输入可能带来的，要把结果反馈给用户程序；
     /// 而其他情况(如 pid 分配失败、内核栈分配失败)是OS自己出了问题，应该停机。
+    /// 
+    /// 目前只有初始进程(/task/mod.rs: ORIGIN_USER_PROC) 直接通过这个函数初始化，
+    /// 其他进程应通过 fork / exec 生成
     pub fn from_app_name(app_name: &str) -> Option<Self> {
         if !check_file_exists(app_name) {
             return None
@@ -136,25 +139,42 @@ impl TaskControlBlock {
     /// 从 exec 系统调用修改当前TCB：
     /// 1. 从 ELF 文件中生成新的 MemorySet 替代当前的
     /// 2. 修改内核栈栈底的第一个 TrapContext 为新的用户程序的入口
+    /// 3. 将传入的 args 作为用户程序执行时的参数
     /// 
     /// 如找不到对应的用户程序，则不修改当前进程且返回 False
-    pub fn exec(&self, app_name: &str) -> bool {
+    pub fn exec(&self, app_name: &str, args: Vec<String>) -> bool {
         if !check_file_exists(app_name) {
             return false
         }
         let mut inner = self.inner.lock();
         // 清空 MemorySet 中用户段的地址
         inner.vm.clear_user_and_save_kernel();
-        let args = vec![String::from(app_name)];
+        // 如果用户程序调用时没有参数，则手动加上程序名作为唯一的参数
+        // 需要这个调整，是因为用户库(/user下)使用了 rCore 的版本，
+        // 里面的 user_shell 调用 exec 时会加上程序名作为 args 的第一个参数
+        // 但是其他函数调用 exec 时只会传入空的 args (包括初始进程)
+        // 为了鲁棒性考虑，此处不修改用户库，而是手动分别这两种情况
+        let args = if args.len() == 0 { vec![String::from(app_name)] } else { args };
+        /*
+        for i in 0..args.len() {
+            println!("[cpu {}] args[{}] = '{}'", get_cpu_id(), i, args[i])
+        }
+        */
         // 然后把新的信息插入页表和 VmArea
         parse_user_app(app_name, &mut inner.vm, args)
             .map(|(user_entry, user_stack)| {
             // 修改完 MemorySet 映射后要 flush 一次
             inner.vm.flush_tlb();
             //println!("user vm {:#x?}", inner.vm);
+            // argc 和 argv 存在用户栈顶，而按用户库里的实现是需要放在 a0 和 a1 寄存器中，所以这里手动取出
+            let argc = unsafe {*(user_stack as *const usize)};
+            let argv = unsafe {((user_stack as *const usize).add(1)) as usize};
+            //println!("argc {} argv0 {:x}", argc, argv0);
             // 此处实际上覆盖了 kernel_stack 中原有的 TrapContext，内部用 unsafe 规避了此处原本应有的 mut
-            let stack_top = self.kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
+            let stack_top = self.kernel_stack.push_first_context(TrapContext::app_exec_context(user_entry, user_stack, argc, argv));
             inner.task_cx = TaskContext::goto_restore(stack_top);
+            
+            
             //let trap_context = unsafe {*self.kernel_stack.get_first_context() };
             //println!("sp = {:x}, entry = {:x}, sstatus = {:x}", trap_context.x[2], trap_context.sepc, trap_context.sstatus.bits()); 
         }).is_ok()
