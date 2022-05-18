@@ -23,32 +23,30 @@ fn main() {
 
 fn pack_up_user_applications() {
     let arguments = resolve_parser();
-    let src_path = arguments.value_of("source").unwrap();
+    let src_path = arguments.value_of("source");
     let target_path = arguments.value_of("target").unwrap();
     let img_file = String::from(target_path) + "fat.img";
-    println!("src_path = {}\ntarget_path = {}\nimg_file = {}", src_path, target_path, img_file);
+    
+    let user_apps = if let Some(path) = src_path {
+        println!("src_path = {}\ntarget_path = {}\nimg_file = {}", path, target_path, img_file);
+        get_app_names(path)
+    } else {
+        println!("src & target_path = {}\nimg_file = {}", target_path, img_file);
+        vec![]
+    };
 
     create_new_fs(img_file.as_str()).unwrap();
     let file = fs::OpenOptions::new().read(true).write(true).open(img_file.as_str()).unwrap();
     let buf_file = BufStream::new(file);
     let options = FsOptions::new().update_accessed_date(true);
     let fs = FileSystem::new(buf_file, options).unwrap();
-
     let root = fs.root_dir();
-    let user_apps: Vec<_> = fs::read_dir(src_path)
-        .unwrap()
-        .into_iter()
-        .map(|dir_entry| {
-            let mut name_with_ext = dir_entry.unwrap().file_name().into_string().unwrap();
-            name_with_ext.drain(name_with_ext.find('.').unwrap()..name_with_ext.len());
-            name_with_ext
-        })
-        .collect();
+    
     for app in user_apps {
         let mut origin_file = File::open(format!("{}{}", target_path, app)).unwrap();
         let mut all_data: Vec<u8> = Vec::new();
         origin_file.read_to_end(&mut all_data).unwrap();
-        println!("app_name {}", app.as_str());
+        println!("user app: {}", app.as_str());
         let mut file_in_fs = root.create_file(app.as_str()).unwrap();
         file_in_fs.write_all(all_data.as_slice()).unwrap();
     }
@@ -102,6 +100,18 @@ fn file_size_to_str(size: u64) -> String {
     } else {
         format!("{}GB", size / GB)
     }
+}
+
+fn get_app_names(path: &str) -> Vec<String> {
+    fs::read_dir(path)
+    .unwrap()
+    .into_iter()
+    .map(|dir_entry| {
+        let mut name_with_ext = dir_entry.unwrap().file_name().into_string().unwrap();
+        name_with_ext.drain(name_with_ext.find('.').unwrap()..name_with_ext.len());
+        name_with_ext
+    })
+    .collect()
 }
 
 #[test]
