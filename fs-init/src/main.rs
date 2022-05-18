@@ -17,6 +17,7 @@ use std::io::{self, Read};
 use fatfs::Write;
 
 fn main() {
+    //fs_test();
     pack_up_user_applications();
 }
 
@@ -28,7 +29,7 @@ fn pack_up_user_applications() {
     println!("src_path = {}\ntarget_path = {}\nimg_file = {}", src_path, target_path, img_file);
 
     create_new_fs(img_file.as_str()).unwrap();
-    let file = File::open(&img_file).unwrap();
+    let file = fs::OpenOptions::new().read(true).write(true).open(img_file.as_str()).unwrap();
     let buf_file = BufStream::new(file);
     let options = FsOptions::new().update_accessed_date(true);
     let fs = FileSystem::new(buf_file, options).unwrap();
@@ -101,6 +102,18 @@ fn file_size_to_str(size: u64) -> String {
     } else {
         format!("{}GB", size / GB)
     }
+}
+
+#[test]
+fn fs_test()  -> io::Result<()> {
+    create_new_fs("fat.img")?;
+    let img_file = fs::OpenOptions::new().read(true).write(true).open("fat.img")?;
+    let buf_stream = BufStream::new(img_file);
+    let fs = fatfs::FileSystem::new(buf_stream, fatfs::FsOptions::new())?;
+    let root_dir = fs.root_dir();
+    let mut file = root_dir.create_file("hello.txt")?;
+    file.write_all(b"Hello World!")?;
+    Ok(())
 }
 
 /*
