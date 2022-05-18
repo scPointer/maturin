@@ -5,3 +5,4 @@ kernel/src/link_app.S
 user/build
 user/target/*
 user/Cargo.lock
+*.img

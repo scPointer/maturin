@@ -19,7 +19,8 @@ build_path := target/$(target)/$(MODE)
 kernel := $(build_path)/maturin
 kernel_img := $(build_path)/maturin.img
 fs_img := ../user/target/$(target)/$(USERMODE)/fs.img
-fat_fs_img := ../user/target/$(target)/$(USERMODE)/fat_fs.img
+fat_fs_img := ../user/target/$(target)/$(USERMODE)/fat.img
+testcases_img := ../oscomp_testcases/fat.img
 
 build_args := --target $(target)
 ifeq ($(MODE), release)
@@ -39,9 +40,9 @@ endif
 
 .PHONY: build kernel run qemu asm clean
 
-build: $(kernel_img) fs-img
+build: $(kernel_img) easy-fs-img
 
-fs-img:
+easy-fs-img:
 	@cd ../user && make build
 	@rm -f $(fs_img)
 	@cd ../easy-fs-fuse && cargo run --release -- -s ../user/src/bin/ -t ../user/target/$(target)/$(USERMODE)/
@@ -49,7 +50,12 @@ fs-img:
 fat-fs-img:
 	@cd ../user && make build
 	@rm -f $(fat_fs_img)
-	@cd ../fs-init && cargo run --release -- -s ../user/src/bin/ -t ../user/target/$(target)/$(USERMODE)/
+	@cd ../fs-init && cargo run --release -- -s ../user/src/bin/ -t ../user/target/$(target)/$(USERMODE)/ -o ../user/target/
+
+testcases-img:
+	@cd ../user && make build
+	@rm -f $(fat_fs_img)
+	@cd ../fs-init && cargo run --release -- -b -s ../oscomp_testcases/bin/ -t ../oscomp_testcases/bin/ -o ../
 
 kernel:
 	@echo Building maturin kernel

@@ -1,3 +1,9 @@
+//! 初始化文件系统，将测例读入文件系统中。
+//! 
+//! 关于调用参数的用法详见 ../kernel/Makefile
+
+#![deny(missing_docs)]
+
 use clap::{App, Arg, ArgMatches};
 use std::env;
 use std::fs::{self, File};
@@ -16,23 +22,24 @@ use chrono::{DateTime, Local};
 use std::io::{self, Read};
 use fatfs::Write;
 
+
 fn main() {
     //fs_test();
     pack_up_user_applications();
 }
 
+/// 生成文件系统镜像，导入用户程序
 fn pack_up_user_applications() {
     let arguments = resolve_parser();
-    let src_path = arguments.value_of("source");
+    let src_path = arguments.value_of("source").unwrap();
     let target_path = arguments.value_of("target").unwrap();
-    let img_file = String::from(target_path) + "fat.img";
-    
-    let user_apps = if let Some(path) = src_path {
-        println!("src_path = {}\ntarget_path = {}\nimg_file = {}", path, target_path, img_file);
-        get_app_names(path)
+    let output_path = arguments.value_of("output").unwrap();
+    let img_file = String::from(output_path) + "fat.img";
+    println!("src_path = {}\ntarget_path = {}\noutput_path = {}\nimg_file = {}", src_path, target_path, output_path, img_file);
+    let user_apps = if arguments.is_present("bin") {
+        get_app_names_from_bin_dir(src_path)
     } else {
-        println!("src & target_path = {}\nimg_file = {}", target_path, img_file);
-        vec![]
+        get_app_names_from_code_dir(src_path)
     };
 
     create_new_fs(img_file.as_str()).unwrap();
@@ -43,6 +50,7 @@ fn pack_up_user_applications() {
     let root = fs.root_dir();
     
     for app in user_apps {
+        //println!("{}", format!("{}{}", target_path, app));
         let mut origin_file = File::open(format!("{}{}", target_path, app)).unwrap();
         let mut all_data: Vec<u8> = Vec::new();
         origin_file.read_to_end(&mut all_data).unwrap();
@@ -60,25 +68,42 @@ fn pack_up_user_applications() {
     }
 }
 
+/// 解析参数
 fn resolve_parser() -> ArgMatches<'static> {
     App::new("packer")
-    .arg(
+    .arg( // 源文件目录
         Arg::with_name("source")
             .short("s")
             .long("source")
             .takes_value(true)
             .help("Executable source dir(with backslash)"),
     )
-    .arg(
+    .arg( // 二进制文件目录，是已编译链接好的用户程序
         Arg::with_name("target")
             .short("t")
             .long("target")
             .takes_value(true)
             .help("Executable target dir(with backslash)"),
     )
+    .arg( // 输出目录，生成的镜像将存放在此处
+        Arg::with_name("output")
+            .short("o")
+            .long("output")
+            .takes_value(true)
+            .help("Output File System Image dir(with backslash)"),
+    )
+    .arg( //是否是二进制文件。
+        // 如果是，将输入视为二进制文件，在 source 下找对应的二进制文件
+        // 否则，视为源文件，在 source 下找对应文件名，然后到 target 下找对应二进制文件
+        Arg::with_name("bin")
+            .short("b")
+            .long("bin")
+            .help("source is binary or not")
+    )
     .get_matches()
 }
 
+/// 创建新的 FAT 格式文件系统镜像，存放在 name 指定的文件名(可能带路径)中
 fn create_new_fs(name: &str) -> io::Result<()> {
     let img_file = fs::OpenOptions::new().read(true).write(true).create(true).open(&name).unwrap();
     img_file.set_len(16 * 2048 * 512).unwrap();
@@ -87,6 +112,7 @@ fn create_new_fs(name: &str) -> io::Result<()> {
     Ok(())
 }
 
+/// 粗略显示文件大小
 fn file_size_to_str(size: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = 1024 * KB;
@@ -102,7 +128,9 @@ fn file_size_to_str(size: u64) -> String {
     }
 }
 
-fn get_app_names(path: &str) -> Vec<String> {
+/// 从源代码目录中读取每个用户程序的名字。
+/// 默认用户程序只在根目录下
+fn get_app_names_from_code_dir(path: &str) -> Vec<String> {
     fs::read_dir(path)
     .unwrap()
     .into_iter()
@@ -112,6 +140,23 @@ fn get_app_names(path: &str) -> Vec<String> {
         name_with_ext
     })
     .collect()
+}
+
+/// 从已编译好的用户程序的目录中读取每个用户程序的名字。
+/// **默认最多只有一层目录**
+/// 
+/// 因为可能有目录，所以每次拿到的 DirEntry 可能内含多个文件，所以就不能 map-collect 了
+fn get_app_names_from_bin_dir(path: &str) -> Vec<String> {
+    let mut names: Vec<String> = vec![];
+    for dir_entry in fs::read_dir(path).unwrap() {
+        let file = dir_entry.unwrap();
+        if file.path().is_dir() {
+            println!("dir: {}",file.file_name().into_string().unwrap());
+        } else {
+            names.push(file.file_name().into_string().unwrap());
+        }
+    }
+    names
 }
 
 #[test]
