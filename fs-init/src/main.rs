@@ -50,21 +50,36 @@ fn pack_up_user_applications() {
     let root = fs.root_dir();
     
     for app in user_apps {
-        //println!("{}", format!("{}{}", target_path, app));
-        let mut origin_file = File::open(format!("{}{}", target_path, app)).unwrap();
-        let mut all_data: Vec<u8> = Vec::new();
-        origin_file.read_to_end(&mut all_data).unwrap();
-        println!("user app: {}", app.as_str());
-        let mut file_in_fs = root.create_file(app.as_str()).unwrap();
-        file_in_fs.write_all(all_data.as_slice()).unwrap();
+        // 是子目录
+        if app.ends_with("/") {
+            println!("user dir: {}", app.as_str());
+            root.create_dir(app.as_str()).unwrap();
+        } else {
+            //println!("{}", format!("{}{}", target_path, app));
+            let mut origin_file = File::open(format!("{}{}", target_path, app)).unwrap();
+            let mut all_data: Vec<u8> = Vec::new();
+            origin_file.read_to_end(&mut all_data).unwrap();
+            println!("user app: {}", app.as_str());
+            let mut file_in_fs = root.create_file(app.as_str()).unwrap();
+            file_in_fs.write_all(all_data.as_slice()).unwrap();
+        }
+        
     }
 
-    for r in root.iter() {
-        let e = r.unwrap();
-        let modified = DateTime::<Local>::from(e.modified())
-            .format("%Y-%m-%d %H:%M:%S")
-            .to_string();
-        println!("{:4}  {}  {}", file_size_to_str(e.len()), modified, e.file_name());
+    for dir_entry in root.iter() {
+        let file = dir_entry.unwrap();
+        println!("{:4}  {}  {}", file_size_to_str(file.len()), date_time_to_str(file.modified()), file.file_name());
+        // 如果是子目录，则再继续遍历
+        if file.is_dir() {
+            println!("{}/", file.file_name());
+            for dir_entry in root.open_dir(file.file_name().as_str()).unwrap().iter() {
+                let file = dir_entry.unwrap();
+                // "." 开头的是当前目录、父目录以及(未来可能的)隐藏文件
+                if !file.file_name().starts_with(".") {
+                    println!("\t{:4}  {}  {}", file_size_to_str(file.len()), date_time_to_str(file.modified()), file.file_name());
+                }
+            }
+        }
     }
 }
 
@@ -128,6 +143,13 @@ fn file_size_to_str(size: u64) -> String {
     }
 }
 
+/// 显示创建时间
+fn date_time_to_str(date_time: fatfs::DateTime) -> String {
+    DateTime::<Local>::from(date_time)
+    .format("%Y-%m-%d %H:%M:%S")
+    .to_string()
+}
+
 /// 从源代码目录中读取每个用户程序的名字。
 /// 默认用户程序只在根目录下
 fn get_app_names_from_code_dir(path: &str) -> Vec<String> {
@@ -152,6 +174,15 @@ fn get_app_names_from_bin_dir(path: &str) -> Vec<String> {
         let file = dir_entry.unwrap();
         if file.path().is_dir() {
             println!("dir: {}",file.file_name().into_string().unwrap());
+            let dir_name = file.file_name().into_string().unwrap();
+            names.push(format!("{}/", dir_name));
+            for inner_entry in fs::read_dir(file.path()).unwrap() {
+                let inner_file = inner_entry.unwrap();
+                // 略去第二层目录项。之后可以把这个函数改成递归的
+                if !inner_file.path().is_dir() {
+                    names.push(format!("{}/{}", dir_name, inner_file.file_name().into_string().unwrap()))
+                }
+            }
         } else {
             names.push(file.file_name().into_string().unwrap());
         }
