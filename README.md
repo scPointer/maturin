@@ -25,6 +25,28 @@ $ make run
 
 一个`FAT32`格式的文件系统示例，来自 `https://github.com/rafalh/rust-fatfs`
 
+### /fscommon
+
+文件系统在内存中的 `buffer` 层抽象。
+
+本来应该是 `rust-fatfs` 的依赖库，来自 `https://github.com/rafalh/rust-fscommon`，但它所依赖的 [core_io](`https://github.com/jethrogb/rust-core_io`) 库限定死了 `rustc` 版本，而且已经没有再更新了，导致新版的编译库无法在 `no_std` 下 build 这个库。在 [这个issue](https://github.com/jethrogb/rust-core_io/issues/35) 里能看到同样有其他人遇到了从 `rust-fatfs` 到这个 `core_io` 的依赖库问题。
+解决方案是换掉 [core_io](`https://github.com/jethrogb/rust-core_io`)，改为 [core2](`https://github.com/technocreatives/core2`)。
+
+更换依赖库后，因为这两个库还是有一些接口上的不同，所以 `Cargo.tom;/dependencies` 和代码也需要修改。改后的项目已经和原项目不同了，因此你可以看到在 `kernel` `rust-fatfs` 的依赖中，`fscommon` 都使用相对路径。但是在 `fs-init` 中直接使用的是原版的 `fscommon`，因为它需要在 `std` 环境下运行，而修改后只支持 `no_std` 了。
+
+`fscommon` 原项目采用 `MIT License`，修改后的项目也不变，所以可以在 `Cargo.toml` 中找到原作者和项目的信息。不过因为忘记在改这个模块的代码前 commit 一次，所以可能不太方便比较修改了哪些内容。
+
+#### 所以 `core_io` 和 `core2` 的作用是
+
+引入它们都是为了提供在 `no_std` 环境下类似 `std::io::{Read, Write, Seek}` 的接口。
+
+`rust-fatfs` 需要针对 `fscommon::BufStream` 进行读写，它相当于一种缓存，本体在内存中，但会在需要的时候读写"文件"，且在 Drop 时也会自动写回"文件"。上文的文件在 `std` 环境下可以是 `std::fs::File`，但在 `no_std` 环境下，如这个OS，可以是一个块设备。
+为了对不同的"文件"都能实现缓存，`fscommon::BufStream` 中对这个"文件"的要求就是实现 `std::io::{Read, Write, Seek}`。当然，`no_std` 环境下需要找一个类似的接口，如原项目的 `core_io` 和现在的 `core2`。
+
+#### 内核为什么要关心这个接口
+
+因为内核需要把 `MMIO` 提供的块设备接口包装成 `fscommon::BufStream` 所需要的实现了 `Read, Write, Seek` 的接口，所以内核必须先知道这三个接口来自哪里，有什么要求，才能对应实现 `Trait`。
+
 ### /fs-init
 
 手写的工具，用于将用户程序加载到文件系统。

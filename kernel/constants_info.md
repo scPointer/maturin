@@ -7,3 +7,7 @@
 
 类似地，内核栈大小也涉及两个变量：
 - `./src/arch/riscv/boot/entry.S` 的 `boot_stack` 常量大小和 `slli t0, t0, 18` 一行的左移bit数是相对应的，它们同时也与SMP的核数相互影响
+
+文件系统镜像的大小涉及两个变量：
+- `./src/constants.rs` 中的 `FS_IMG_SIZE`
+- `../fs-init/src/main.rs` 中生成文件系统镜像时，在代码里的常数

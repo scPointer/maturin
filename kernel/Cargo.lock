@@ -74,6 +74,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "core2"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b49ba7ef1ad6107f8824dbe97de947cbaac53c44e7f9756a1fba0d37c1eec505"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "easy-fs"
 version = "0.1.0"
 dependencies = [
@@ -96,6 +105,15 @@ name = "fatfs"
 version = "0.4.0"
 dependencies = [
  "bitflags",
+ "fscommon",
+ "log",
+]
+
+[[package]]
+name = "fscommon"
+version = "0.1.1"
+dependencies = [
+ "core2",
  "log",
 ]
 
@@ -148,6 +166,7 @@ dependencies = [
  "buddy_system_allocator",
  "easy-fs",
  "fatfs",
+ "fscommon",
  "lazy_static",
  "lock",
  "riscv 0.6.0",

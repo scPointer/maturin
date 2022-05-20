@@ -43,3 +43,5 @@ pub const PIPE_SIZE: usize = 4000;
 pub struct AddrArea(pub usize, pub usize);
 /// 用于设备 MMIO 的内存段。这些地址会在页表中做恒等映射
 pub const MMIO_REGIONS: &[AddrArea] = &[AddrArea(0x10001000, 0x10002000)];
+/// 文件系统镜像的大小。注意这个量和 fs-init 模块中 `/src/main.rs` 里生成镜像时的大小相同。
+pub const FS_IMG_SIZE: usize = 16 * 2048 * 512;

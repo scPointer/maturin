@@ -16,4 +16,6 @@ riscv = { git = "https://gitee.com/chyyuu/riscv.git", features = ["inline-asm"] 
 bitmap-allocator = { git = "https://gitee.com/chyyuu/bitmap-allocator.git" }
 virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers" }
 easy-fs = { path = "../easy-fs" }
-fatfs = { path = "../rust-fatfs", version = "0.4", default-features = false, features = ["alloc"]}
+fatfs = { path = "../rust-fatfs", version = "0.4", default-features = false, features = ["alloc"] }
+fscommon = { path = "../fscommon", version = "0.1.1" }
+

@@ -43,6 +43,19 @@ use lock::Mutex;
 
 extern crate lazy_static;
 
+extern crate fscommon;
+
+mod fsio {
+    pub use fscommon::{Read, Write, Seek};
+}
+
+use fatfs::{
+    format_volume, 
+    FormatVolumeOptions, 
+    FileSystem, 
+    FsOptions
+};
+
 /// 是否已经有核在进行全局初始化
 static GLOBAL_INIT_STARTED: AtomicBool = AtomicBool::new(false);
 /// 全局初始化是否已结束

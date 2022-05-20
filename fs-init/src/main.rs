@@ -7,7 +7,6 @@
 use clap::{App, Arg, ArgMatches};
 use std::env;
 use std::fs::{self, File};
-
 use fatfs::{
     format_volume, 
     FormatVolumeOptions, 
