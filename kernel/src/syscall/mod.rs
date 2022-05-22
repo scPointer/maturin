@@ -25,7 +25,7 @@ use fs::*;
 use process::*;
 
 /// 处理系统调用
-pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
+pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     //println!("syscall {}", syscall_id);
     match syscall_id {
         SYSCALL_DUP => sys_dup(args[0]),

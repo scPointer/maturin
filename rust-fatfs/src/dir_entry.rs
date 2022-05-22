@@ -522,7 +522,7 @@ impl DirEntryEditor {
     }
 
     fn write<IO: ReadWriteSeek, TP, OCC>(&self, fs: &FileSystem<IO, TP, OCC>) -> Result<(), IO::Error> {
-        let mut disk = fs.disk.borrow_mut();
+        let mut disk = fs.disk.lock();
         disk.seek(io::SeekFrom::Start(self.pos))?;
         self.data.serialize(&mut *disk)
     }

@@ -92,7 +92,7 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             //console_put_usize_in_hex(pc); 
             //println!("syscall");
             cx.sepc += 4;
-            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
+            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14],cx.x[15]]) as usize;
         }
         Trap::Exception(Exception::StoreFault) => {
             println!("[kernel] StoreFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
@@ -177,7 +177,7 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
             cx.sepc += 4;
-            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
+            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14],cx.x[15]]) as usize;
         }
         Trap::Exception(Exception::StoreFault) => {
             error_println!("[kernel] StoreFault in kernel, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
