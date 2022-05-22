@@ -25,9 +25,6 @@ pub const PHYS_VIRT_OFFSET: usize = 0xFFFF_FFFF_0000_0000;
 pub const PHYS_MEMORY_OFFSET: usize = 0x8000_0000;
 pub const PHYS_MEMORY_END: usize = 0x8800_0000;
 
-pub const DEVICE_START: usize = 0x9000_0000;
-pub const DEVICE_END: usize = 0x9800_0000;
-
 /// 入口用户程序。OS启动后，只会启动以此为名的用户程序。
 /// 一般来说，这个程序会通过 fork / exec 启动终端和其他程序
 pub const ORIGIN_USER_PROC_NAME: &str = "start";
@@ -43,5 +40,20 @@ pub const PIPE_SIZE: usize = 4000;
 pub struct AddrArea(pub usize, pub usize);
 /// 用于设备 MMIO 的内存段。这些地址会在页表中做恒等映射
 pub const MMIO_REGIONS: &[AddrArea] = &[AddrArea(0x10001000, 0x10002000)];
+
+/// 是否是比赛评测。线上评测时要求OS像一个批处理系统一样工作，这可能导致内核不会直接去拿初始进程并运行
+pub const IS_TEST_ENV: bool = true;
+/// 测试环境下，文件系统镜像是否是由
+pub const IS_PRELOADED_FS_IMG: bool = false;
 /// 文件系统镜像的大小。注意这个量和 fs-init 模块中 `/src/main.rs` 里生成镜像时的大小相同。
-pub const FS_IMG_SIZE: usize = 16 * 2048 * 512;
+/// 启动时会从 .data 段加载加载
+const LOCAL_FS_IMG_SIZE: usize = 16 * 2048 * 512; // 16MB
+/// 测试时的文件系统镜像大小。
+/// 注意因为这个文件太大，默认是已经被qemu加载好了，启动时不会加载
+const TEST_FS_IMG_SIZE: usize = 0x4000_0000; // 1GB
+/// 文件系统镜像大小。只有这个常量可以被其他文件使用，而上面两个不能
+pub const FS_IMG_SIZE: usize = if IS_PRELOADED_FS_IMG { TEST_FS_IMG_SIZE } else { LOCAL_FS_IMG_SIZE };
+/// 设备(sdcard)映射到内存的起始位置
+pub const DEVICE_START: usize = 0x9000_0000;
+/// 设备映射到内存的最后位置
+pub const DEVICE_END: usize = DEVICE_START + FS_IMG_SIZE;

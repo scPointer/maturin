@@ -40,7 +40,7 @@ endif
 
 .PHONY: build kernel run qemu asm clean
 
-build: $(kernel_img) easy-fs-img
+build: $(kernel_img) easy-fs-img testcases-img
 
 easy-fs-img:
 	@cd ../user && make build
@@ -54,7 +54,7 @@ fat-fs-img:
 
 testcases-img:
 	@cd ../user && make build
-	@rm -f $(fat_fs_img)
+	@rm -f $(testcases_img)
 	@cd ../fs-init && cargo run --release -- -b -s ../oscomp_testcases/bin/ -t ../oscomp_testcases/bin/ -o ../
 
 kernel:

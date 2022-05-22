@@ -11,7 +11,6 @@ mod page_table;
 //#[cfg(target_arch = "riscv64")]
 mod areas;
 mod vmm;
-
 use crate::constants::{
     PAGE_SIZE,
     PHYS_VIRT_OFFSET,
@@ -35,6 +34,7 @@ pub use addr::{
     align_down,
     virt_to_phys,
     phys_to_virt,
+    page_count,
     page_id_to_addr,
     pte_idx_of_virt_addr,
 };

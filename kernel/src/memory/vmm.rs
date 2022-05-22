@@ -7,8 +7,8 @@ use core::fmt::{Debug, Formatter, Result};
 
 use lock::Mutex;
 
-use super::{align_down, align_up, virt_to_phys, VirtAddr};
-use super::{VmArea, PTEFlags, PageTable};
+use super::{align_down, align_up, virt_to_phys, phys_to_virt, page_count, VirtAddr};
+use super::{VmArea, PmArea, PmAreaLazy, PTEFlags, PageTable};
 use super::{
     get_phys_memory_regions,
     create_mapping,
@@ -19,6 +19,10 @@ use crate::constants::{
     PAGE_SIZE, 
     USER_VIRT_ADDR_LIMIT,
     MMIO_REGIONS,
+    IS_TEST_ENV,
+    IS_PRELOADED_FS_IMG,
+    DEVICE_START,
+    DEVICE_END,
 };
 use crate::error::{OSError, OSResult};
 
@@ -386,6 +390,40 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
             PTEFlags::READ | PTEFlags::WRITE,
             "MMIO",
         )?)?;
+    }
+
+    // 测试环境，需要加载文件系统镜像到内存中
+    if IS_TEST_ENV {
+        // 如果是测试环境的文件系统镜像，默认qemu已挂载好了不需要
+        // 否则，镜像在 data 段里，需要手动把它加载到 device 对应位置
+        // 目前的实现不考虑把修改后的文件系统写回的情况
+        if !IS_PRELOADED_FS_IMG {
+            extern "C" {
+                fn img_start();
+                fn img_end();
+            }
+            println!("img start {:x}, img_end {:x}", img_start as usize, img_end as usize);
+            let data_len = img_end as usize - img_start as usize;
+            let mut pma = PmAreaLazy::new(page_count(data_len))?;
+            let data = unsafe { core::slice::from_raw_parts(img_start as *const u8, data_len) };
+            pma.write(0, data)?;
+            ms.push(VmArea::new(
+                phys_to_virt(DEVICE_START),
+                phys_to_virt(DEVICE_END),
+                PTEFlags::READ | PTEFlags::WRITE,
+                Arc::new(Mutex::new(pma)),
+                "fs_in_memory"
+            )?)?;
+        } else {
+            // 文件系统的内存映射
+            ms.push(VmArea::from_fixed_pma(
+                DEVICE_START,
+                DEVICE_END,
+                PHYS_VIRT_OFFSET,
+                PTEFlags::READ | PTEFlags::WRITE,
+                "fs_in_memory",
+            )?)?;
+        }
     }
     //create_mapping(ms)?;
     Ok(())

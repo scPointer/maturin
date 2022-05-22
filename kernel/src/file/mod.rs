@@ -4,6 +4,7 @@
 
 mod fd_manager;
 mod os_inode;
+mod device;
 mod stdio;
 mod pipe;
 
@@ -26,5 +27,4 @@ pub use os_inode::{
 };
 pub use fd_manager::FdManager;
 pub use pipe::Pipe;
-
-
+pub use device::list_files_at_root;

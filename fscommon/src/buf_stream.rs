@@ -73,7 +73,7 @@ impl<T: Read+Write+Seek> BufStream<T> {
     }
 }
 
-#[cfg(any(feature = "std", feature = "core_io/collections"))]
+//#[cfg(any(feature = "std", feature = "core_io/collections"))]
 impl<T: Read+Write+Seek> io::BufRead for BufStream<T> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         BufStream::fill_buf(self)

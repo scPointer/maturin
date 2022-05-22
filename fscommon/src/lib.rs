@@ -25,4 +25,4 @@ mod stream_slice;
 
 pub use buf_stream::*;
 pub use stream_slice::*;
-pub use io::{Read, Write, Seek};
+pub use io::{Read, Write, Seek, SeekFrom, Result, Error, ErrorKind};

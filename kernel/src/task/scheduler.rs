@@ -8,7 +8,7 @@ use core::sync::atomic::{Ordering, AtomicUsize};
 use lock::Mutex;
 
 
-use crate::constants::{CPU_NUM, EMPTY_TASK, ORIGIN_USER_PROC_NAME};
+use crate::constants::{CPU_NUM, EMPTY_TASK, ORIGIN_USER_PROC_NAME, IS_TEST_ENV};
 use crate::error::{OSResult, OSError};
 use crate::memory::{VirtAddr, PTEFlags};
 use crate::arch::get_cpu_id;
@@ -23,7 +23,10 @@ lazy_static! {
     /// 它启动时会自动在队列中插入 ORIGIN_USER_PROC 作为第一个用户程序
     pub static ref GLOBAL_TASK_SCHEDULER: Mutex<Scheduler> = {
         let mut scheduler = Scheduler::new();
-        scheduler.push(ORIGIN_USER_PROC.clone());
+        // 评测环境下，
+        if !IS_TEST_ENV {
+            scheduler.push(ORIGIN_USER_PROC.clone());
+        }
         Mutex::new(scheduler)
     };
 }
@@ -59,7 +62,14 @@ pub fn push_task_to_scheduler(task: Arc<TaskControlBlock>) {
 /// 从任务队列中拿一个任务，返回其TCB。
 /// 非阻塞，即如果没有任务可取，则直接返回 None
 pub fn fetch_task_from_scheduler() -> Option<Arc<TaskControlBlock>> {
-    GLOBAL_TASK_SCHEDULER.lock().pop()
+    if IS_TEST_ENV {
+        println!("[cpu {}] is ready to test", get_cpu_id());
+        loop {
+
+        }
+    } else {
+        GLOBAL_TASK_SCHEDULER.lock().pop()
+    }
 }
 
 /*

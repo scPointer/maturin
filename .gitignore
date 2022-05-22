@@ -1,6 +1,6 @@
 .vscode
 target
-kernel/src/link_app.S
+/kernel/src/link_app.S
 /kernel/dbg.S
 user/build
 user/target/*
