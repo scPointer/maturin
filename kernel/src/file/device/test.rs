@@ -25,7 +25,9 @@ pub const TESTCASES: &[&str] = &[
     "brk",
     "chdir",
     "clone",
+    */
     "close",
+    /*
     "dup",
     "dup2",
     "execve",
@@ -44,8 +46,8 @@ pub const TESTCASES: &[&str] = &[
     */
     "open",
     //"start",
-    /*
     "openat",
+    /*
     "pipe",
     "read",
     "sleep",

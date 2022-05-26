@@ -33,9 +33,15 @@ type FsDir = fatfs::Dir<'static, FsIO, FsTP, FsOCC>;
 type FsFile = fatfs::File<'static, FsIO, FsTP, FsOCC>;
 
 mod open_flags;
+mod fat_file;
+mod fat_dir;
+mod fd_dir;
 mod test;
 
 pub use open_flags::OpenFlags;
+pub use fat_file::FatFile;
+pub use fat_dir::FatDir;
+pub use fd_dir::FdDir;
 pub use test::load_testcases;
 
 lazy_static! {
@@ -62,88 +68,6 @@ pub fn list_files_at_root() {
                 }
             }
         }
-    }
-}
-
-/// 把 FsDir 包装一层以适应 Trait File
-pub struct FatDir {
-    /// 是否可读
-    pub readable: bool,
-    /// 是否可写
-    pub writable: bool,
-    /// 目录的路径，相对于根目录
-    pub dir: String,
-    /// 内部结构
-    inner: Arc<Mutex<FsDir>>,
-}
-
-/// 把 FsFile 包装一层以适应 Trait File
-pub struct FatFile {
-    /// 是否可读
-    pub readable: bool,
-    /// 是否可写
-    pub writable: bool,
-    /// 所在文件夹的路径
-    /// 
-    /// 注意这里用 String 保存，而不是 &'static str之类的，
-    /// 因为给出文件路径的可能是用户程序或者某个局部变量，如果不复制成 String，之后要用到的时候可能早已找不到了
-    pub dir: String,
-    /// 内部结构
-    inner: Arc<Mutex<FsFile>>,
-}
-
-impl FatFile {
-    /// 构造一个带权限的 FatFile
-    pub fn new(readable: bool, writable: bool, dir: String, fs_file: FsFile) -> Self {
-        Self {
-            readable: readable,
-            writable: writable,
-            dir: dir,
-            inner: Arc::new(Mutex::new(fs_file)),
-        }
-    }
-    /// 读取所有数据
-    pub fn read_all(&self) -> Vec<u8> {
-        let mut inner = self.inner.lock();
-        // 获取文件大小
-        let len = inner.seek(SeekFrom::End(0)).unwrap() as usize;
-        inner.seek(SeekFrom::Start(0)).unwrap();
-        let mut tmp: Vec<u8> = Vec::new();
-        println!("file len {}=0x{:x}", len, len);
-        tmp.resize(len, 0);
-        let mut pos = 0;
-        while pos < len {
-            let read_len = inner.read(&mut tmp[pos..]).unwrap();
-            //println!("read {} bytes", read_len);
-            pos += read_len;
-        }
-        /*
-        // println!("{} {} {} {}", tmp[0], tmp[1], tmp[2], tmp[3]); // elf
-        println!("-------------------- test elf --------------------");
-        let mut i: usize = 0x1000;
-        while i < len && tmp[i] == 0 {
-            i += 1;
-        }
-        print!("i = {} , tmp[i] = {}", i, tmp[i]);
-        /*
-        for i in 0x1000..0x1010 {
-            print!("{} ", tmp[i]);
-        }
-        */
-        println!("");
-        */
-        tmp
-    }
-}
-
-impl File for FatFile {
-    /// 读取文件
-    fn read(&self, buf: &mut [u8]) -> Option<usize> {
-        self.inner.lock().read(buf).ok()
-    }
-    /// 写入文件
-    fn write(&self, buf: &[u8]) -> Option<usize> {
-        self.inner.lock().write(buf).ok()
     }
 }
 
@@ -184,8 +108,9 @@ fn get_file_dir<'a>(dir_name: &str, file_path: &'a str) -> String {
 fn inner_open_dir(root: FsDir, dir_name: &str) -> Option<FsDir> {
     if dir_name == ROOT_DIR { 
         Some(root)
-    } else { 
-        if let Ok(dir) = root.open_dir(dir_name) {
+    } else {
+        // 根目录是 "./" ，所以所有目录也是以 "./" 开头的，这里输入 fatfs 时要过滤掉这两个字符
+        if let Ok(dir) = root.open_dir(&dir_name[2..]) {
             Some(dir)
         } else {
             return None
@@ -194,7 +119,7 @@ fn inner_open_dir(root: FsDir, dir_name: &str) -> Option<FsDir> {
 }
 
 /// 在 dir_name 目录下，打开 name 文件。
-/// 可能出现如下情况：
+/// 如果不包含 OpenFlags::DIR，可能出现如下情况：
 /// 
 /// 1. 文件存在，但要求创建 -> 清空文件并返回
 /// 2. 文件存在，不要求创建 -> 直接返回文件
@@ -202,33 +127,54 @@ fn inner_open_dir(root: FsDir, dir_name: &str) -> Option<FsDir> {
 /// 4. 文件不存在，不要求创建 -> 打开失败
 /// 5. 文件不存在，但存在同名目录 -> 打开失败
 /// 6. 其他情况，如路径不存在 -> 打开失败
-pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Arc<FatFile>> {
+/// 
+/// 如果包含 OpenFlags::DIR，则只有打开已存在的目录成功时返回 FdDir
+pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Arc<dyn File>> {
     //let fs = MEMORY_FS.lock();
     //let root = fs.root_dir();
     let root = MEMORY_FS.root_dir();
-    inner_open_dir(root, dir_name).map(|dir| {
-        let (readable, writable) = flags.read_write();
-        match dir.open_file(file_path) {
-            Ok(file) => {
-                let fat_file = FatFile::new(readable, writable, get_file_dir(dir_name, file_path), file);
-                if flags.contains(OpenFlags::CREATE) {
-                    // 清空这个文件
-                    fat_file.inner.lock().truncate();
-                };
-                Some(Arc::new(fat_file))
-            },
-            Err(Error::NotFound) => {
-                if flags.contains(OpenFlags::CREATE) {
-                    let file = dir.create_file(file_path).unwrap();
-                    Some(Arc::new(FatFile::new(readable, writable, get_file_dir(dir_name, file_path), file)))
-                } else {
-                    None
+    let (real_dir, file_name) = split_path_and_file(dir_name, file_path);
+    //println!("dir = {}, name = {}", real_dir, file_name);
+    if let Some(dir) = inner_open_dir(root, real_dir.as_str()) {
+        if flags.contains(OpenFlags::DIR) { // 要求打开目录
+            // 用户传入 sys_open 的目录名如果是有斜线的，那么 file_path 就是空的了
+            // 否则 file_path 是当前目录下的一个子目录的名字
+            let dir = if file_name.len() == 0 { Ok(dir) } else { dir.open_dir(file_name) };
+            match dir {
+                Ok(dir) => {
+                    // 不考虑是否有 CREATE 参数，只要找到目录就可以直接返回
+                    Some(Arc::new(FdDir::new(String::from(real_dir) + file_name)))
                 }
-            },
-            // 其他情况下(包括存在同名的目录的情况)，返回None
-            _ => {None}
+                // 如果找不到，也不考虑 CREATE。创建目录应该用 mkdir 而不是 open_file
+                _ => { None }
+            }
+        } else { // 否则要求打开文件
+            let (readable, writable) = flags.read_write();
+            //println!("opened {}, {}", readable, writable);
+            match dir.open_file(file_name) {
+                Ok(file) => {
+                    let fat_file = FatFile::new(readable, writable, get_file_dir(real_dir.as_str(), file_name), file);
+                    if flags.contains(OpenFlags::CREATE) {
+                        // 清空这个文件
+                        fat_file.inner.lock().truncate();
+                    };
+                    Some(Arc::new(fat_file))
+                },
+                Err(Error::NotFound) => {
+                    if flags.contains(OpenFlags::CREATE) {
+                        let file = dir.create_file(file_name).unwrap();
+                        Some(Arc::new(FatFile::new(readable, writable, get_file_dir(real_dir.as_str(), file_name), file)))
+                    } else {
+                        None
+                    }
+                },
+                // 其他情况下(包括存在同名的目录的情况)，返回None
+                _ => { None }
+            }
         }
-    }).map_or(None, |f| f)
+    } else {
+        None
+    }
 }
 
 /// 检查文件是否存在。
@@ -241,7 +187,7 @@ pub fn check_file_exists(dir_name: &str, file_path: &str) -> bool {
     //let root = fs.root_dir();
     let root = MEMORY_FS.root_dir();
     let (real_dir, file_name) = split_path_and_file(dir_name, file_path);
-    println!("dir = {}, name = {}", real_dir, file_name);
+    println!("check file exists: dir = {}, name = {}", real_dir, file_name);
     inner_open_dir(root, real_dir.as_str()).map(|dir| {
         for entry in dir.iter() {
             let file = entry.unwrap();

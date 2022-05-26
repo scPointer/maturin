@@ -176,7 +176,7 @@ pub fn parse_user_app(
     args: Vec<String>
 ) -> OSResult<(VirtAddr, VirtAddr)> {
     open_file(app_dir, app_name, OpenFlags::RDONLY)
-        .map(|node| node.read_all())
+        .map(|node| unsafe { node.read_all() } )
         .map(|data| {
             /*
             for i in 0..20 {

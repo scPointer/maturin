@@ -2,6 +2,9 @@
 
 #![deny(missing_docs)]
 
+use alloc::vec::Vec;
+use alloc::sync::Arc;
+
 mod fd_manager;
 mod os_inode;
 mod device;
@@ -16,6 +19,19 @@ pub trait File: Send + Sync {
     /// 写 buf 中的内容到文件中，返回写入的字节数。
     /// 如文件不可写，返回 None。(相对应地，如果可写但无法继续写入内容，返回 Some(0))
     fn write(&self, buf: &[u8]) -> Option<usize>;
+    /// 获取路径。
+    /// - 专为 FsDir 设计。因为 linux 的 sys_openat 需要目录的文件描述符，但目录本身不能直接读写，所以特地开一个函数
+    /// - 其他 File 类型返回 None 即可
+    fn get_dir(&self) -> Option<&str> {
+        None
+    }
+    /// 读取全部数据。
+    /// 不是所有类型都实现了 read_all，目前只有文件系统中的文件是可知明确"大小"的，所以可以读"all"。
+    /// 对于其他类型来说，这个函数没有实现。
+    /// 调用者需要保证这个文件确实可以明确知道"大小"，所以它是 unsafe 的
+    unsafe fn read_all(&self) -> Vec<u8> {
+        unimplemented!();
+    }
 }
 
 pub use stdio::{Stdin, Stdout, Stderr};

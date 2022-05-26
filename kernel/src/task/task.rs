@@ -36,7 +36,7 @@ pub struct TaskControlBlock {
 
 /// 任务控制块的可变部分
 pub struct TaskControlBlockInner {
-    /// 运行的用户程序在文件系统的哪个目录下。
+    /// 用户程序当前的工作目录
     /// - 注意 dir[0] == '.' ，如以 ./ 开头时代表根目录，以 "./abc/" 开头代表根目录下的abc目录。
     /// 这样处理是因为 open_file 时先打开文件所在目录，它的实现是先打开根目录，再从根目录找相对路径
     pub dir: String,

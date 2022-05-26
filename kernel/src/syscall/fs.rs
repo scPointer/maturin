@@ -6,6 +6,7 @@
 #![deny(missing_docs)]
 
 use alloc::sync::Arc;
+use alloc::string::String;
 
 use crate::arch::{get_cpu_id};
 use crate::arch::stdin::getchar;
@@ -57,16 +58,25 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
     let mut tcb_inner = task.inner.lock();
     // 目前认为所有用户程序都在根目录下，所以直接把路径当作文件名
     let file_name = unsafe { raw_ptr_to_ref_str(path) };
-    if dir_fd == AT_FDCWD {
-        let dir = tcb_inner.dir.as_str();
-        if let Some(node) = open_file(dir, file_name, OpenFlags::from_bits(flags).unwrap()) {
-            if let Ok(fd) = tcb_inner.fd_manager.push(node) {
-                return fd as isize
-            }
+   // println!("fd = {}, file name = {}", dir_fd, file_name);
+    // 因为 get_dir() 的所有权问题，这里只好用 String 暴力复制一遍了
+    let dir = if dir_fd == AT_FDCWD { // 如果要求在当前路径下打开
+        String::from(tcb_inner.dir.as_str())
+    } else { // 否则需要去找 dir_fd 获取路径
+        if let Ok(Some(dir)) = tcb_inner.fd_manager.get_file(dir_fd as usize).map(|f| {
+                f.get_dir().map(|s| {String::from(s)}) }) {
+            //println!("fd_dir = {}", dir);
+            dir
+        } else {
+            return -1;
         }
-    } else {
-        // 否则需要去找 dir_fd 获取路径
-        unimplemented!();
+    };
+    if let Some(node) = open_file(dir.as_str(), file_name, OpenFlags::from_bits(flags).unwrap()) {
+        //println!("opened");
+        if let Ok(fd) = tcb_inner.fd_manager.push(node) {
+            //println!("return fd {}", fd);
+            return fd as isize
+        }
     }
     -1
 }

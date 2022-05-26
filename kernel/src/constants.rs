@@ -4,7 +4,7 @@ pub const CPU_NUM: usize =  4;
 pub const LAST_CPU_ID: usize = CPU_NUM - 1;
 pub const KERNEL_HEAP_SIZE: usize = 0x40_0000; // 4 MB
 pub const CLOCK_FREQ: usize = 1250_0000; //freq for qemu -m virt
-pub const IS_SINGLE_CORE: bool = false;
+pub const IS_SINGLE_CORE: bool = true;
 
 pub const KERNEL_STACK_SIZE: usize = 0x10_0000; // 1 MB, per CPU
 
