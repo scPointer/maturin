@@ -99,7 +99,7 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             exit_current_task(-1);
         }
         Trap::Exception(Exception::IllegalInstruction) => {
-            println!("[cpu {}] IllegalInstruction in application, kernel killed it.", get_cpu_id());
+            println!("[cpu {}] IllegalInstruction in application, sepc = {:x}, stval = {:#x}, kernel killed it.", get_cpu_id(), cx.sepc, stval);
             exit_current_task(-1);
         }
         Trap::Exception(Exception::InstructionPageFault) => {
@@ -138,6 +138,8 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             // println!("[cpu {}] timer interrupt", get_cpu_id());
+            println!("[cpu {}] timer interrupt, sepc = {:#x}", get_cpu_id(), cx.sepc);
+            
             // 之后需要判断如果是在内核态，则不切换任务
             set_next_trigger();
             suspend_current_task();

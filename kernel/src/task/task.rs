@@ -36,6 +36,14 @@ pub struct TaskControlBlock {
 
 /// 任务控制块的可变部分
 pub struct TaskControlBlockInner {
+    /// 运行的用户程序在文件系统的哪个目录下。
+    /// - 注意 dir[0] == '.' ，如以 ./ 开头时代表根目录，以 "./abc/" 开头代表根目录下的abc目录。
+    /// 这样处理是因为 open_file 时先打开文件所在目录，它的实现是先打开根目录，再从根目录找相对路径
+    pub dir: String,
+    /// 父进程的 pid。
+    /// - 因为拿到 Pid 代表“拥有”这个 id 且 Drop 时会自动释放，所以此处用 usize 而不是 Pid。
+    /// - 又因为它可能会在父进程结束时被修改为初始进程，所以是可变的。
+    pub ppid: usize,
     /// 任务执行状态
     pub task_status: TaskStatus,
     /// 上下文信息，用于切换，包含所有必要的寄存器
@@ -66,15 +74,15 @@ impl TaskControlBlock {
     /// 
     /// 目前只有初始进程(/task/mod.rs: ORIGIN_USER_PROC) 直接通过这个函数初始化，
     /// 其他进程应通过 fork / exec 生成
-    pub fn from_app_name(app_name: &str) -> Option<Self> {
-        if !check_file_exists(app_name) {
+    pub fn from_app_name(app_dir: &str, app_name: &str, ppid: usize) -> Option<Self> {
+        if !check_file_exists(app_dir, app_name) {
             return None
         }
         // 新建页表，包含内核段
         let mut vm = new_memory_set_for_task().unwrap();
         let args = vec![String::from(app_name)];
         // 找到用户名对应的文件，将用户地址段信息插入页表和 VmArea
-        parse_user_app(app_name, &mut vm, args)
+        parse_user_app(app_dir, app_name, &mut vm, args)
             .map(|(user_entry, user_stack)| {
             //println!("user MemorySet {:#x?}", vm);
             // 初始化内核栈，它包含关于进入用户程序的所有信息
@@ -87,6 +95,8 @@ impl TaskControlBlock {
                 kernel_stack: kernel_stack,
                 pid: pid,
                 inner: Mutex::new(TaskControlBlockInner {
+                    dir: String::from(app_dir),
+                    ppid: ppid,
                     task_cx: TaskContext::goto_restore(stack_top),
                     task_status: TaskStatus::Ready,
                     vm: vm,
@@ -116,12 +126,15 @@ impl TaskControlBlock {
         trap_context.set_a0(0);
         let stack_top = kernel_stack.push_first_context(trap_context);
         let pid = Pid::new().unwrap();
-
+        let dir = String::from(&inner.dir[..]);
+        let ppid = self.pid.0;
         let new_tcb = Arc::new(TaskControlBlock {
             pid: pid,
             kernel_stack: kernel_stack,
             inner: {
                 Mutex::new(TaskControlBlockInner {
+                    dir: dir,
+                    ppid: ppid,
                     task_cx: TaskContext::goto_restore(stack_top),
                     task_status: TaskStatus::Ready,
                     vm: vm,
@@ -136,14 +149,15 @@ impl TaskControlBlock {
         //println!("end fork");
         new_tcb
     }
-    /// 从 exec 系统调用修改当前TCB：
+    /// 从 exec 系统调用修改当前TCB，**默认新的用户程序与当前程序在同路径下**：
     /// 1. 从 ELF 文件中生成新的 MemorySet 替代当前的
     /// 2. 修改内核栈栈底的第一个 TrapContext 为新的用户程序的入口
     /// 3. 将传入的 args 作为用户程序执行时的参数
     /// 
     /// 如找不到对应的用户程序，则不修改当前进程且返回 False
     pub fn exec(&self, app_name: &str, args: Vec<String>) -> bool {
-        if !check_file_exists(app_name) {
+        let mut inner = self.inner.lock();
+        if !check_file_exists(inner.dir.as_str(), app_name) {
             return false
         }
         let mut inner = self.inner.lock();
@@ -161,7 +175,8 @@ impl TaskControlBlock {
         }
         */
         // 然后把新的信息插入页表和 VmArea
-        parse_user_app(app_name, &mut inner.vm, args)
+        let dir = String::from(&inner.dir[..]);
+        parse_user_app(dir.as_str(), app_name, &mut inner.vm, args)
             .map(|(user_entry, user_stack)| {
             // 修改完 MemorySet 映射后要 flush 一次
             inner.vm.flush_tlb();

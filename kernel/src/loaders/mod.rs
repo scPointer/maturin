@@ -74,13 +74,26 @@ impl<'a> ElfLoader<'a> {
                 continue;
             }
             //println!("page at {:x}, page to {:x}", ph.virtual_addr() as usize, (ph.virtual_addr() + ph.mem_size()) as VirtAddr);
+            //println!("ph offset {:x}, ph le {:x}", ph.offset() as usize, ph.file_size() as usize);
+            
             let pgoff = page_offset(ph.virtual_addr() as usize);
             let page_count = page_count(ph.mem_size() as usize + pgoff);
             let mut pma = PmAreaLazy::new(page_count)?;
+            //let data = &self.elf.input[ph.offset() as usize..(ph.offset() + ph.file_size()) as usize];
+            //let d0 = &self.elf.input;
+            
             let data = match ph.get_data(&self.elf).unwrap() {
                 SegmentData::Undefined(data) => data,
                 _ => return Err(OSError::Loader_InvalidSegment),
             };
+            /*
+            for i in 0..20 {
+                print!("{} ", data[i]);
+            }
+            for i in 0..20 {
+                print!("{} ", d0[i]);
+            }
+            */
             //println!("creating MemorySet from ELF");
             pma.write(pgoff, data)?;
             let seg = VmArea::new(
@@ -132,7 +145,7 @@ impl<'a> ElfLoader<'a> {
             "user_stack",
         )?;
         vm.push(stack_vma)?;
-
+        // println!("{:#x?}", vm);
         Ok((entry, stack_top))
     }
 }
@@ -155,15 +168,21 @@ impl From<Flags> for PTEFlags {
 
 #[allow(unused)]
 /// 根据名字获取二进制串形式的用户程序，如找不到，则返回某种 OSError
-/// **这里默认所有用户程序在 make 的时候被放到了文件系统根目录**
+/// 
 pub fn parse_user_app(
+    app_dir: &str,
     app_name: &str, 
     mut vm: &mut MemorySet, 
     args: Vec<String>
 ) -> OSResult<(VirtAddr, VirtAddr)> {
-    open_file(app_name, OpenFlags::RDONLY)
+    open_file(app_dir, app_name, OpenFlags::RDONLY)
         .map(|node| node.read_all())
         .map(|data| {
+            /*
+            for i in 0..20 {
+                print!("{} ", data[i]);
+            }
+            */
             let loader = ElfLoader::new(data.as_slice())?;
             loader.init_vm(&mut vm, args)
         })

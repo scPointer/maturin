@@ -21,9 +21,9 @@ pub unsafe fn get_str_len(start: *const u8) -> usize {
 /// 
 /// 注意这个函数没有复制字符串本身，只是换了个类型
 pub unsafe fn raw_ptr_to_ref_str(start: *const u8) -> &'static str {
-    let len = unsafe { get_str_len(start) };
+    let len = get_str_len(start);
     // 因为这里直接用用户空间提供的虚拟地址来访问，所以一定能连续访问到字符串，不需要考虑物理地址是否连续
-    let slice = unsafe { core::slice::from_raw_parts(start, len) };
+    let slice = core::slice::from_raw_parts(start, len);
     core::str::from_utf8(slice).unwrap()
 }
 

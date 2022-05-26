@@ -40,7 +40,8 @@ endif
 
 .PHONY: build kernel run qemu asm clean
 
-build: $(kernel_img) easy-fs-img
+#build: $(kernel_img) easy-fs-img
+build: $(kernel_img)
 
 easy-fs-img:
 	@cd ../user && make build

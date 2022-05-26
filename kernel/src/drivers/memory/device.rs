@@ -29,6 +29,7 @@ impl fsio::Read for MemoryMappedDevice {
             (&mut buf[..read_len]).copy_from_slice(data);
         }
         self.pos += read_len;
+        //println!("read len {}, pos {:x}", read_len, self.pos);
         Ok(read_len)
     }
 }

@@ -8,7 +8,7 @@ use core::cell::{RefCell, RefMut};
 use lock::Mutex;
 use lazy_static::*;
 
-use crate::constants::CPU_NUM;
+use crate::constants::{CPU_NUM, IS_TEST_ENV};
 use crate::error::{OSResult, OSError};
 use crate::trap::TrapContext;
 use crate::memory::{VirtAddr, PTEFlags, enable_kernel_page_table};
@@ -76,10 +76,25 @@ pub fn run_tasks() -> ! {
 
             //let pid = task.get_pid_num();
             // if pid == 1 { println!("[cpu {}] now running on pid = {}", cpu_id, pid);}
-
             //drop(task_inner);
             unsafe { task.inner.lock().vm.activate(); }
             cpu_local.current = Some(task);
+
+            /*
+            unsafe {
+                println!("[cpu {}] idle task ctx ptr {:x}, next {:x}, ra = {:x} pid = {}", 
+                    cpu_id, 
+                    idle_task_cx_ptr as usize, 
+                    next_task_cx_ptr as usize, 
+                    (*next_task_cx_ptr).get_ra(),
+                    cpu_local.current.as_ref().unwrap().get_pid_num());
+                let t0 = (0xffff_ffff_8020_1234 as *const usize).read_volatile();
+                let t1 = (0x1000 as *const usize).read_volatile();
+                println!("t0 {:x}, t1 {:x}", t0, t1);
+                //println!("{:#x?}", cpu_local.current.as_ref().unwrap().inner.lock().vm);
+            }
+            */
+            
             // 切换前要手动 drop 掉引用
             drop(cpu_local);
             // 切换到用户程序执行
@@ -93,7 +108,7 @@ pub fn run_tasks() -> ! {
             enable_kernel_page_table();
             // 此时已切回空闲任务
             if let Some(task) = cpu_local.take_current() {
-                //println!("[cpu {}] now leave pid = {}", cpu_id, task.get_pid_num());
+                // println!("[cpu {}] now leave pid = {}", cpu_id, task.get_pid_num());
                 let status = task.get_status();
                 match status {
                     TaskStatus::Ready => {
@@ -101,7 +116,7 @@ pub fn run_tasks() -> ! {
                         push_task_to_scheduler(task);
                     }
                     TaskStatus::Dying => {
-                        if task.get_pid_num() == 0 { // 这是初始进程
+                        if !IS_TEST_ENV && task.get_pid_num() == 0 { // 这是初始进程，且不在测试环境
                             panic!("origin user proc exited, All applications completed.");
                         } else {
                             handle_zombie_task(&mut cpu_local, task);

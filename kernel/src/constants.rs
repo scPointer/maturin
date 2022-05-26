@@ -6,7 +6,7 @@ pub const KERNEL_HEAP_SIZE: usize = 0x40_0000; // 4 MB
 pub const CLOCK_FREQ: usize = 1250_0000; //freq for qemu -m virt
 pub const IS_SINGLE_CORE: bool = false;
 
-pub const KERNEL_STACK_SIZE: usize = 0x20_0000; // 2 MB, per CPU
+pub const KERNEL_STACK_SIZE: usize = 0x10_0000; // 1 MB, per CPU
 
 //pub const MAX_APP_NUM: usize = 10; // 应用程序个数限制
 //pub const APP_BASE_ADDRESS: usize = 0x8020_0000;
@@ -57,3 +57,8 @@ pub const FS_IMG_SIZE: usize = if IS_PRELOADED_FS_IMG { TEST_FS_IMG_SIZE } else 
 pub const DEVICE_START: usize = 0x9000_0000;
 /// 设备映射到内存的最后位置
 pub const DEVICE_END: usize = DEVICE_START + FS_IMG_SIZE;
+
+/// 文件系统的根目录，注意斜杠方向
+pub const ROOT_DIR: &str = "./";
+/// sys_open 时的参数，表示在当前目录下
+pub const AT_FDCWD: i32 = -100;

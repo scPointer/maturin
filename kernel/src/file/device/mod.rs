@@ -4,7 +4,6 @@
 #![deny(missing_docs)]
 
 use lazy_static::*;
-use bitflags::*;
 use lock::Mutex;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -24,6 +23,7 @@ use fatfs::{
 use super::File;
 
 use crate::drivers::{new_memory_mapped_fs, MemoryMappedFsIoType};
+use crate::constants::ROOT_DIR;
 
 type FsIO = MemoryMappedFsIoType;
 type FsTP = DefaultTimeProvider;
@@ -31,6 +31,12 @@ type FsOCC = LossyOemCpConverter;
 
 type FsDir = fatfs::Dir<'static, FsIO, FsTP, FsOCC>;
 type FsFile = fatfs::File<'static, FsIO, FsTP, FsOCC>;
+
+mod open_flags;
+mod test;
+
+pub use open_flags::OpenFlags;
+pub use test::load_testcases;
 
 lazy_static! {
     //static ref MEMORY_FS: Arc<Mutex<FileSystem<FsIO, FsTP, FsOCC>>> = Arc::new(Mutex::new(new_memory_mapped_fs()));
@@ -55,33 +61,6 @@ pub fn list_files_at_root() {
                     println!("\tfile: {}", file.file_name());
                 }
             }
-        }
-    }
-}
-
-bitflags! {    
-    /// 指定文件打开时的权限
-    pub struct OpenFlags: u32 {
-        /// 只读
-        const RDONLY = 0;
-        /// 只能写入
-        const WRONLY = 1 << 0;
-        /// 读写
-        const RDWR = 1 << 1;
-        /// 如文件不存在，可创建它
-        const CREATE = 1 << 6;
-    }
-}
-
-impl OpenFlags {
-    /// 获得文件的读/写权限
-    pub fn read_write(&self) -> (bool, bool) {
-        if self.is_empty() {
-            (true, false)
-        } else if self.contains(Self::WRONLY) {
-            (false, true)
-        } else {
-            (true, true)
         }
     }
 }
@@ -130,8 +109,29 @@ impl FatFile {
         let len = inner.seek(SeekFrom::End(0)).unwrap() as usize;
         inner.seek(SeekFrom::Start(0)).unwrap();
         let mut tmp: Vec<u8> = Vec::new();
+        println!("file len {}=0x{:x}", len, len);
         tmp.resize(len, 0);
-        inner.read(&mut tmp[..]);
+        let mut pos = 0;
+        while pos < len {
+            let read_len = inner.read(&mut tmp[pos..]).unwrap();
+            //println!("read {} bytes", read_len);
+            pos += read_len;
+        }
+        /*
+        // println!("{} {} {} {}", tmp[0], tmp[1], tmp[2], tmp[3]); // elf
+        println!("-------------------- test elf --------------------");
+        let mut i: usize = 0x1000;
+        while i < len && tmp[i] == 0 {
+            i += 1;
+        }
+        print!("i = {} , tmp[i] = {}", i, tmp[i]);
+        /*
+        for i in 0x1000..0x1010 {
+            print!("{} ", tmp[i]);
+        }
+        */
+        println!("");
+        */
         tmp
     }
 }
@@ -176,6 +176,23 @@ fn get_file_dir<'a>(dir_name: &str, file_path: &'a str) -> String {
     split_path_and_file(dir_name, file_path).0
 }
 
+
+/// 打开目录。如果是根目录，特判直接返回 root；否则打开代表目录的 FsDir
+/// 
+/// 因为需要通过 move 传入 root，这个函数只在模块内使用。
+/// 如果其他库需要打开目录(作为文件)，需要用 open_file 然后在 flags 里加入 DIR 一项
+fn inner_open_dir(root: FsDir, dir_name: &str) -> Option<FsDir> {
+    if dir_name == ROOT_DIR { 
+        Some(root)
+    } else { 
+        if let Ok(dir) = root.open_dir(dir_name) {
+            Some(dir)
+        } else {
+            return None
+        }
+    }
+}
+
 /// 在 dir_name 目录下，打开 name 文件。
 /// 可能出现如下情况：
 /// 
@@ -189,7 +206,7 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
     //let fs = MEMORY_FS.lock();
     //let root = fs.root_dir();
     let root = MEMORY_FS.root_dir();
-    root.open_dir(dir_name).map(|dir| {
+    inner_open_dir(root, dir_name).map(|dir| {
         let (readable, writable) = flags.read_write();
         match dir.open_file(file_path) {
             Ok(file) => {
@@ -224,8 +241,8 @@ pub fn check_file_exists(dir_name: &str, file_path: &str) -> bool {
     //let root = fs.root_dir();
     let root = MEMORY_FS.root_dir();
     let (real_dir, file_name) = split_path_and_file(dir_name, file_path);
-
-    root.open_dir(real_dir.as_str()).map(|dir| {
+    println!("dir = {}, name = {}", real_dir, file_name);
+    inner_open_dir(root, real_dir.as_str()).map(|dir| {
         for entry in dir.iter() {
             let file = entry.unwrap();
             if file.file_name() == file_name {

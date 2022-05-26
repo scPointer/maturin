@@ -11,6 +11,7 @@ use lock::Mutex;
 use crate::constants::{CPU_NUM, EMPTY_TASK, ORIGIN_USER_PROC_NAME, IS_TEST_ENV};
 use crate::error::{OSResult, OSError};
 use crate::memory::{VirtAddr, PTEFlags};
+use crate::file::load_testcases;
 use crate::arch::get_cpu_id;
 
 use super::__switch;
@@ -23,8 +24,9 @@ lazy_static! {
     /// 它启动时会自动在队列中插入 ORIGIN_USER_PROC 作为第一个用户程序
     pub static ref GLOBAL_TASK_SCHEDULER: Mutex<Scheduler> = {
         let mut scheduler = Scheduler::new();
-        // 评测环境下，
-        if !IS_TEST_ENV {
+        if IS_TEST_ENV { // 评测环境下，输入测例
+            load_testcases(&mut scheduler);
+        } else { // 正常情况下，启动初始进程
             scheduler.push(ORIGIN_USER_PROC.clone());
         }
         Mutex::new(scheduler)
@@ -63,10 +65,16 @@ pub fn push_task_to_scheduler(task: Arc<TaskControlBlock>) {
 /// 非阻塞，即如果没有任务可取，则直接返回 None
 pub fn fetch_task_from_scheduler() -> Option<Arc<TaskControlBlock>> {
     if IS_TEST_ENV {
-        println!("[cpu {}] is ready to test", get_cpu_id());
-        loop {
+        let task = GLOBAL_TASK_SCHEDULER.lock().pop();
+        // 测试环境下，测例执行完就不再等待了，因为不会再有新的任务
+        if task.is_none() {
+            println!("[cpu {}] is idle now", get_cpu_id());
+            loop {
 
+            }
         }
+        //println!("[cpu {}] get task", get_cpu_id());
+        task
     } else {
         GLOBAL_TASK_SCHEDULER.lock().pop()
     }

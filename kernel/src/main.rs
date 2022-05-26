@@ -90,7 +90,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     // 这一步是为了进行那些**需要所有CPU都启动后才能进行的全局初始化操作**
     // 然而目前还没有这样的操作，所以现在这里只是用来展示无锁的原子变量操作(参见下面两个函数)
     if arch::get_cpu_id() == constants::BOOTSTRAP_CPU_ID {
-        file::list_apps_names_at_root_dir(); // 展示所有用户程序的名字
+        // file::list_apps_names_at_root_dir(); // 展示所有用户程序的名字
         file::list_files_at_root();
     }
     mark_bootstrap_finish();

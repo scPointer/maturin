@@ -149,7 +149,7 @@ impl PageTable {
     fn find_pte_create(&mut self, vaddr: VirtAddr) -> Option<&mut PageTableEntry> {
         let (line0, line1, line2) = pte_idx_of_virt_addr(vaddr);
         //查第一级页表
-        let pte = unsafe { get_pte_at(self.root_paddr, line0) };
+        let pte = unsafe { get_pte_at(self.get_root_paddr(), line0) };
         let paddr = self.get_addr_create(pte)?;
         //println!("pte {:x}, paddr {:x}", pte.bits, paddr);
         //查第二级页表
@@ -163,7 +163,7 @@ impl PageTable {
     fn find_pte(&self, vaddr: VirtAddr) -> Option<*mut PageTableEntry> {
         let (line0, line1, line2) = pte_idx_of_virt_addr(vaddr);
         //查第一级页表
-        let pte = unsafe { get_pte_at(self.root_paddr, line0) };
+        let pte = unsafe { get_pte_at(self.get_root_paddr(), line0) };
         if !pte.is_valid() { return None; }
         let paddr = pte.addr();
         //查第二级页表
@@ -172,6 +172,15 @@ impl PageTable {
         let paddr = pte.addr();
         //查第三级页表
         unsafe { Some(get_pte_at(paddr, line2)) }
+    }
+    /// 映射内核段的页表
+    pub unsafe fn map_kernel_regions(&self, kernel_pt: &PageTable) {
+        // 当前内核段在 0xffff_ffff_8000_0000 至 0xffff_ffff_ffff_ffff
+        for line in 510usize..512 {
+            let from_pte = get_pte_at(kernel_pt.get_root_paddr(), line);
+            let to_pte = get_pte_at(self.get_root_paddr(), line);
+            to_pte.bits = from_pte.bits;
+        }
     }
     /// 映射一对地址
     #[allow(unused)]

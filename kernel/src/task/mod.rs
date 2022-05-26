@@ -25,13 +25,14 @@ mod cpu_local;
 mod task;
 
 use crate::arch::get_cpu_id;
-use crate::constants::ORIGIN_USER_PROC_NAME;
+use crate::constants::{ORIGIN_USER_PROC_NAME, ROOT_DIR};
 
 use switch::{__switch, __move_to_context};
 pub use task::{TaskControlBlock, TaskStatus};
 pub use context::TaskContext;
 pub use kernel_stack::KernelStack;
 pub use scheduler::{push_task_to_scheduler, fetch_task_from_scheduler};
+pub use scheduler::Scheduler;
 pub use cpu_local::{
     suspend_current_task,
     exit_current_task,
@@ -45,6 +46,6 @@ lazy_static! {
     /// 第一个用户程序
     /// 任务调度器启动时会自动在队列中插入它作为第一个用户程序
     pub static ref ORIGIN_USER_PROC: Arc<TaskControlBlock> = Arc::new(
-        TaskControlBlock::from_app_name(ORIGIN_USER_PROC_NAME).unwrap()
+        TaskControlBlock::from_app_name(ROOT_DIR, ORIGIN_USER_PROC_NAME, 0).unwrap()
     );
 }

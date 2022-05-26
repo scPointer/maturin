@@ -12,6 +12,7 @@ use crate::arch::stdin::getchar;
 use crate::task::{get_current_task};
 use crate::utils::raw_ptr_to_ref_str;
 use crate::file::{OpenFlags, open_file, Pipe};
+use crate::constants::{ROOT_DIR, AT_FDCWD};
 
 const FD_STDIN: usize = 0;
 const FD_STDOUT: usize = 1;
@@ -51,15 +52,21 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
 }
 
 /// 打开文件，返回对应的 fd。如打开失败，则返回 -1
-pub fn sys_open(path: *const u8, flags: u32) -> isize {
+pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
     // 目前认为所有用户程序都在根目录下，所以直接把路径当作文件名
-    let file_name = unsafe { raw_ptr_to_ref_str(path) }; 
-    if let Some(node) = open_file(file_name, OpenFlags::from_bits(flags).unwrap()) {
-        if let Ok(fd) = tcb_inner.fd_manager.push(node) {
-            return fd as isize
+    let file_name = unsafe { raw_ptr_to_ref_str(path) };
+    if dir_fd == AT_FDCWD {
+        let dir = tcb_inner.dir.as_str();
+        if let Some(node) = open_file(dir, file_name, OpenFlags::from_bits(flags).unwrap()) {
+            if let Ok(fd) = tcb_inner.fd_manager.push(node) {
+                return fd as isize
+            }
         }
+    } else {
+        // 否则需要去找 dir_fd 获取路径
+        unimplemented!();
     }
     -1
 }

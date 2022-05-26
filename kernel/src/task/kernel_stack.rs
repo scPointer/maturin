@@ -19,7 +19,8 @@ pub struct KernelStack {
 impl KernelStack {
     /// 创建内核栈并申请内存
     pub fn new() -> OSResult<Self> {
-        if let Some(frame) = Frame::new_contiguous(KERNEL_STACK_SIZE / PAGE_SIZE, 9) {
+        // if let Some(frame) = Frame::new_contiguous(KERNEL_STACK_SIZE / PAGE_SIZE, 9) {
+            if let Some(frame) = Frame::new_contiguous(KERNEL_STACK_SIZE / PAGE_SIZE, 0) {
             Ok(KernelStack { frame: frame })
         } else {
             Err(OSError::Task_RunOutOfMemory)

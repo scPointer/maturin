@@ -29,7 +29,7 @@ use crate::error::{OSError, OSResult};
 /// A set of virtual memory areas with the associated page table.
 pub struct MemorySet {
     areas: BTreeMap<usize, VmArea>,
-    pt: PageTable,
+    pub pt: PageTable,
     is_user: bool,
 }
 
@@ -129,7 +129,7 @@ impl MemorySet {
         Ok(())
     }
     */
-    /// Remove the area `[start_addr, end_addr)` from `MemorySet`.
+    /// 删除区间 [start_addr, end_addr)
     pub fn pop(&mut self, start: VirtAddr, end: VirtAddr) -> OSResult {
         if start >= end {
             println!("invalid memory region: [{:#x?}, {:#x?})", start, end);
@@ -205,15 +205,17 @@ impl MemorySet {
         }
     }
 
+    // 清空 TLB
     pub fn flush_tlb(&self) {
         self.pt.flush_tlb(None);
     }
     
-    /// Activate the associated page table.
+    /// 切换到这个 MemorySet 内的页表
     pub unsafe fn activate(&self) {
         self.pt.set_current()
     }
 
+    /// 包装读写操作
     fn read_write(
         &self,
         start: VirtAddr,
@@ -244,6 +246,7 @@ impl MemorySet {
         Ok(())
     }
 
+    /// 读操作
     pub fn read(
         &self,
         start: VirtAddr,
@@ -259,6 +262,7 @@ impl MemorySet {
         })
     }
 
+    /// 写操作
     pub fn write(
         &self,
         start: VirtAddr,
@@ -305,7 +309,7 @@ impl Debug for MemorySet {
     }
 }
 
-/// Re-build a fine-grained kernel page table, push memory segments to kernel memory set.
+/// 初始化 MemorySet，加载所有内存段
 fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
     extern "C" {
         fn stext();
@@ -394,28 +398,24 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
 
     // 测试环境，需要加载文件系统镜像到内存中
     if IS_TEST_ENV {
-        // 如果是测试环境的文件系统镜像，默认qemu已挂载好了不需要
-        // 否则，镜像在 data 段里，需要手动把它加载到 device 对应位置
-        // 目前的实现不考虑把修改后的文件系统写回的情况
         if !IS_PRELOADED_FS_IMG {
             extern "C" {
                 fn img_start();
                 fn img_end();
             }
             println!("img start {:x}, img_end {:x}", img_start as usize, img_end as usize);
-            let data_len = img_end as usize - img_start as usize;
-            let mut pma = PmAreaLazy::new(page_count(data_len))?;
-            let data = unsafe { core::slice::from_raw_parts(img_start as *const u8, data_len) };
-            pma.write(0, data)?;
-            ms.push(VmArea::new(
-                phys_to_virt(DEVICE_START),
-                phys_to_virt(DEVICE_END),
+            let pstart = virt_to_phys(img_start as usize);
+            let pend = virt_to_phys(img_end as usize);
+            let offset = DEVICE_START - pstart;
+            // 文件系统的内存映射
+            ms.push(VmArea::from_fixed_pma(
+                pstart,
+                pend,
+                PHYS_VIRT_OFFSET + offset,
                 PTEFlags::READ | PTEFlags::WRITE,
-                Arc::new(Mutex::new(pma)),
-                "fs_in_memory"
+                "fs_in_memory",
             )?)?;
         } else {
-            // 文件系统的内存映射
             ms.push(VmArea::from_fixed_pma(
                 DEVICE_START,
                 DEVICE_END,
@@ -429,16 +429,41 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
     Ok(())
 }
 
+/// 加载 data 段中的文件系统。必须在测试环境且非预载文件系统的情况下调用。
+/// 即 IS_TEST_ENV && !IS_PRELOADED_FS_IMG
+fn load_fs_force() {
+    extern "C" {
+        fn img_start();
+        fn img_end();
+    }
+    println!("img start {:x}, img_end {:x}", img_start as usize, img_end as usize);
+    let data_len = img_end as usize - img_start as usize;
+    // println!("get data");
+    let src = unsafe { core::slice::from_raw_parts(img_start as *const u8, data_len) };
+    let dst = unsafe { core::slice::from_raw_parts_mut(DEVICE_START as *mut u8, data_len)};
+    dst.copy_from_slice(src);
+    unsafe { println!("data[0]={}", (DEVICE_START as *mut u8).read_volatile()); }
+}
+
 lazy_static::lazy_static! {
     #[repr(align(64))]
     pub static ref KERNEL_MEMORY_SET: Mutex<MemorySet> = {
         let mut ms = MemorySet::new_kernel();
         init_kernel_memory_set(&mut ms).unwrap();
+        // 如果是测试环境的文件系统镜像，默认qemu已挂载好了不需要
+        // 否则，镜像在 data 段里，需要手动把它加载到 device 对应位置
+        // 目前的实现不考虑把修改后的文件系统写回的情况
+        /*
+        if IS_TEST_ENV && !IS_PRELOADED_FS_IMG {
+            load_fs_force();
+        }
+        */
         println!("kernel memory set init end:\n{:#x?}", ms);
         Mutex::new(ms)
     };
 }
 
+/// 处理来自内核的异常中断
 pub fn handle_kernel_page_fault(vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
     println!(
         "kernel page fault @ {:#x} with access {:?}",
@@ -447,13 +472,22 @@ pub fn handle_kernel_page_fault(vaddr: VirtAddr, access_flags: PTEFlags) -> OSRe
     KERNEL_MEMORY_SET.lock().handle_page_fault(vaddr, access_flags)
 }
 
-/// Initialize the kernel memory set and activate kernel page table.
+/// 切换到 KERNEL_MEMORY_SET 中的页表。
+/// 每个核启动时都需要调用
 pub fn enable_kernel_page_table() {
     unsafe { KERNEL_MEMORY_SET.lock().activate() };
 }
 
+
+fn map_kernel_regions(ms: &mut MemorySet) {
+    let kernel_ms = KERNEL_MEMORY_SET.lock();
+    let kernel_pt = &kernel_ms.pt;
+    unsafe { ms.pt.map_kernel_regions(kernel_pt) };
+}
+
 pub fn new_memory_set_for_task() -> OSResult<MemorySet> {
     let mut ms = MemorySet::new_user();
-    init_kernel_memory_set(&mut ms).unwrap();
+    //init_kernel_memory_set(&mut ms).unwrap();
+    map_kernel_regions(&mut ms);
     Ok(ms)
 }
