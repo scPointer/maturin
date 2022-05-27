@@ -21,25 +21,27 @@ pub fn load_testcases(scheduler: &mut Scheduler) {
 }
 
 pub const TESTCASES: &[&str] = &[
-    /*
     "brk",
     "chdir",
     "clone",
-    */
     "close",
-    /*
     "dup",
     "dup2",
     "execve",
     "exit",
     "fork",
+    /*
     "fstat",
+    */
     "getcwd",
+    /*
     "getdents",
+    */
     "getpid",
     "getppid",
     "gettimeofday",
     "mkdir_",
+    /*
     "mmap",
     "mount",
     "munmap",
@@ -47,18 +49,17 @@ pub const TESTCASES: &[&str] = &[
     "open",
     //"start",
     "openat",
-    /*
     "pipe",
     "read",
     "sleep",
-    "test_echo",
     "times",
+    /*
     "umount",
     "uname",
     "unlink",
+    */
     "wait",
     "waitpid",
     "write",
     "yield",
-    */
 ];

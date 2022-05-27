@@ -44,23 +44,49 @@ impl FdManager {
         };
         new_manager.files.resize(self.files.len(), None);
         for fd in 0..self.files.len() {
+            // 现在可以直接分配特定 fd 了
+            if let Some(file) = &self.files[fd] {
+                // 暴力分配 fd。
+                // 因为我们知道新创建的 new_manager 是空的，但 fd_allocator 自己不知道，所以要 unsafe
+                unsafe { new_manager.fd_allocator.alloc_exact(fd); }
+                new_manager.push(file.clone());
+            }
+            /*
             match &self.files[fd] {
                 // 为了构造相同的 fd_allocator，这里需要先 alloc，等复制完 files 再 dealloc
                 None => { new_manager.fd_allocator.alloc(); }
                 Some(file) => { new_manager.push(file.clone()); }
             }
+            */
         }
+        /*
         for fd in 0..self.files.len() {
             if self.files[fd].is_none() {
                 // 为了构造相同的 fd_allocator，这里需要手动 dealloc
                 new_manager.fd_allocator.dealloc(fd);
             }
         }
+        */
         new_manager
     }
     /// 复制一个 fd 中的文件到新的 fd 上
-    pub fn copy_fd(&mut self, old_fd: usize) -> OSResult<usize> {
+    pub fn copy_fd_anywhere(&mut self, old_fd: usize) -> OSResult<usize> {
         self.push(self.get_file(old_fd)?)
+    }
+    /// 复制一个 fd 到指定的新 fd 上，返回是否成功
+    pub fn copy_fd_to(&mut self, old_fd: usize, new_fd: usize) -> bool {
+        self.get_file(old_fd).map(|file| {
+            if self.fd_allocator.alloc_exact_if_possible(new_fd) {
+                // 因为已经分配了，所以不走 self.push
+                if self.files.len() <= new_fd {
+                    self.files.resize(new_fd + 1, None);
+                }
+                self.files[new_fd] = Some(file);
+                Ok(())
+            } else {
+                Err(())
+            }
+        }).is_ok()
     }
     /// 插入一个新文件
     pub fn push(&mut self, file: Arc<dyn File>) -> OSResult<usize> {

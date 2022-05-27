@@ -50,5 +50,7 @@ pub use device::{
     list_files_at_root,
     open_file,
     check_file_exists,
+    check_dir_exists,
     load_testcases,
+    mkdir,
 };

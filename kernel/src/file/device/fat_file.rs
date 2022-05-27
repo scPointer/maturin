@@ -47,11 +47,59 @@ impl FatFile {
 impl File for FatFile {
     /// 读取文件
     fn read(&self, buf: &mut [u8]) -> Option<usize> {
-        self.inner.lock().read(buf).ok()
+        if !self.readable {
+            return None
+        }
+        let mut inner = self.inner.lock();
+        let len = buf.len();
+        let mut pos = 0;
+        while pos < len {
+            match inner.read(&mut buf[pos..]) {
+                Ok(read_len) => {
+                    if read_len == 0 {
+                        break;
+                    } else {
+                        pos += read_len;
+                    }
+                }
+                Err(_) => {
+                    if pos == 0 { // 如果什么都没读到，则报错
+                        return None
+                    } else { //否则说明还是读了一些的
+                        return Some(pos)
+                    }
+                }
+            }
+        };
+        Some(pos)
     }
     /// 写入文件
     fn write(&self, buf: &[u8]) -> Option<usize> {
-        self.inner.lock().write(buf).ok()
+        if !self.writable {
+            return None
+        }
+        let mut inner = self.inner.lock();
+        let len = buf.len();
+        let mut pos = 0;
+        while pos < len {
+            match inner.write(&buf[pos..]) {
+                Ok(write_len) => {
+                    if write_len == 0 {
+                        break;
+                    } else {
+                        pos += write_len;
+                    }
+                }
+                Err(_) => {
+                    if pos == 0 {
+                        return None
+                    } else {
+                        return Some(pos)
+                    }
+                }
+            }
+        };
+        Some(pos)
     }
     /// 读取所有数据
     unsafe fn read_all(&self) -> Vec<u8> {

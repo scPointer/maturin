@@ -223,6 +223,7 @@ fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
             if let Some(mut child_inner) = child.inner.try_lock() {
                 if let Some(mut start_proc_tcb_inner) = start_proc.inner.try_lock() {
                     child_inner.parent = Some(Arc::downgrade(&ORIGIN_USER_PROC));
+                    child_inner.ppid = 0;
                     start_proc_tcb_inner.children.push(child.clone());
                     // 拿到锁并修改完成后，退到外层循环去修改下一个子进程
                     break;

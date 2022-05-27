@@ -13,6 +13,8 @@ use crate::loaders::{ElfLoader, parse_user_app};
 use crate::memory::{MemorySet, Pid, new_memory_set_for_task};
 use crate::trap::TrapContext;
 use crate::file::{FdManager, check_file_exists};
+use crate::timer::get_time;
+use crate::constants::USER_STACK_OFFSET;
 use crate::arch::get_cpu_id;
 
 use super::{TaskContext, KernelStack};
@@ -44,6 +46,12 @@ pub struct TaskControlBlockInner {
     /// - 因为拿到 Pid 代表“拥有”这个 id 且 Drop 时会自动释放，所以此处用 usize 而不是 Pid。
     /// - 又因为它可能会在父进程结束时被修改为初始进程，所以是可变的。
     pub ppid: usize,
+    /// 进程开始运行的时间
+    pub start_tick: usize,
+    /// 用户堆的堆顶。
+    /// 用户堆和用户栈共用空间，反向增长，即从 USER_STACK_OFFSET 开始往上增加。
+    /// 本来不应该由内存记录的，但 brk() 系统调用要用
+    pub user_heap_top: usize,
     /// 任务执行状态
     pub task_status: TaskStatus,
     /// 上下文信息，用于切换，包含所有必要的寄存器
@@ -97,6 +105,8 @@ impl TaskControlBlock {
                 inner: Mutex::new(TaskControlBlockInner {
                     dir: String::from(app_dir),
                     ppid: ppid,
+                    start_tick: get_time(),
+                    user_heap_top: USER_STACK_OFFSET,
                     task_cx: TaskContext::goto_restore(stack_top),
                     task_status: TaskStatus::Ready,
                     vm: vm,
@@ -111,9 +121,11 @@ impl TaskControlBlock {
     }
     /// 从 fork 系统调用初始化一个TCB，并设置子进程对用户程序的返回值为0。
     /// 
+    /// 参数 user_stack 为是否指定用户栈地址。如为 None，则沿用同进程的栈，否则使用该地址。由用户保证这个地址是有效的。
+    /// 
     /// 这里只把父进程内核栈栈底的第一个 TrapContext 复制到子进程，
     /// 所以**必须保证对这个函数的调用是来自用户异常中断，而不是内核异常中断**。因为只有这时内核栈才只有一层 TrapContext。
-    pub fn from_fork(self: &Arc<TaskControlBlock>) -> Arc<Self> {
+    pub fn from_fork(self: &Arc<TaskControlBlock>, user_stack: Option<usize>) -> Arc<Self> {
         //println!("start fork");
         let mut inner = self.inner.lock();
         // 与 new 方法不同，这里从父进程的 MemorySet 生成子进程的
@@ -124,6 +136,10 @@ impl TaskControlBlock {
         unsafe { trap_context = *self.kernel_stack.get_first_context(); }
         // 手动设置返回值为0，这样两个进程返回用户时除了返回值以外，都是完全相同的
         trap_context.set_a0(0);
+        // 设置用户栈
+        if let Some(user_stack_pos) = user_stack {
+            trap_context.set_sp(user_stack_pos);
+        }
         let stack_top = kernel_stack.push_first_context(trap_context);
         let pid = Pid::new().unwrap();
         let dir = String::from(&inner.dir[..]);
@@ -135,6 +151,8 @@ impl TaskControlBlock {
                 Mutex::new(TaskControlBlockInner {
                     dir: dir,
                     ppid: ppid,
+                    start_tick: get_time(),
+                    user_heap_top: USER_STACK_OFFSET,
                     task_cx: TaskContext::goto_restore(stack_top),
                     task_status: TaskStatus::Ready,
                     vm: vm,
@@ -154,13 +172,16 @@ impl TaskControlBlock {
     /// 2. 修改内核栈栈底的第一个 TrapContext 为新的用户程序的入口
     /// 3. 将传入的 args 作为用户程序执行时的参数
     /// 
-    /// 如找不到对应的用户程序，则不修改当前进程且返回 False
+    /// 如找不到对应的用户程序，则不修改当前进程且返回 False。
+    /// 
+    /// 注意 exec 不会清空用户程序执行的时间
     pub fn exec(&self, app_name: &str, args: Vec<String>) -> bool {
         let mut inner = self.inner.lock();
         if !check_file_exists(inner.dir.as_str(), app_name) {
             return false
         }
-        let mut inner = self.inner.lock();
+        // 清空用户堆
+        inner.user_heap_top = USER_STACK_OFFSET;
         // 清空 MemorySet 中用户段的地址
         inner.vm.clear_user_and_save_kernel();
         // 如果用户程序调用时没有参数，则手动加上程序名作为唯一的参数
@@ -169,11 +190,11 @@ impl TaskControlBlock {
         // 但是其他函数调用 exec 时只会传入空的 args (包括初始进程)
         // 为了鲁棒性考虑，此处不修改用户库，而是手动分别这两种情况
         let args = if args.len() == 0 { vec![String::from(app_name)] } else { args };
-        /*
+        
         for i in 0..args.len() {
             println!("[cpu {}] args[{}] = '{}'", get_cpu_id(), i, args[i])
         }
-        */
+        
         // 然后把新的信息插入页表和 VmArea
         let dir = String::from(&inner.dir[..]);
         parse_user_app(dir.as_str(), app_name, &mut inner.vm, args)
@@ -218,6 +239,29 @@ impl TaskControlBlock {
     pub fn get_pid_num(&self) -> usize {
         self.pid.0
     }
+    /// 获取 ppid 的值
+    pub fn get_ppid(&self) -> usize {
+        self.inner.lock().ppid
+    }
+    /// 获取程序开始时间
+    pub fn get_start_tick(&self) -> usize {
+        self.inner.lock().start_tick
+    }
+    /// 获取用户堆顶地址
+    pub fn get_user_heap_top(&self) -> usize {
+        self.inner.lock().user_heap_top
+    }
+    /// 重新设置堆顶地址，返回是否成功。
+    /// 新地址需要在用户栈内，并且不能碰到目前的栈
+    pub fn set_user_heap_top(&self, new_top: usize) -> bool {
+        let user_sp = unsafe { (*self.kernel_stack.get_first_context()).get_sp() };
+        if new_top >= USER_STACK_OFFSET && new_top < user_sp {
+            self.inner.lock().user_heap_top = new_top;
+            true
+        } else {
+            false
+        }
+    }
     /// 如果当前进程已是运行结束，则获取其 exit_code，否则返回 None
     pub fn get_code_if_exit(&self) -> Option<i32> {
         let inner = self.inner.try_lock()?; 
@@ -226,6 +270,7 @@ impl TaskControlBlock {
             _ => None
         }
     }
+    
 }
 
 /// 任务执行状态

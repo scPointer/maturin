@@ -28,7 +28,7 @@ use crate::arch::get_cpu_id;
 use crate::constants::{ORIGIN_USER_PROC_NAME, ROOT_DIR};
 
 use switch::{__switch, __move_to_context};
-pub use task::{TaskControlBlock, TaskStatus};
+pub use task::{TaskControlBlock, TaskControlBlockInner, TaskStatus};
 pub use context::TaskContext;
 pub use kernel_stack::KernelStack;
 pub use scheduler::{push_task_to_scheduler, fetch_task_from_scheduler};

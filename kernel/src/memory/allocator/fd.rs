@@ -30,4 +30,23 @@ impl FdAllocator {
     pub fn dealloc(&mut self, fd: usize) {
         self.0.dealloc(fd)
     }
+    #[allow(unused)]
+    pub fn is_allocated(&mut self, fd: usize) -> bool {
+        !self.0.test(fd)
+    }
+    #[allow(unused)]
+    /// 分配一个确定的 fd。这个函数不检查 fd 是否已经被分配
+    pub unsafe fn alloc_exact(&mut self, fd: usize) {
+        self.0.remove(fd..fd+1)
+    }
+    #[allow(unused)]
+    /// 尝试分配 fd，如果成功(即该 fd 之前没有被分配)，则返回 true
+    pub fn alloc_exact_if_possible(&mut self, fd: usize) -> bool {
+        if !self.is_allocated(fd) {
+            unsafe { self.alloc_exact(fd); }
+            true
+        } else {
+            false
+        }
+    }
 }

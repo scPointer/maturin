@@ -62,3 +62,5 @@ pub const DEVICE_END: usize = DEVICE_START + FS_IMG_SIZE;
 pub const ROOT_DIR: &str = "./";
 /// sys_open 时的参数，表示在当前目录下
 pub const AT_FDCWD: i32 = -100;
+/// sys_clone 时的参数，表示创建子进程
+pub const SIGCHLD: usize = 17;

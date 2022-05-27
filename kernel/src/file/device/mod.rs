@@ -78,7 +78,14 @@ pub fn list_files_at_root() {
 /// 函数会过滤 "./" ，但不会过滤 "../"。
 /// 如果支持后者，就可能需要处理 dir_name，这样开销更大也更复杂
 fn split_path_and_file<'a>(dir_name: &str, file_path: &'a str) -> (String, &'a str) {
-    let mut dir = String::from(dir_name);
+    let mut dir = String::new();
+    //一般来说，根目录是从 ./ 开始，所以 dir_name 也是 ./ 开头
+    if dir_name.starts_with("/") { // 但如果用户通过 getcwd 等方式获取目录，则这样的目录是以 / 开头的
+        dir += ".";
+    } else if !dir_name.starts_with("./") { //又或者用户试图输入一个绝对路径，这时需要把它变成相对于根路径的路径
+        dir += "./"
+    }
+    dir += dir_name;
     let mut pos = 0;
     loop {
         if let Some(new_pos) = (&file_path[pos..]).find('/') {
@@ -199,12 +206,30 @@ pub fn check_file_exists(dir_name: &str, file_path: &str) -> bool {
     }).map_or(false, |r| r)
 }
 
+/// 创建目录，返回是否成功
+pub fn mkdir(dir_name: &str, file_path: &str) -> bool {
+    let root = MEMORY_FS.root_dir();
+    let (real_dir, file_name) = split_path_and_file(dir_name, file_path);
+    inner_open_dir(root, real_dir.as_str()).map(|dir| {
+        // 检查目录或者同名文件是否已存在
+        for entry in dir.iter() {
+            let file = entry.unwrap();
+            if file.file_name() == file_name {
+                return false;
+            }
+        }
+        dir.create_dir(file_name).is_ok()
+    }).map_or(false, |r| r)
+}
+
 /// 检查目录是否存在
+/// 要求 dir_name 使用 os 中的格式，即以 "./" 开头
 pub fn check_dir_exists(dir_name: &str) -> bool {
     //let fs = MEMORY_FS.lock();
     //let root = fs.root_dir();
     let root = MEMORY_FS.root_dir();
-    root.open_dir(dir_name).is_ok()
+    // 去掉字符串开头的 '.' 或者 "./"
+    inner_open_dir(root, dir_name).is_some()
 }
 
 

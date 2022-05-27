@@ -26,6 +26,10 @@ impl TrapContext {
     pub fn set_sp(&mut self, sp: usize) {
         self.x[2] = sp;
     }
+    /// 获取当前 sp 的值
+    pub fn get_sp(&self) -> usize {
+        self.x[2]
+    }
     /// 设置 a0 寄存器。
     /// 对于 sys_exec，它是参数 argc
     pub fn set_a0(&mut self, a0: usize) {
