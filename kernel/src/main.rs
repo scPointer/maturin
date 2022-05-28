@@ -84,7 +84,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     for other_cpu in constants::FIRST_CPU_ID..constants::LAST_CPU_ID {
         if other_cpu != cpu_id {
             //println!("other_cpu {}", other_cpu);
-            arch::start_hart(other_cpu, memory::virt_to_phys(_start_secondary as usize), 0);
+            //arch::start_hart(other_cpu, memory::virt_to_phys(_start_secondary as usize), 0);
         }
     }
 
