@@ -31,6 +31,10 @@ $ make run
 
 依赖库，提供在使用时关中断的 Mutex ，来自方便在内核常开中断
 
+#### /dependencies/core2
+
+提供 no_std 下原来 std::io 类型的相关 Trait 实现，来自 `"https://github.com/bbqsrc/core2"`。
+
 #### /dependencies/easy-fs
 
 之前使用的文件系统，来自 `rCore`，是`https://github.com/rcore-os/rCore-Tutorial-v3` 的一部分。

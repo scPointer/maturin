@@ -21,7 +21,7 @@ categories = ["filesystem"]
 license = "MIT"
 repository = "https://github.com/rafalh/rust-fscommon"
 [dependencies]
-core2 = { version = "0.4", default-features = false, features = ["nightly"] }
+core2 = { path = "../dependencies/core2", version = "0.4", default-features = false, features = ["nightly"] }
 
 [dependencies.log]
 version = "0.4"

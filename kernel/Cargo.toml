@@ -11,10 +11,10 @@ buddy_system_allocator = "= 0.6"
 bitflags = "= 1.3.2"
 xmas-elf = "0.7"
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
-lock = { path = "../dependencies/kernel-sync" }
 riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
-bitmap-allocator = { path = "../dependencies/bitmap-allocator" }
 virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers" }
+bitmap-allocator = { path = "../dependencies/bitmap-allocator" }
+lock = { path = "../dependencies/kernel-sync" }
 easy-fs = { path = "../dependencies/easy-fs" }
 fatfs = { path = "../rust-fatfs", version = "0.4", default-features = false, features = ["alloc", "lfn"] }
 fscommon = { path = "../fscommon", version = "0.1.1" }
