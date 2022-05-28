@@ -2,20 +2,13 @@ ARCH ?= riscv64
 MODE ?= debug
 USERMODE ?= release
 PLATFORM ?= qemu
-SMP ?= 6 # if virt, 4; else if sifive_u, 5
+SMP ?= 4
 MACHINE ?= sifive_u 
 
 OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy
 GDB ?= riscv64-unknown-elf-gdb
 
-
-
-ifeq ($(MACHINE), sifive_u)
-SMP := 6
-else
-SMP := 4
-endif
 # BOOTLOADER := ../bin/fw_jump.bin
 export PLATFORM
 
@@ -39,7 +32,7 @@ ifeq ($(MODE), release)
 build_args += --release
 endif
 
-qemu_args := -nographic -smp $(SMP) -m 2G
+qemu_args := -nographic -smp $(SMP) -m 8G
 ifeq ($(ARCH), riscv64)
 qemu_args += \
 	-machine $(MACHINE) \

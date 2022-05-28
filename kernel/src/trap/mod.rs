@@ -95,18 +95,18 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14],cx.x[15]]) as usize;
         }
         Trap::Exception(Exception::StoreFault) => {
-            println!("[kernel] StoreFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
+            info!("[kernel] StoreFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
             exit_current_task(-1);
         }
         Trap::Exception(Exception::IllegalInstruction) => {
-            println!("[cpu {}] IllegalInstruction in application, sepc = {:x}, stval = {:#x}, kernel killed it.", get_cpu_id(), cx.sepc, stval);
+            info!("[cpu {}] IllegalInstruction in application, sepc = {:x}, stval = {:#x}, kernel killed it.", get_cpu_id(), cx.sepc, stval);
             exit_current_task(-1);
         }
         Trap::Exception(Exception::InstructionPageFault) => {
-            println!("[cpu {}] InstructionPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
+            info!("[cpu {}] InstructionPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
             
             if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::EXECUTE) {
-                println!("{:#?}", e);
+                info!("{:#?}", e);
                 exit_current_task(-1);
             }
             //PageFault(stval, PTEFlags::USER | PTEFlags::EXECUTE)
@@ -120,17 +120,17 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             */
             //println!("pc = {:x}", pc);
 
-            println!("[cpu {}] LoadPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
+            info!("[cpu {}] LoadPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
             if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::READ) {
-                println!("{:#?}", e);
+                info!("{:#?}", e);
                 exit_current_task(-1);
             }
             //PageFault(stval, PTEFlags::USER | PTEFlags::READ)
         }
         Trap::Exception(Exception::StorePageFault) => {
-            println!("[cpu {}] StorePageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
+            info!("[cpu {}] StorePageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
             if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::WRITE) {
-                println!("{:#?}", e);
+                info!("{:#?}", e);
                 exit_current_task(-1);
             }
             //PageFault(stval, PTEFlags::USER | PTEFlags::WRITE)

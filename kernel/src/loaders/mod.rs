@@ -65,7 +65,7 @@ impl<'a> ElfLoader<'a> {
         vm: &mut MemorySet,
         args: Vec<String>,
     ) -> OSResult<(VirtAddr, VirtAddr)> {
-        println!("creating MemorySet from ELF...");
+        info!("creating MemorySet from ELF...");
 
         // push ELF segments to `vm`
         let mut elf_base_vaddr = 0;

@@ -21,12 +21,14 @@ pub const CLOCK_FREQ: usize = 1250_0000; //freq for qemu -m virt
 pub const IS_SINGLE_CORE: bool = true;
 /// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序
 pub const SPIN_LOOP_AFTER_BOOT: bool  = false;
+/// 运行时是否打印基本的信息
+pub const BASE_INFO: bool = false;
 /// 页表中每页的大小
 pub const PAGE_SIZE: usize = 0x1000; // 4 KB
 /// 即 log2(PAGE_SIZE)
 pub const PAGE_SIZE_BITS: usize = 0xc; // 4 KB = 2^12
 /// 内核栈大小
-pub const KERNEL_STACK_SIZE: usize = 0x10_0000; // 1 MB, per CPU
+pub const KERNEL_STACK_SIZE: usize = 0x8_000; // 1 MB
 /// 内核堆的大小
 pub const KERNEL_HEAP_SIZE: usize = 0x40_0000; // 4 MB
 /// 用户栈大小

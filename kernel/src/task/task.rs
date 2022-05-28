@@ -14,7 +14,7 @@ use crate::memory::{MemorySet, Pid, new_memory_set_for_task};
 use crate::trap::TrapContext;
 use crate::file::{FdManager, check_file_exists};
 use crate::timer::get_time;
-use crate::constants::USER_STACK_OFFSET;
+use crate::constants::{USER_STACK_OFFSET, NO_PARENT};
 use crate::arch::get_cpu_id;
 
 use super::{TaskContext, KernelStack};
@@ -92,7 +92,7 @@ impl TaskControlBlock {
         // 找到用户名对应的文件，将用户地址段信息插入页表和 VmArea
         parse_user_app(app_dir, app_name, &mut vm, args)
             .map(|(user_entry, user_stack)| {
-            //println!("user MemorySet {:#x?}", vm);
+            // println!("user MemorySet {:#x?}", vm);
             // 初始化内核栈，它包含关于进入用户程序的所有信息
             let kernel_stack = KernelStack::new().unwrap();
             //kernel_stack.print_info();
@@ -139,8 +139,10 @@ impl TaskControlBlock {
         // 设置用户栈
         if let Some(user_stack_pos) = user_stack {
             trap_context.set_sp(user_stack_pos);
+            //println!("sepc {:x} stack {:x}", trap_context.sepc, trap_context.get_sp());
         }
         let stack_top = kernel_stack.push_first_context(trap_context);
+        
         let pid = Pid::new().unwrap();
         let dir = String::from(&inner.dir[..]);
         let ppid = self.pid.0;
@@ -241,7 +243,12 @@ impl TaskControlBlock {
     }
     /// 获取 ppid 的值
     pub fn get_ppid(&self) -> usize {
-        self.inner.lock().ppid
+        let ppid = self.inner.lock().ppid;
+        if ppid == NO_PARENT { 
+            1 
+        } else {
+            ppid
+        }
     }
     /// 获取程序开始时间
     pub fn get_start_tick(&self) -> usize {

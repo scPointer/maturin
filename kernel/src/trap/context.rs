@@ -42,7 +42,7 @@ impl TrapContext {
     }
     /// 初始化用户程序的中断信息，用于第一次进入用户程序前
     pub fn app_init_context(entry: usize, sp: usize) -> Self {
-        println!("init app entry {:x} sp {:x}", entry, sp);
+        info!("init app entry {:x} sp {:x}", entry, sp);
         let mut sstatus = sstatus::read(); // 记录此时的 sstatus 寄存器
         sstatus.set_spp(SPP::User); // 把中断推出后的模式改为用户模式
         let mut cx = Self {

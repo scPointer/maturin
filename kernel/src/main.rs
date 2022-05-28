@@ -78,18 +78,16 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     memory::enable_kernel_page_table(); // 构造并切换到内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec
     arch::setSUMAccessOpen(); // 修改 sstatus 的 SUM 位，使内核可以读写USER页表项中的数据
-    trap::enable_timer_interrupt(); // 开启时钟中断
-    timer::set_next_trigger(); // 设置时钟中断频率
+    //trap::enable_timer_interrupt(); // 开启时钟中断
+    //timer::set_next_trigger(); // 设置时钟中断频率
     
-    // 等待所有核启动完成
-    // 这一步是为了进行那些**需要所有CPU都启动后才能进行的全局初始化操作**
     // file::list_apps_names_at_root_dir(); // 展示所有用户程序的名字
-    file::list_files_at_root();
+    file::list_files_at_root(); // 展示所有用户程序的名字
     extern {
         fn _start_secondary();
     }
     let cpu_id = arch::get_cpu_id();
-    println!("CPU [{}] bootstrap", cpu_id);
+    info!("CPU [{}] bootstrap", cpu_id);
     for other_cpu in constants::FIRST_CPU_ID..constants::LAST_CPU_ID {
         if other_cpu != cpu_id {
             //println!("other_cpu {}", other_cpu);
@@ -116,11 +114,11 @@ pub extern "C" fn start_kernel_secondary(_arg0: usize, _arg1: usize) -> ! {
     memory::enable_kernel_page_table(); // 构造并切换到内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec
     arch::setSUMAccessOpen(); // 修改 sstatus 的 SUM 位，使内核可以读写USER页表项中的数据
-    trap::enable_timer_interrupt(); // 开启时钟中断
-    timer::set_next_trigger(); // 设置时钟中断频率
+    //trap::enable_timer_interrupt(); // 开启时钟中断
+    //timer::set_next_trigger(); // 设置时钟中断频率
 
     let cpu_id = arch::get_cpu_id();
-    println!("I'm CPU [{}]", cpu_id);
+    info!("I'm CPU [{}]", cpu_id);
 
     // 全局初始化结束
     if constants::SPIN_LOOP_AFTER_BOOT || constants::IS_SINGLE_CORE {

@@ -12,9 +12,9 @@ pub use crate::constants::{ROOT_DIR, NO_PARENT};
 /// 加载用户程序。
 /// 因为是调度器 GLOBAL_TASK_SCHEDULER 初始化时就加载，所以不能用 task::push_task_to_scheduler
 pub fn load_testcases(scheduler: &mut Scheduler) {
-    println!("read testcases");
+    info!("read testcases");
     for user_prog in TESTCASES {
-        println!("{}", user_prog);
+        info!("{}", user_prog);
         let tcb = TaskControlBlock::from_app_name(ROOT_DIR, user_prog, NO_PARENT).unwrap();
         scheduler.push(Arc::new(tcb));
     }

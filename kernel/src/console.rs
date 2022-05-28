@@ -6,8 +6,23 @@ pub fn print(args: Arguments) {
 }
 
 #[allow(dead_code)]
+pub fn info(args: Arguments) {
+    if crate::constants::BASE_INFO {
+        crate::arch::stdout::stdout_puts(args);
+    }
+}
+
+#[allow(dead_code)]
 pub fn error_print(args: Arguments) {
     crate::arch::stdout::stderr_puts(args);
+}
+
+/// 仅在开启信息输出时，打印格式字串
+#[macro_export]
+macro_rules! info {
+    ($fmt: literal $(, $($arg: tt)+)?) => {
+        $crate::console::info(format_args!(concat!($fmt, "\n") $(, $($arg)+)?));
+    }
 }
 
 /// 打印格式字串，无换行
