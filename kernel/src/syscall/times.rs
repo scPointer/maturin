@@ -27,6 +27,7 @@ fn get_time_f64() -> f64 {
 pub fn sys_get_time_of_day(time_spec: *mut TimeSpec) -> isize {
     unsafe {
         (*time_spec) = TimeSpec::new(get_time_f64());
+        //println!("sec = {}, nsec = {}", (*time_spec).tv_sec, (*time_spec).tv_nsec);
     }
     0
 }

@@ -33,7 +33,9 @@ pub struct TMS {
     pub tms_cstime: usize,
 }
 
-pub const nsec_per_sec: usize = 1_000_000_000;
+//pub const nsec_per_sec: usize = 1_000_000_000;
+// 因为测例库说明里的 tv_nsec 实际实现是 usec，所以要把这个量当微秒实现
+pub const nsec_per_sec: usize = 1_000_000;
 
 /// sys_gettimeofday 和 sys_nanosleep 中指定的结构体类型
 #[repr(C)]

@@ -8,7 +8,8 @@ use core::sync::atomic::{Ordering, AtomicUsize};
 use lock::Mutex;
 
 
-use crate::constants::{CPU_NUM, EMPTY_TASK, ORIGIN_USER_PROC_NAME, IS_TEST_ENV};
+//use crate::constants::{CPU_NUM, EMPTY_TASK, ORIGIN_USER_PROC_NAME};
+use crate::constants::IS_TEST_ENV;
 use crate::error::{OSResult, OSError};
 use crate::memory::{VirtAddr, PTEFlags};
 use crate::file::load_testcases;

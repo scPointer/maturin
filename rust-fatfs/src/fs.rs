@@ -1,5 +1,6 @@
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::string::String;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::sync::Arc;
 use core::borrow::BorrowMut;
 //use core::cell::{Cell, RefCell};

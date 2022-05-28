@@ -15,7 +15,7 @@ use super::{
 };
 
 use crate::constants::{
-    CPU_NUM, 
+    CPU_ID_LIMIT, 
     PAGE_SIZE, 
     USER_VIRT_ADDR_LIMIT,
     MMIO_REGIONS,
@@ -358,9 +358,9 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
     // 插入内核栈映射
     let kernel_stack = idle_stack as usize;
     let kernel_stack_top = idle_stack_top as usize;
-    let size_per_cpu = (kernel_stack_top - kernel_stack) / CPU_NUM;
+    let size_per_cpu = (kernel_stack_top - kernel_stack) / CPU_ID_LIMIT;
     // 这里默认每个核的栈等长，且依次排列在 kernel_stack 中。且默认栈的开头恰好是页面的开头(entry.S中保证)
-    for cpu_id in 0..CPU_NUM {
+    for cpu_id in 0..CPU_ID_LIMIT {
         // 加一页是为了保证内核栈溢出时可以触发异常，而不是跑到其他核的栈去
         let per_cpu_stack_bottom = kernel_stack + size_per_cpu * cpu_id + PAGE_SIZE;
         let per_cpu_stack_top = kernel_stack + size_per_cpu * (cpu_id + 1);
@@ -385,17 +385,18 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         )?)?;
     }
 
-    // 插入设备的 MMIO 映射
-    for region in MMIO_REGIONS {
-        // 这里选择恒等映射是为了兼容设备
-        ms.push(VmArea::from_identical_pma(
-            region.0,
-            region.1,
-            PTEFlags::READ | PTEFlags::WRITE,
-            "MMIO",
-        )?)?;
+    if !IS_TEST_ENV {
+        // 插入设备的 MMIO 映射
+        for region in MMIO_REGIONS {
+            // 这里选择恒等映射是为了兼容设备
+            ms.push(VmArea::from_identical_pma(
+                region.0,
+                region.1,
+                PTEFlags::READ | PTEFlags::WRITE,
+                "MMIO",
+            )?)?;
+        }
     }
-
     // 测试环境，需要加载文件系统镜像到内存中
     if IS_TEST_ENV {
         if !IS_PRELOADED_FS_IMG {

@@ -8,7 +8,7 @@ use core::cell::{RefCell, RefMut};
 use lock::Mutex;
 use lazy_static::*;
 
-use crate::constants::{CPU_NUM, IS_TEST_ENV};
+use crate::constants::{CPU_ID_LIMIT, IS_TEST_ENV, NO_PARENT};
 use crate::error::{OSResult, OSError};
 use crate::trap::TrapContext;
 use crate::memory::{VirtAddr, PTEFlags, enable_kernel_page_table};
@@ -56,7 +56,7 @@ lazy_static! {
     /// 所有 CPU 的上下文信息
     pub static ref CPU_CONTEXTS: Vec<Mutex<CpuLocal>> = {
         let mut cpu_contexts: Vec<Mutex<CpuLocal>> = Vec::new();
-        for i in 0..CPU_NUM {
+        for i in 0..CPU_ID_LIMIT {
             cpu_contexts.push(Mutex::new(CpuLocal::new()));
         }
         cpu_contexts
@@ -209,11 +209,9 @@ pub fn exec_new_task() {
 /// 所以卡在这个函数上的进程最终一定能以某种顺序依次执行完成，也就消除了死锁。
 /// 
 fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
-    // 这里调用了初始进程，而这个进程可能在某个核里
-    // 如果它正在内核态处理，则在这里会被阻塞住
-    let start_proc = ORIGIN_USER_PROC.clone();
-    //let task_inner = task.lock();
     let mut tcb_inner = task.inner.lock();
+    //let task_inner = task.lock();
+    
     for child in tcb_inner.children.iter() {
         loop {
             // 这里把获取子进程的锁放在外层，是因为如果当前进程和子进程都在这个函数里，
@@ -221,7 +219,9 @@ fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
             // 因为每个进程在进这个函数时都拿着自己的锁，所以此时只有子进程先执行完成，父进程才能继续执行。
             // 为了防止父进程反复抢 start_proc 的锁又不得不释放，所以把获取子进程的锁放在外层
             if let Some(mut child_inner) = child.inner.try_lock() {
-                if let Some(mut start_proc_tcb_inner) = start_proc.inner.try_lock() {
+                if tcb_inner.ppid == NO_PARENT || IS_TEST_ENV {
+                    child_inner.ppid = NO_PARENT;
+                } else if let Some(mut start_proc_tcb_inner) =  ORIGIN_USER_PROC.clone().inner.try_lock() {
                     child_inner.parent = Some(Arc::downgrade(&ORIGIN_USER_PROC));
                     child_inner.ppid = 0;
                     start_proc_tcb_inner.children.push(child.clone());

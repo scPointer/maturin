@@ -19,7 +19,6 @@ use crate::constants::{
     USER_VIRT_ADDR_LIMIT,
     DEVICE_START,
     DEVICE_END,
-    CPU_NUM,
 };
 
 use crate::error::{

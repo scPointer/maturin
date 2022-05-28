@@ -1,28 +1,45 @@
+//! OS运行时用到的常量
+
+#![deny(missing_docs)]
+
 #![allow(dead_code)]
-pub const BOOTSTRAP_CPU_ID: usize = 0;
-pub const CPU_NUM: usize =  4;
-pub const LAST_CPU_ID: usize = CPU_NUM - 1;
-pub const KERNEL_HEAP_SIZE: usize = 0x40_0000; // 4 MB
+/// 是否是 sifive 平台
+pub const PLATFORM_SIFIVE: bool = true;
+/// 编号最小的可用的 cpu_id
+/// - virt 下，每个核都可用，所以是从0开始
+/// - sifive 下，0号是小核，目前还用不到，所以从1开始
+pub const FIRST_CPU_ID: usize = if PLATFORM_SIFIVE { 1 } else { 0 };
+/// 指定一个特定的 cpu，用于执行启动过程中只能进行一次的初始化过程
+//pub const BOOTSTRAP_CPU_ID: usize = FIRST_CPU_ID;
+/// 最大的cpu_id再+1，可以认为是总的核数(无论是否使用)。目前在 virt 下是 4，在 sifive 下是 5
+pub const CPU_ID_LIMIT: usize =  FIRST_CPU_ID + 4;
+/// 最后一个 CPU 的编号
+pub const LAST_CPU_ID: usize = CPU_ID_LIMIT - 1;
+/// 时钟频率，和平台有关
 pub const CLOCK_FREQ: usize = 1250_0000; //freq for qemu -m virt
+/// 是否单核运行。单核运行时，则其他核只启动，不运行用户程序
 pub const IS_SINGLE_CORE: bool = true;
-
-pub const KERNEL_STACK_SIZE: usize = 0x10_0000; // 1 MB, per CPU
-
-//pub const MAX_APP_NUM: usize = 10; // 应用程序个数限制
-//pub const APP_BASE_ADDRESS: usize = 0x8020_0000;
-//pub const APP_SIZE_LIMIT: usize = 0x2_0000;
-//pub const APP_ADDRESS_END: usize = APP_BASE_ADDRESS + MAX_APP_NUM * APP_SIZE_LIMIT;
-
+/// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序
+pub const SPIN_LOOP_AFTER_BOOT: bool  = false;
+/// 页表中每页的大小
 pub const PAGE_SIZE: usize = 0x1000; // 4 KB
+/// 即 log2(PAGE_SIZE)
 pub const PAGE_SIZE_BITS: usize = 0xc; // 4 KB = 2^12
-pub const EMPTY_TASK: usize = usize::MAX;
-
+/// 内核栈大小
+pub const KERNEL_STACK_SIZE: usize = 0x10_0000; // 1 MB, per CPU
+/// 内核堆的大小
+pub const KERNEL_HEAP_SIZE: usize = 0x40_0000; // 4 MB
+/// 用户栈大小
 pub const USER_STACK_SIZE: usize = 0x1_0000; // 64 KB,
+/// 用户栈底位置。同时也是最开始的用户堆顶位置
 pub const USER_STACK_OFFSET: usize = 0x4000_0000 - USER_STACK_SIZE;
+/// 用户地址最大不能超过这个值
 pub const USER_VIRT_ADDR_LIMIT: usize = 0xFFFF_FFFF;
-
+/// 内核中虚拟地址相对于物理地址的偏移
 pub const PHYS_VIRT_OFFSET: usize = 0xFFFF_FFFF_0000_0000;
+/// 表示内存的地址段由此开始
 pub const PHYS_MEMORY_OFFSET: usize = 0x8000_0000;
+/// 表示内存的地址段到此为止
 pub const PHYS_MEMORY_END: usize = 0x8800_0000;
 
 /// 入口用户程序。OS启动后，只会启动以此为名的用户程序。
@@ -43,8 +60,8 @@ pub const MMIO_REGIONS: &[AddrArea] = &[AddrArea(0x10001000, 0x10002000)];
 
 /// 是否是比赛评测。线上评测时要求OS像一个批处理系统一样工作，这可能导致内核不会直接去拿初始进程并运行
 pub const IS_TEST_ENV: bool = true;
-/// 测试环境下，文件系统镜像是否是由
-pub const IS_PRELOADED_FS_IMG: bool = false;
+/// 测试环境下，文件系统镜像是否是由qemu引入
+pub const IS_PRELOADED_FS_IMG: bool = true;
 /// 文件系统镜像的大小。注意这个量和 fs-init 模块中 `/src/main.rs` 里生成镜像时的大小相同。
 /// 启动时会从 .data 段加载加载
 const LOCAL_FS_IMG_SIZE: usize = 16 * 2048 * 512; // 16MB
@@ -64,3 +81,5 @@ pub const ROOT_DIR: &str = "./";
 pub const AT_FDCWD: i32 = -100;
 /// sys_clone 时的参数，表示创建子进程
 pub const SIGCHLD: usize = 17;
+/// 无父进程
+pub const NO_PARENT: usize = usize::MAX;

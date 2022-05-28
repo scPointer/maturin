@@ -1,11 +1,23 @@
 ARCH ?= riscv64
 MODE ?= debug
 USERMODE ?= release
-SMP ?= 4
+PLATFORM ?= qemu
+SMP ?= 6 # if virt, 4; else if sifive_u, 5
+MACHINE ?= sifive_u 
 
 OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy
 GDB ?= riscv64-unknown-elf-gdb
+
+
+
+ifeq ($(MACHINE), sifive_u)
+SMP := 6
+else
+SMP := 4
+endif
+# BOOTLOADER := ../bin/fw_jump.bin
+export PLATFORM
 
 ifeq ($(ARCH), riscv64)
 target := riscv64imac-unknown-none-elf
@@ -20,41 +32,41 @@ kernel := $(build_path)/maturin
 kernel_img := $(build_path)/maturin.img
 fs_img := ../user/target/$(target)/$(USERMODE)/fs.img
 fat_fs_img := ../user/target/$(target)/$(USERMODE)/fat.img
-testcases_img := ../oscomp_testcases/fat.img
+testcases_img := ../fat.img
 
 build_args := --target $(target)
 ifeq ($(MODE), release)
 build_args += --release
 endif
 
-qemu_args := -nographic -smp $(SMP)
+qemu_args := -nographic -smp $(SMP) -m 2G
 ifeq ($(ARCH), riscv64)
 qemu_args += \
-	-machine virt \
+	-machine $(MACHINE) \
 	-bios default \
-	-kernel $(kernel_img) \
-	-drive file=$(fs_img),if=none,format=raw,id=x0 \
-    -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+	-kernel $(kernel_img)
+endif
 
+ifeq ($(MACHINE), virt)
+qemu_args += -drive file=$(fs_img),if=none,format=raw,id=x0
+qemu_args += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 endif
 
 .PHONY: build kernel run qemu asm clean
 
 #build: $(kernel_img) easy-fs-img
 build: $(kernel_img)
-
+	cp $(kernel_img) ../os.bin
 easy-fs-img:
 	@cd ../user && make build
 	@rm -f $(fs_img)
 	@cd ../easy-fs-fuse && cargo run --release -- -s ../user/src/bin/ -t ../user/target/$(target)/$(USERMODE)/
 
 fat-fs-img:
-	@cd ../user && make build
 	@rm -f $(fat_fs_img)
 	@cd ../fs-init && cargo run --release -- -s ../user/src/bin/ -t ../user/target/$(target)/$(USERMODE)/ -o ../user/target/
 
 testcases-img:
-	@cd ../user && make build
 	@rm -f $(testcases_img)
 	@cd ../fs-init && cargo run --release -- -b -s ../oscomp_testcases/bin/ -t ../oscomp_testcases/bin/ -o ../
 

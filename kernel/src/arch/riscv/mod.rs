@@ -5,8 +5,10 @@ pub mod stdout;
 mod page_control;
 
 pub use sbi::{
+    start_hart,
     set_timer,
     shutdown,
+    send_ipi,
     console_put_usize_in_hex,
 };
 
