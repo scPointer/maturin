@@ -17,29 +17,31 @@ $ make run
 
 用于测试的用户程序。部分参考了 `https://github.com/rcore-os/rCore`。
 
-### /easy-fs
+### /dependencies
+
+直接抓下来的依赖库，为了规避评测机本地没有又连不上网的问题。
+
+注意并不是所有依赖库都在这个目录下。经过大幅度修改、只适用于这个OS的库没有放在里面。
+
+#### /dependencies/bitmap-allocator
+
+一个分配器，用于页帧和pid分配。来自 `https://github.com/rcore-os/bitmap-allocator`
+
+#### /dependencies/kernel-sync
+
+依赖库，提供在使用时关中断的 Mutex ，来自方便在内核常开中断
+
+#### /dependencies/easy-fs
 
 之前使用的文件系统，来自 `rCore`，是`https://github.com/rcore-os/rCore-Tutorial-v3` 的一部分。
 
 目前已弃用。
 
-### /easy-fs-fuse
+#### /dependencies/easy-fs-fuse
 
 配合 `easy-fs` 导入用户程序。来自 `rCore`，是`https://github.com/rcore-os/rCore-Tutorial-v3` 的一部分。
 
 目前已弃用。
-
-### /rust-fatfs
-
-一个`FAT32`格式的文件系统示例，来自 `https://github.com/rafalh/rust-fatfs`
-
-### /bitmap-allocator
-
-一个分配器，用于页帧和pid分配。来自 `https://github.com/rcore-os/bitmap-allocator`
-
-### /kernel-sync
-
-依赖库，提供在使用时关中断的 Mutex ，来自方便在内核常开中断
 
 ### /fscommon
 
@@ -62,6 +64,13 @@ $ make run
 #### 内核为什么要关心这个接口
 
 因为内核需要把 `MMIO` 提供的块设备接口包装成 `fscommon::BufStream` 所需要的实现了 `Read, Write, Seek` 的接口，所以内核必须先知道这三个接口来自哪里，有什么要求，才能对应实现 `Trait`。
+
+
+### /rust-fatfs
+
+一个`FAT32`格式的文件系统示例，来自 `https://github.com/rafalh/rust-fatfs`
+
+这个文件系统本来是面向单核的，现改成了多核实现。具体来说需要 RefCell/Cell 改成 lock::Mutex、各个结构体内对文件系统本身的带生命周期的引用 `&'a FileSystem` 改为 Arc 等等，然后手动检查冲突和死锁。
 
 ### /fs-init
 
