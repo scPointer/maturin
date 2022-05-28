@@ -65,7 +65,7 @@ testcases-img:
 
 kernel:
 	@echo Building maturin kernel
-	cargo build $(build_args)
+	cargo build $(build_args) --offline
 
 $(kernel_img): kernel
 	$(OBJCOPY) $(kernel) --strip-all -O binary $@
