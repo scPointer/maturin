@@ -89,7 +89,7 @@ name = "easy-fs"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
- "lock 0.1.0",
+ "lock",
 ]
 
 [[package]]
@@ -108,7 +108,7 @@ version = "0.4.0"
 dependencies = [
  "bitflags",
  "fscommon",
- "lock 0.1.0 (git+https://gitee.com/chyyuu/kernel-sync.git)",
+ "lock",
  "log",
 ]
 
@@ -143,18 +143,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lock"
-version = "0.1.0"
-source = "git+https://gitee.com/chyyuu/kernel-sync.git#01b2e70b5c6f4127bfddf94b092cf3db18338480"
-dependencies = [
- "cfg-if",
- "raw-cpuid",
- "riscv 0.7.0",
- "spin 0.9.3",
- "x86_64",
-]
-
-[[package]]
 name = "lock_api"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -184,7 +172,7 @@ dependencies = [
  "fatfs",
  "fscommon",
  "lazy_static",
- "lock 0.1.0",
+ "lock",
  "riscv 0.6.0",
  "virtio-drivers",
  "xmas-elf",
