@@ -89,7 +89,7 @@ name = "easy-fs"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
- "lock 0.1.0 (git+https://gitee.com/chyyuu/kernel-sync.git)",
+ "lock 0.1.0",
 ]
 
 [[package]]
