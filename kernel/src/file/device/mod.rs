@@ -50,21 +50,23 @@ lazy_static! {
 }
 
 /// 输出根目录下的所有文件
+/// 
+/// 注意，这个函数的输出是 info，这表示不打开 info 时它什么都不会输出
 pub fn list_files_at_root() {
     //let fs = MEMORY_FS.lock();
     //let root = fs.root_dir();
     let root = MEMORY_FS.root_dir();
     for dir_entry in root.iter() {
         let file = dir_entry.unwrap();
-        println!("file: {}", file.file_name());
+        info!("file: {}", file.file_name());
         // 如果是子目录，则再继续遍历
         if file.is_dir() {
-            println!("dir: {}/", file.file_name());
+            info!("dir: {}/", file.file_name());
             for dir_entry in root.open_dir(file.file_name().as_str()).unwrap().iter() {
                 let file = dir_entry.unwrap();
                 // "." 开头的是当前目录、父目录以及(未来可能的)隐藏文件
                 if !file.file_name().starts_with(".") {
-                    println!("\tfile: {}", file.file_name());
+                    info!("\tfile: {}", file.file_name());
                 }
             }
         }
@@ -194,7 +196,7 @@ pub fn check_file_exists(dir_name: &str, file_path: &str) -> bool {
     //let root = fs.root_dir();
     let root = MEMORY_FS.root_dir();
     let (real_dir, file_name) = split_path_and_file(dir_name, file_path);
-    println!("check file exists: dir = {}, name = {}", real_dir, file_name);
+    info!("check file exists: dir = {}, name = {}", real_dir, file_name);
     inner_open_dir(root, real_dir.as_str()).map(|dir| {
         for entry in dir.iter() {
             let file = entry.unwrap();

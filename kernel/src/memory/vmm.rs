@@ -323,7 +323,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         fn idle_stack();
         fn idle_stack_top();
     }
-    println!("data end {:x}, stack start {:x}", edata as usize, idle_stack as usize);
+    info!("data end {:x}, stack start {:x}", edata as usize, idle_stack as usize);
     
     use super::PHYS_VIRT_OFFSET;
     ms.push(VmArea::from_fixed_pma(
@@ -375,7 +375,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
     
     // 插入物理内存映射
     for region in get_phys_memory_regions() {
-        println!("init region {:x}, {:x}", region.start, region.end);
+        info!("init region {:x}, {:x}", region.start, region.end);
         ms.push(VmArea::from_fixed_pma(
             region.start,
             region.end,
@@ -404,7 +404,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
                 fn img_start();
                 fn img_end();
             }
-            println!("img start {:x}, img_end {:x}", img_start as usize, img_end as usize);
+            info!("img start {:x}, img_end {:x}", img_start as usize, img_end as usize);
             let pstart = virt_to_phys(img_start as usize);
             let pend = virt_to_phys(img_end as usize);
             let offset = DEVICE_START - pstart;
@@ -459,7 +459,7 @@ lazy_static::lazy_static! {
             load_fs_force();
         }
         */
-        println!("kernel memory set init end:\n{:#x?}", ms);
+        info!("kernel memory set init end:\n{:#x?}", ms);
         Mutex::new(ms)
     };
 }

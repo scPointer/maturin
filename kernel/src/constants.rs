@@ -21,12 +21,14 @@ pub const CLOCK_FREQ: usize = 1250_0000; //freq for qemu -m virt
 pub const IS_SINGLE_CORE: bool = true;
 /// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序
 pub const SPIN_LOOP_AFTER_BOOT: bool  = false;
+/// 运行时是否打印基本的信息
+pub const BASE_INFO: bool = false;
 /// 页表中每页的大小
 pub const PAGE_SIZE: usize = 0x1000; // 4 KB
 /// 即 log2(PAGE_SIZE)
 pub const PAGE_SIZE_BITS: usize = 0xc; // 4 KB = 2^12
 /// 内核栈大小
-pub const KERNEL_STACK_SIZE: usize = 0x10_0000; // 1 MB, per CPU
+pub const KERNEL_STACK_SIZE: usize = 0x8_000; // 1 MB
 /// 内核堆的大小
 pub const KERNEL_HEAP_SIZE: usize = 0x40_0000; // 4 MB
 /// 用户栈大小
@@ -61,7 +63,7 @@ pub const MMIO_REGIONS: &[AddrArea] = &[AddrArea(0x10001000, 0x10002000)];
 /// 是否是比赛评测。线上评测时要求OS像一个批处理系统一样工作，这可能导致内核不会直接去拿初始进程并运行
 pub const IS_TEST_ENV: bool = true;
 /// 测试环境下，文件系统镜像是否是由qemu引入
-pub const IS_PRELOADED_FS_IMG: bool = true;
+pub const IS_PRELOADED_FS_IMG: bool = false;
 /// 文件系统镜像的大小。注意这个量和 fs-init 模块中 `/src/main.rs` 里生成镜像时的大小相同。
 /// 启动时会从 .data 段加载加载
 const LOCAL_FS_IMG_SIZE: usize = 16 * 2048 * 512; // 16MB

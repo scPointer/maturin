@@ -108,7 +108,7 @@ impl File for FatFile {
         let len = inner.seek(SeekFrom::End(0)).unwrap() as usize;
         inner.seek(SeekFrom::Start(0)).unwrap();
         let mut tmp: Vec<u8> = Vec::new();
-        println!("file len {}=0x{:x}", len, len);
+        info!("file len {}=0x{:x}", len, len);
         tmp.resize(len, 0);
         let mut pos = 0;
         while pos < len {

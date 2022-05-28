@@ -191,7 +191,7 @@ impl VmArea {
         pt: &mut PageTable,
     ) -> OSResult {
         debug_assert!(offset < self.end - self.start);
-        println!(
+        info!(
             "handle page fault @ offset {:#x?} with access {:?}: {:#x?}",
             offset,
             access_flags,
@@ -215,7 +215,7 @@ impl VmArea {
                 } else {
                     (*entry).set_all(paddr, self.flags | PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY);
                     pt.flush_tlb(Some(vaddr));
-                    println!("[Handler] Lazy alloc a page for user.");
+                    info!("[Handler] Lazy alloc a page for user.");
                     Ok(())
                 }
             }

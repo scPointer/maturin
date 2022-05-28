@@ -89,6 +89,12 @@ fn sys_fork(user_stack: Option<usize>) -> isize {
     let new_task_pid = new_task.get_pid_num();
     // 将新任务加入调度器
     push_task_to_scheduler(new_task);
+    /*
+    unsafe {
+        let trap_context =  old_task.kernel_stack.get_first_context();
+        println!("parent sepc {:x} stack {:x} new_task_pid {}", (*trap_context).sepc, (*trap_context).get_sp(), new_task_pid);
+    }; 
+    */
     new_task_pid as isize
 }
 

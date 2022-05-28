@@ -18,9 +18,9 @@ pub fn allocator_init() {
     // println 中调用的 STDOUT 有 Mutex 锁，需要在堆上分配
     // 所以在 heap::init() 前请不要输出任何语句
     heap::init();
-    println!("heap allocator inited.");
+    info!("heap allocator inited.");
     frame::init();
-    println!("frame allocator inited.");
+    info!("frame allocator inited.");
     pid::init();
-    println!("pid allocator inited.");
+    info!("pid allocator inited.");
 }
