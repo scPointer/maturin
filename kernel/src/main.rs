@@ -51,13 +51,6 @@ mod fsio {
     pub use fscommon::{Read, Write, Seek};
 }
 
-use fatfs::{
-    format_volume, 
-    FormatVolumeOptions, 
-    FileSystem, 
-    FsOptions
-};
-
 core::arch::global_asm!(include_str!("fs.S"));
 
 /// 是否已经有核在进行全局初始化
