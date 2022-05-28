@@ -53,7 +53,7 @@ build: $(kernel_img)
 easy-fs-img:
 	@cd ../user && make build
 	@rm -f $(fs_img)
-	@cd ../easy-fs-fuse && cargo run --release -- -s ../user/src/bin/ -t ../user/target/$(target)/$(USERMODE)/
+	@cd ../dependencies/easy-fs-fuse && cargo run --release -- -s ../../user/src/bin/ -t ../../user/target/$(target)/$(USERMODE)/
 
 fat-fs-img:
 	@rm -f $(fat_fs_img)

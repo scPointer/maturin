@@ -19,7 +19,15 @@ $ make run
 
 ### /easy-fs
 
-目前使用的文件系统 `easy-fs` 来自 `rCore`
+之前使用的文件系统，来自 `rCore`，是`https://github.com/rcore-os/rCore-Tutorial-v3` 的一部分。
+
+目前已弃用。
+
+### /easy-fs-fuse
+
+配合 `easy-fs` 导入用户程序。来自 `rCore`，是`https://github.com/rcore-os/rCore-Tutorial-v3` 的一部分。
+
+目前已弃用。
 
 ### /rust-fatfs
 
@@ -28,6 +36,10 @@ $ make run
 ### /bitmap-allocator
 
 一个分配器，用于页帧和pid分配。来自 `https://github.com/rcore-os/bitmap-allocator`
+
+### /kernel-sync
+
+依赖库，提供在使用时关中断的 Mutex ，来自方便在内核常开中断
 
 ### /fscommon
 
