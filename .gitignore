@@ -6,3 +6,4 @@ user/build
 user/target/*
 user/Cargo.lock
 *.img
+os.bin
