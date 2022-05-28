@@ -13,7 +13,7 @@ xmas-elf = "0.7"
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 lock = { git = "https://gitee.com/chyyuu/kernel-sync.git"}
 riscv = { git = "https://gitee.com/chyyuu/riscv.git", features = ["inline-asm"] }
-bitmap-allocator = { git = "https://gitee.com/chyyuu/bitmap-allocator.git" }
+bitmap-allocator = { path = "../bitmap-allocator" }
 virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers" }
 easy-fs = { path = "../easy-fs" }
 fatfs = { path = "../rust-fatfs", version = "0.4", default-features = false, features = ["alloc", "lfn"] }

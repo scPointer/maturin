@@ -34,12 +34,6 @@ checksum = "f8fe8f5a8a398345e52358e18ff07cc17a568fbca5c6f73873d3a62056309603"
 
 [[package]]
 name = "bit_field"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed8765909f9009617974ab6b7d332625b320b33c326b1e9321382ef1999b5d56"
-
-[[package]]
-name = "bit_field"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcb6dd1c2376d2e096796e234a70e17e94cc2d5d54ff8ce42b28cef1d0d359a4"
@@ -53,9 +47,8 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 [[package]]
 name = "bitmap-allocator"
 version = "0.1.0"
-source = "git+https://gitee.com/chyyuu/bitmap-allocator.git#b3f9f51aa801bec69cf5fdc656dbf11687dfa1d4"
 dependencies = [
- "bit_field 0.9.0",
+ "bit_field",
 ]
 
 [[package]]
@@ -228,7 +221,7 @@ version = "0.6.0"
 source = "git+https://gitee.com/chyyuu/riscv.git#11d43cf7cccb3b62a3caaf3e07a1db7449588f9a"
 dependencies = [
  "bare-metal 0.2.5",
- "bit_field 0.10.1",
+ "bit_field",
  "bitflags",
  "log",
  "riscv-target",
@@ -240,7 +233,7 @@ version = "0.7.0"
 source = "git+https://github.com/rust-embedded/riscv?rev=cd31989ba1#cd31989ba11d5d64e1addd8aab98bfb00dd927d5"
 dependencies = [
  "bare-metal 1.0.0",
- "bit_field 0.10.1",
+ "bit_field",
  "embedded-hal",
  "riscv-target",
 ]
@@ -334,7 +327,7 @@ version = "0.14.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "958ab3202b01bc43ba2eb832102c4a487ed93151667a2289062e5f2b00058be2"
 dependencies = [
- "bit_field 0.10.1",
+ "bit_field",
  "bitflags",
  "volatile 0.4.4",
 ]

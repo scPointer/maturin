@@ -25,6 +25,10 @@ $ make run
 
 一个`FAT32`格式的文件系统示例，来自 `https://github.com/rafalh/rust-fatfs`
 
+### /bitmap-allocator
+
+一个分配器，用于页帧和pid分配。来自 `https://github.com/rcore-os/bitmap-allocator`
+
 ### /fscommon
 
 文件系统在内存中的 `buffer` 层抽象。
