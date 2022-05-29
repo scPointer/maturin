@@ -6,12 +6,16 @@
 
 use alloc::collections::{btree_map::Entry, BTreeMap};
 use alloc::string::String;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 use lock::Mutex;
+use super::FATFileSystem;
 use lazy_static::*;
 
 use super::{
     split_path_and_file, 
     check_file_exists,
+    check_dir_exists,
     remove_file,
 };
 
@@ -132,3 +136,55 @@ impl FileDisc {
     }
 }
 
+/// 挂载的文件系统。
+/// 目前"挂载"的语义是，把一个文件当作文件系统读写
+/// TODO: 把 mod.rs 中文件系统的操作全部封装为 struct，然后挂载时用文件实例化它
+pub struct MountedFs {
+    //pub inner: Arc<Mutex<FATFileSystem>>,
+    pub device: String,
+    pub mnt_dir: String,
+}
+
+impl MountedFs {
+    pub fn new(device: &str, mnt_dir: &str) -> Self {
+        Self {
+            //inner: Arc::new_uninit(),
+            device: String::from(device),
+            mnt_dir: String::from(mnt_dir),
+        }
+    }
+}
+
+lazy_static!{
+    /// 已挂载的文件系统(设备)。
+    /// 注意启动时的文件系统不在这个 vec 里，它在 mod.rs 里。
+    static ref MOUNTED: Mutex<Vec<MountedFs>> = Mutex::new(Vec::new());
+}
+
+/// 挂载一个fatfs类型的设备
+pub fn mount_fat_fs(device_path: String, device_file: &str, mount_path: String) -> bool {
+    // 地址经过链接转换
+    if let Some((device_path, device_file)) = split_path_and_file(device_path.as_str(), device_file)
+        .map(|(path, file)| (path, String::from(file)))
+        .map(parse_file_name) {
+        let mount_path = split_path_and_file(mount_path.as_str(), "").unwrap().0;
+        // mount_path 不需要转换，因为目前目录没有链接。只需要检查其在挂在前是否存在
+        if check_dir_exists(mount_path.as_str()) 
+            // && check_file_exists(device_path.as_str(), device_file.as_str())
+            {
+                MOUNTED.lock().push(MountedFs::new((device_path + device_file.as_str()).as_str(), mount_path.as_str()));
+                return true;
+        }
+    }
+    false
+}
+
+pub fn umount_fat_fs(mount_path: String) -> bool {
+    let mount_path = split_path_and_file(mount_path.as_str(), "").unwrap().0;
+    let mut mounted = MOUNTED.lock();
+    let size_before = mounted.len();
+    mounted.retain(|mfs| {
+        mfs.mnt_dir != mount_path
+    });
+    mounted.len() < size_before
+}

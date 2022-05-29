@@ -53,6 +53,8 @@ pub use device::{
     check_dir_exists,
     load_testcases,
     load_next_testcase,
+    umount_fat_fs,
+    mount_fat_fs,
     mkdir,
     try_remove_link,
     try_add_link,

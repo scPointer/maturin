@@ -31,6 +31,7 @@ type FsOCC = LossyOemCpConverter;
 
 type FsDir = fatfs::Dir<'static, FsIO, FsTP, FsOCC>;
 type FsFile = fatfs::File<'static, FsIO, FsTP, FsOCC>;
+type FATFileSystem = FileSystem<FsIO, FsTP, FsOCC>;
 
 mod open_flags;
 mod fat_file;
@@ -43,14 +44,14 @@ pub use open_flags::OpenFlags;
 pub use fat_file::FatFile;
 pub use fat_dir::FatDir;
 pub use fd_dir::FdDir;
-pub use link::{try_remove_link, try_add_link};
+pub use link::{try_remove_link, try_add_link, umount_fat_fs, mount_fat_fs};
 pub use test::{load_testcases, load_next_testcase};
 
 use link::parse_file_name;
 
 lazy_static! {
     //static ref MEMORY_FS: Arc<Mutex<FileSystem<FsIO, FsTP, FsOCC>>> = Arc::new(Mutex::new(new_memory_mapped_fs()));
-    static ref MEMORY_FS: FileSystem<FsIO, FsTP, FsOCC> = new_memory_mapped_fs();
+    static ref MEMORY_FS: FATFileSystem = new_memory_mapped_fs();
 }
 
 /// 输出根目录下的所有文件
@@ -287,8 +288,13 @@ pub fn check_dir_exists(dir_name: &str) -> bool {
     //let fs = MEMORY_FS.lock();
     //let root = fs.root_dir();
     let root = MEMORY_FS.root_dir();
+    let mut dir_name = String::from(dir_name);
+    if !dir_name.ends_with('/') {
+        dir_name.push('/');
+    }
+    let dir_name = map_path_and_file(dir_name.as_str(), "").unwrap().0;
     // 去掉字符串开头的 '.' 或者 "./"
-    inner_open_dir(root, dir_name).is_some()
+    inner_open_dir(root, dir_name.as_str()).is_some()
 }
 
 

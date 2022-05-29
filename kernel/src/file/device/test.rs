@@ -31,11 +31,12 @@ pub fn load_next_testcase() -> Option<Arc<TaskControlBlock>> {
 }
 
 lazy_static! {
-    static ref TESTCASES_ITER: Mutex<Iter<'static, &'static str>> = Mutex::new(SAMPLE.into_iter());
+    static ref TESTCASES_ITER: Mutex<Iter<'static, &'static str>> = Mutex::new(TESTCASES.into_iter());
 }
 
 pub const SAMPLE: &[&str] = &[
-    "unlink",
+    "umount",
+    "mount",
 ];
 
 pub const TESTCASES: &[&str] = &[
@@ -61,21 +62,22 @@ pub const TESTCASES: &[&str] = &[
     "mkdir_",
     /*
     "mmap",
+    */
     "mount",
+    /*
     "munmap",
     */
     "open",
-    //"start",
     "openat",
     "pipe",
     "read",
     "sleep",
     "times",
-    /*
     "umount",
+    /*
     "uname",
-    "unlink",
     */
+    "unlink",
     "wait",
     "waitpid",
     "write",

@@ -21,6 +21,8 @@ use crate::file::{
     check_dir_exists,
     try_add_link,
     try_remove_link,
+    umount_fat_fs,
+    mount_fat_fs,
 };
 use crate::constants::{ROOT_DIR, AT_FDCWD};
 
@@ -108,16 +110,15 @@ fn get_dir_from_fd(tcb_inner: &MutexGuard<TaskControlBlockInner>, dir_fd: i32) -
 /// 适用于 open/madir/link/unlink 等
 fn resolve_path_from_fd<'a>(tcb_inner: &MutexGuard<TaskControlBlockInner>, dir_fd: i32, path: *const u8) -> Option<(String, &'a str)>{
     let file_path = unsafe { raw_ptr_to_ref_str(path) };
-    let parent_dir = if file_path.starts_with("/") { // 绝对路径
-        String::from("./") // 需要加上 '.'，因为 os 中约定根目录是以 '.' 开头
+    if file_path.starts_with("/") { // 绝对路径
+        Some((String::from("./"), &file_path[1..])) // 需要加上 '.'，因为 os 中约定根目录是以 '.' 开头
     } else { // 相对路径
         if let Some(dir) = get_dir_from_fd(&tcb_inner, dir_fd) {
-            dir
+            Some((dir, file_path))
         } else {
             return None;
         }
-    };
-    Some((parent_dir, file_path))
+    }
 }
 
 /// 创建硬链接。成功时返回0，失败时返回-1
@@ -140,6 +141,50 @@ pub fn sys_unlinkat(dir_fd: i32, path: *const u8, flags: u32) -> isize {
     let mut tcb_inner = task.inner.lock();
     if let Some((path, file)) = resolve_path_from_fd(&tcb_inner, dir_fd,path) {
         if try_remove_link(path, file){
+            return 0;
+        }
+    }
+    -1
+}
+
+/// 挂载文件系统。成功时返回0，失败时返回-1。
+/// 
+/// 目前只是语义上实现，还没有真实板子上测试过
+pub fn sys_mount(device: *const u8, mount_path: *const u8, fs_type: *const u8, flags: u32, data: *const u8) -> isize {
+    let fs_type = unsafe { raw_ptr_to_ref_str(fs_type) };
+    if fs_type != "vfat" { // 不支持挂载其他类型
+        return -1;
+    }
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+    // 这里把 fd 写成"当前目录"，但其实如果内部发现路径是 '/' 开头，会用绝对路径替代。
+    // 这也是其他类似调用 open/close/mkdir/linkat 等的逻辑
+    if let Some((device_path, device_file)) = resolve_path_from_fd(&tcb_inner, AT_FDCWD, device) {
+        if let Some((mut mount_path, mount_file)) = resolve_path_from_fd(&tcb_inner, AT_FDCWD, mount_path) {
+            mount_path += mount_file;
+            if !mount_path.ends_with('/') { // 挂载到的是一个目录，但用户输入目录时不一定加了 '/'
+                mount_path.push('/');
+            }
+            if mount_fat_fs(device_path, device_file, mount_path) {
+                return 0;
+            }
+        }
+    }
+    -1
+}
+
+/// 卸载文件系统。成功时返回0，失败时(目录不存在/未挂载等)返回-1。
+/// 
+/// 目前只是语义上实现，还没有真实板子上测试过
+pub fn sys_umount(mount_path: *const u8, flags: u32) -> isize {
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+    if let Some((mut mount_path, mount_file)) = resolve_path_from_fd(&tcb_inner, AT_FDCWD, mount_path) {
+        mount_path += mount_file;
+        if !mount_path.ends_with('/') { 
+            mount_path.push('/');
+        }
+        if umount_fat_fs(mount_path) {
             return 0;
         }
     }
