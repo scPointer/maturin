@@ -52,5 +52,6 @@ pub use device::{
     check_file_exists,
     check_dir_exists,
     load_testcases,
+    load_next_testcase,
     mkdir,
 };

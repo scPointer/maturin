@@ -66,6 +66,7 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
 /// 写一个字串到 fd 代表的文件。这个串放在 buf 中，长为 len
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     let task = get_current_task().unwrap();
+    let pid = task.get_pid_num();
     let mut tcb_inner = task.inner.lock();
     let slice = unsafe { core::slice::from_raw_parts(buf, len) };
 

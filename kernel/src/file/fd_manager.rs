@@ -49,7 +49,7 @@ impl FdManager {
                 // 暴力分配 fd。
                 // 因为我们知道新创建的 new_manager 是空的，但 fd_allocator 自己不知道，所以要 unsafe
                 unsafe { new_manager.fd_allocator.alloc_exact(fd); }
-                new_manager.push(file.clone());
+                new_manager.files[fd] = Some(file.clone());
             }
             /*
             match &self.files[fd] {

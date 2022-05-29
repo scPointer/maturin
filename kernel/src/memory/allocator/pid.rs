@@ -32,7 +32,7 @@ pub fn alloc_pid() -> Option<Pid> {
 
 /// 初始化 pid 分配
 pub fn init() {
-    PID_ALLOCATOR.lock().insert(1..PID_LIMIT)
+    PID_ALLOCATOR.lock().insert(2..PID_LIMIT)
 }
 
 /// 保存一个 PID ，当 Drop 时会自动释放

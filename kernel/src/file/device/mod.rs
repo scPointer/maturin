@@ -42,7 +42,7 @@ pub use open_flags::OpenFlags;
 pub use fat_file::FatFile;
 pub use fat_dir::FatDir;
 pub use fd_dir::FdDir;
-pub use test::load_testcases;
+pub use test::{load_testcases, load_next_testcase};
 
 lazy_static! {
     //static ref MEMORY_FS: Arc<Mutex<FileSystem<FsIO, FsTP, FsOCC>>> = Arc::new(Mutex::new(new_memory_mapped_fs()));

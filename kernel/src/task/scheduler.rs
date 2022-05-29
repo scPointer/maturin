@@ -12,7 +12,7 @@ use lock::Mutex;
 use crate::constants::IS_TEST_ENV;
 use crate::error::{OSResult, OSError};
 use crate::memory::{VirtAddr, PTEFlags};
-use crate::file::load_testcases;
+use crate::file::load_next_testcase;
 use crate::arch::get_cpu_id;
 
 use super::__switch;
@@ -26,7 +26,8 @@ lazy_static! {
     pub static ref GLOBAL_TASK_SCHEDULER: Mutex<Scheduler> = {
         let mut scheduler = Scheduler::new();
         if IS_TEST_ENV { // 评测环境下，输入测例
-            load_testcases(&mut scheduler);
+            //load_testcases(&mut scheduler);
+            scheduler.push(load_next_testcase().unwrap());
         } else { // 正常情况下，启动初始进程
             scheduler.push(ORIGIN_USER_PROC.clone());
         }
@@ -55,6 +56,10 @@ impl Scheduler {
     pub fn pop(&mut self) -> Option<Arc<TaskControlBlock>> {
         self.ready_queue.pop_front()
     }
+    /// 返回队列中元素个数
+    pub fn size(&self) -> usize {
+        self.ready_queue.len()
+    }
 }
 
 /// 向任务队列里插入一个任务
@@ -69,7 +74,10 @@ pub fn fetch_task_from_scheduler() -> Option<Arc<TaskControlBlock>> {
         let task = GLOBAL_TASK_SCHEDULER.lock().pop();
         // 测试环境下，测例执行完就不再等待了，因为不会再有新的任务
         if task.is_none() {
-            println!("[cpu {}] is idle now", get_cpu_id());
+            if let Some(new_tcb) = load_next_testcase() {
+                return Some(new_tcb);
+            }
+            info!("[cpu {}] is idle now", get_cpu_id());
             loop {
 
             }
