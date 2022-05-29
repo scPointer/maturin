@@ -50,7 +50,7 @@ use times::*;
 
 /// 处理系统调用
 pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
-    println!("syscall {}", syscall_id);
+    info!("syscall {}", syscall_id);
     match syscall_id {
         SYSCALL_GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
         SYSCALL_DUP => sys_dup(args[0]),
