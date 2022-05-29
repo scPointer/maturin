@@ -82,7 +82,7 @@ pub fn try_add_link(old_path: String, old_file: &str, new_path: String, new_file
 /// 获取硬链接数。
 /// 
 /// **默认该文件存在，且目录/文件格式经过split_path_and_file 转换**
-fn get_link_count(path: String, file: &str) -> usize {
+pub fn get_link_count(path: String, file: &str) -> usize {
     let (path, file) = parse_file_name((path, String::from(file)));
     // 注意找不到时，链接数默认为 1 而不是 0。因为没有进行过链接操作的文件不在 map 里
     *LINK_COUNT_MAP.lock().get(&FileDisc::new(&path, &file)).unwrap_or(&1)

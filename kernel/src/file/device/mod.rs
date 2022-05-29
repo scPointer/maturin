@@ -44,7 +44,7 @@ pub use open_flags::OpenFlags;
 pub use fat_file::FatFile;
 pub use fat_dir::FatDir;
 pub use fd_dir::FdDir;
-pub use link::{try_remove_link, try_add_link, umount_fat_fs, mount_fat_fs};
+pub use link::{try_remove_link, try_add_link, umount_fat_fs, mount_fat_fs, get_link_count};
 pub use test::{load_testcases, load_next_testcase};
 
 use link::parse_file_name;
@@ -209,7 +209,7 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
             //println!("opened {}, {}", readable, writable);
             match dir.open_file(file_name) {
                 Ok(file) => {
-                    let fat_file = FatFile::new(readable, writable, real_dir, file);
+                    let fat_file = FatFile::new(readable, writable, real_dir, String::from(file_name), file);
                     if flags.contains(OpenFlags::CREATE) {
                         // 清空这个文件
                         fat_file.inner.lock().truncate();
@@ -219,7 +219,7 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
                 Err(Error::NotFound) => {
                     if flags.contains(OpenFlags::CREATE) {
                         let file = dir.create_file(file_name).unwrap();
-                        Some(Arc::new(FatFile::new(readable, writable, real_dir, file)))
+                        Some(Arc::new(FatFile::new(readable, writable, real_dir, String::from(file_name), file)))
                     } else {
                         None
                     }

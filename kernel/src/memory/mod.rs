@@ -38,6 +38,7 @@ pub use addr::{
     virt_to_phys,
     phys_to_virt,
     page_count,
+    page_offset,
     page_id_to_addr,
     pte_idx_of_virt_addr,
 };

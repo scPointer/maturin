@@ -35,8 +35,8 @@ lazy_static! {
 }
 
 pub const SAMPLE: &[&str] = &[
-    "umount",
-    "mount",
+    "mmap",
+    "munmap",
 ];
 
 pub const TESTCASES: &[&str] = &[
@@ -49,9 +49,7 @@ pub const TESTCASES: &[&str] = &[
     "execve",
     "exit",
     "fork",
-    /*
     "fstat",
-    */
     "getcwd",
     /*
     "getdents",
@@ -60,13 +58,8 @@ pub const TESTCASES: &[&str] = &[
     "getppid",
     "gettimeofday",
     "mkdir_",
-    /*
-    "mmap",
-    */
     "mount",
-    /*
     "munmap",
-    */
     "open",
     "openat",
     "pipe",

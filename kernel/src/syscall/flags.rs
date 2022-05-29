@@ -8,6 +8,8 @@ use bitflags::*;
 use core::ops::{Add};
 use core::cmp::Ordering;
 
+use crate::memory::PTEFlags;
+
 bitflags! {    
     /// 指定 sys_wait4 的选项
     pub struct WaitFlags: u32 {
@@ -17,6 +19,35 @@ bitflags! {
         const WIMTRACED = 1 << 1;
         /// 报告还未结束的用户进程的状态
         const WCONTINUED = 1 << 3;
+    }
+}
+
+bitflags! {    
+    /// 指定 mmap 的选项
+    pub struct MMAPPROT: u32 {
+        /// 不挂起当前进程，直接返回
+        const PROT_READ = 1 << 0;
+        /// 报告已执行结束的用户进程的状态
+        const PROT_WRITE = 1 << 1;
+        /// 报告还未结束的用户进程的状态
+        const PROT_EXEC = 1 << 2;
+    }
+}
+
+impl Into<PTEFlags> for MMAPPROT {
+    fn into(self) -> PTEFlags {
+        // 记得加 user 项，否则用户拿到后无法访问
+        let mut flag = PTEFlags::USER;
+        if self.contains(MMAPPROT::PROT_READ) {
+            flag |= PTEFlags::READ;
+        }
+        if self.contains(MMAPPROT::PROT_WRITE) {
+            flag |= PTEFlags::WRITE;
+        }
+        if self.contains(MMAPPROT::PROT_EXEC) {
+            flag |= PTEFlags::EXECUTE;
+        }
+        flag
     }
 }
 

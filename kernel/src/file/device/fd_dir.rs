@@ -6,6 +6,7 @@
 use alloc::string::String;
 
 use super::File;
+use crate::file::{Kstat, normal_file_mode};
 
 /// 仅保存路径的文件描述符实现
 pub struct FdDir {
@@ -38,5 +39,22 @@ impl File for FdDir {
     /// 获取路径
     fn get_dir(&self) -> Option<&str> {
         Some(self.dir.as_str())
+    }
+    /// 文件属性
+    fn get_stat(&self, stat: *mut Kstat) -> bool {
+        unsafe {
+            (*stat).st_dev = 1;
+            (*stat).st_ino = 0;
+            (*stat).st_mode = normal_file_mode(true).bits();
+            (*stat).st_nlink = 1;
+            (*stat).st_size = 0;
+            (*stat).st_atime_sec = 0;
+            (*stat).st_atime_nsec = 0;
+            (*stat).st_mtime_sec = 0;
+            (*stat).st_mtime_nsec = 0;
+            (*stat).st_ctime_sec = 0;
+            (*stat).st_ctime_nsec = 0;
+        }
+        true
     }
 }

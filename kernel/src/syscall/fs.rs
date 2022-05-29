@@ -14,7 +14,7 @@ use crate::arch::stdin::getchar;
 use crate::task::{get_current_task};
 use crate::task::TaskControlBlockInner;
 use crate::utils::raw_ptr_to_ref_str;
-use crate::file::{OpenFlags, Pipe};
+use crate::file::{OpenFlags, Pipe, Kstat};
 use crate::file::{
     open_file, 
     mkdir, 
@@ -74,8 +74,8 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
 /// 写一个字串到 fd 代表的文件。这个串放在 buf 中，长为 len
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     let task = get_current_task().unwrap();
-    let pid = task.get_pid_num();
     let mut tcb_inner = task.inner.lock();
+    //println!("write pos {:x}", buf as usize);
     let slice = unsafe { core::slice::from_raw_parts(buf, len) };
 
     if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
@@ -88,6 +88,18 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     -1
 }
 
+/// 获取文件状态信息
+pub fn sys_fstat(fd: usize, kstat: *mut Kstat) -> isize {
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+
+    if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
+        if file.get_stat(kstat) {
+            return 0;
+        }
+    }
+    -1
+}
 /// 从一个表示目录的文件描述符中获取目录名。
 /// 如果这个文件描述符不是代表目录，则返回None
 fn get_dir_from_fd(tcb_inner: &MutexGuard<TaskControlBlockInner>, dir_fd: i32) -> Option<String> {

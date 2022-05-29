@@ -14,8 +14,10 @@ use fatfs::{
     SeekFrom,
 };
 
-use super::File;
-use super::FsFile;
+use super::{File, FsFile};
+use super::get_link_count;
+
+use crate::file::{Kstat, normal_file_mode};
 
 /// 把 FsFile 包装一层以适应 Trait File
 pub struct FatFile {
@@ -28,17 +30,20 @@ pub struct FatFile {
     /// 注意这里用 String 保存，而不是 &'static str之类的，
     /// 因为给出文件路径的可能是用户程序或者某个局部变量，如果不复制成 String，之后要用到的时候可能早已找不到了
     pub dir: String,
+    /// 文件名
+    pub name: String,
     /// 内部结构
     pub inner: Arc<Mutex<FsFile>>,
 }
 
 impl FatFile {
     /// 构造一个带权限的 FatFile
-    pub fn new(readable: bool, writable: bool, dir: String, fs_file: FsFile) -> Self {
+    pub fn new(readable: bool, writable: bool, dir: String, name: String, fs_file: FsFile) -> Self {
         Self {
             readable: readable,
             writable: writable,
             dir: dir,
+            name: name,
             inner: Arc::new(Mutex::new(fs_file)),
         }
     }
@@ -132,5 +137,32 @@ impl File for FatFile {
         println!("");
         */
         tmp
+    }
+    /// 文件属性
+    fn get_stat(&self, stat: *mut Kstat) -> bool {
+        let mut inner = self.inner.lock();
+        let pos = 1;
+        let pre_pos = inner.seek(SeekFrom::Current(0)).unwrap() as u64;
+        let len = inner.seek(SeekFrom::End(0)).unwrap() as usize;
+        inner.seek(SeekFrom::Start(pre_pos)).unwrap();
+        let nlink = get_link_count(String::from(&self.dir[..]), self.name.as_str());
+        unsafe {
+            (*stat).st_dev = 1;
+            (*stat).st_ino = 1;
+            (*stat).st_mode = normal_file_mode(false).bits();
+            (*stat).st_nlink = nlink as u32;
+            (*stat).st_size = len;
+            (*stat).st_atime_sec = 0;
+            (*stat).st_atime_nsec = 0;
+            (*stat).st_mtime_sec = 0;
+            (*stat).st_mtime_nsec = 0;
+            (*stat).st_ctime_sec = 0;
+            (*stat).st_ctime_nsec = 0;
+        }
+        true
+    }
+    /// 切换文件指针位置
+    fn seek(&self, seekfrom: SeekFrom) -> Option<usize> {
+        self.inner.lock().seek(seekfrom).map(|pos| pos as usize).ok()
     }
 }

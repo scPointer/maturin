@@ -3,6 +3,7 @@
 #![deny(missing_docs)]
 
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use alloc::string::String;
 
 use crate::task::{
@@ -13,6 +14,7 @@ use crate::task::{
     exec_new_task,
 };
 use crate::task::TaskStatus;
+use crate::file::SeekFrom;
 use crate::utils::{
     raw_ptr_to_string,
     str_ptr_array_to_vec_string,
@@ -21,7 +23,7 @@ use crate::constants::{
     SIGCHLD,
 };
 
-use super::WaitFlags;
+use super::{WaitFlags, MMAPPROT};
 
 /// 进程退出，并提供 exit_code 供 wait 等 syscall 拿取
 pub fn sys_exit(exit_code: i32) -> ! {
@@ -209,5 +211,41 @@ fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
         pid_found
     } else {
         flag
+    }
+}
+
+/// 映射一段内存
+pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: u32, fd: usize, offset: usize) -> isize {
+    let mut data = Vec::new();
+    data.resize(len, 0);
+
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+
+    if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
+        if let Some(off) = file.seek(SeekFrom::Start(offset as u64)) {
+            // 读文件可能触发进程切换
+            drop(tcb_inner);
+            if let Some(read_len) = file.read(&mut data[..]) {
+                //println!("try mmap {} {} {} {} {}", start, len, fd, read_len, len);
+                if read_len == len { // 至此才从文件中拿到了需要的数据，准备 mmap
+                    // 重新拿锁
+                    if let Some(start) = get_current_task().unwrap().mmap(start, start + len, prot.into(), &data[..], start == 0) {
+                        //println!("start {:x}", start);
+                        return start as isize;
+                    }
+                }
+            }
+        }
+    }
+    -1
+}
+
+/// 取消映射一段内存
+pub fn sys_munmap(start: usize, len: usize) -> isize {
+    if get_current_task().unwrap().munmap(start, start + len) {
+        0
+    } else {
+        -1
     }
 }

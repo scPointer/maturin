@@ -11,6 +11,7 @@ use core::slice::Iter;
 
 use crate::loaders::{ElfLoader, parse_user_app};
 use crate::memory::{MemorySet, Pid, new_memory_set_for_task};
+use crate::memory::{VirtAddr, PTEFlags};
 use crate::trap::TrapContext;
 use crate::file::{FdManager, check_file_exists};
 use crate::timer::get_time;
@@ -216,6 +217,18 @@ impl TaskControlBlock {
             //let trap_context = unsafe {*self.kernel_stack.get_first_context() };
             //println!("sp = {:x}, entry = {:x}, sstatus = {:x}", trap_context.x[2], trap_context.sepc, trap_context.sstatus.bits()); 
         }).is_ok()
+    }
+    /// 映射一段内存地址到文件或设备
+    pub fn mmap(&self, start: VirtAddr, end: VirtAddr, flags: PTEFlags, data: &[u8], anywhere: bool) -> Option<usize> {
+        if end - start != data.len() {
+           None
+        } else {
+            self.inner.lock().vm.push_with_data(start, end, flags, data, anywhere).ok()
+        }
+    }
+    /// 取消一段内存地址映射
+    pub fn munmap(&self, start: VirtAddr, end: VirtAddr) -> bool {
+        self.inner.lock().vm.pop(start, end).is_ok()
     }
     /// 修改任务状态
     pub fn set_status(&self, new_status: TaskStatus) {

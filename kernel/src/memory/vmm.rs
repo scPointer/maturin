@@ -9,7 +9,7 @@ use core::fmt::{Debug, Formatter, Result};
 
 use lock::Mutex;
 
-use super::{align_down, align_up, virt_to_phys, phys_to_virt, page_count, VirtAddr};
+use super::{align_down, align_up, virt_to_phys, phys_to_virt, page_count, page_offset, VirtAddr};
 use super::{VmArea, PmArea, PmAreaLazy, PTEFlags, PageTable};
 use super::{
     get_phys_memory_regions,
@@ -95,10 +95,45 @@ impl MemorySet {
         true
     }
 
+    /// 尝试插入一段数据。如插入成功，返回插入后的起始地址
+    /// 
+    /// 如果指定参数 anywhere，则任意找一段地址 mmap; 否则必须在 [start, end) 尝试插入。
+    /// 
+    /// 输入时默认已保证 start + data.len() == end
+    pub fn push_with_data(&mut self, start: VirtAddr, end: VirtAddr, flags: PTEFlags, data: &[u8], anywhere: bool) -> OSResult<usize> {
+        let (start, end) = if anywhere {
+            let start = self.find_free_area(1, end - start)?;
+            (start, start + data.len())
+        } else {
+            (start, end)
+        };
+        // 起始地址在页内的偏移量
+        let off = page_offset(start);
+        // 注意实际占用的页数不仅看 data.len()，还要看请求的地址跨越了几页
+        let mut pma = PmAreaLazy::new(page_count(off + data.len()))?;
+        pma.write(off, data)?;
+        //println!("before align: start {:x}, end {:x}", start, end);
+        let start = align_down(start);
+        let end = align_up(end);
+        //println!("after align: start {:x}, end {:x}, pmsize {}", start, end, align_up(off + data.len()));
+        let area = VmArea::new(
+            start,
+            end,
+            flags,
+            Arc::new(Mutex::new(pma)),
+            "from mmap",
+        ).unwrap();
+        //println!("start {}, end {}", start, end);
+        self.push(area)?;
+        // 其实可以只刷新 mmap 的页，但因为这里不清楚具体会 mmap 多大内存，所以按页刷不一定划算
+        self.flush_tlb();
+        Ok(start)
+    }
+    
     /// 插入一段内存段，并将其映射到页表里
     pub fn push(&mut self, vma: VmArea) -> OSResult {
         if !self.test_free_area(vma.start, vma.end) {
-            println!("VMA overlap: {:#x?}\n{:#x?}", vma, self);
+            info!("VMA overlap: {:#x?}\n{:#x?}", vma, self);
             return Err(OSError::MemorySet_InvalidRange);
         }
         vma.map_area(&mut self.pt)?;
@@ -135,7 +170,7 @@ impl MemorySet {
     /// 删除区间 [start_addr, end_addr)
     pub fn pop(&mut self, start: VirtAddr, end: VirtAddr) -> OSResult {
         if start >= end {
-            println!("invalid memory region: [{:#x?}, {:#x?})", start, end);
+            info!("invalid memory region: [{:#x?}, {:#x?})", start, end);
             return Err(OSError::MemorySet_InvalidRange);
         }
         let start = align_down(start);
@@ -148,13 +183,13 @@ impl MemorySet {
             }
         }
         if self.test_free_area(start, end) {
-            println!(
+            info!(
                 "no matched VMA found for memory region: [{:#x?}, {:#x?})",
                 start, end
             );
             Err(OSError::MemorySet_UnmapAreaNotFound)
         } else {
-            println!(
+            info!(
                 "partially unmap memory region [{:#x?}, {:#x?}) is not supported",
                 start, end
             );

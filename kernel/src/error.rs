@@ -48,6 +48,7 @@ pub enum OSError {
     
     MemorySet_InvalidRange,
     MemorySet_UnmapAreaNotFound,
+    Task_MmapLengthDisagree,
     // unmap 一段 VMA 可能会把分成两段
     // 本身不该算是错误，只是目前还没有实现
     MemorySet_PartialUnmap,
