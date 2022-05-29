@@ -16,7 +16,7 @@ pub const CPU_ID_LIMIT: usize =  FIRST_CPU_ID + 4;
 /// 最后一个 CPU 的编号
 pub const LAST_CPU_ID: usize = CPU_ID_LIMIT - 1;
 /// 时钟频率，和平台有关
-pub const CLOCK_FREQ: usize = 1250_0000; //freq for qemu -m virt
+pub const CLOCK_FREQ: usize = if PLATFORM_SIFIVE { 100_0000 } else { 1250_0000 };
 /// 是否单核运行。单核运行时，则其他核只启动，不运行用户程序
 pub const IS_SINGLE_CORE: bool = true;
 /// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序

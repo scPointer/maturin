@@ -194,7 +194,7 @@ impl TaskControlBlock {
         let args = if args.len() == 0 { vec![String::from(app_name)] } else { args };
         
         for i in 0..args.len() {
-            println!("[cpu {}] args[{}] = '{}'", get_cpu_id(), i, args[i])
+            info!("[cpu {}] args[{}] = '{}'", get_cpu_id(), i, args[i])
         }
         
         // 然后把新的信息插入页表和 VmArea
