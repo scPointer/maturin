@@ -1,4 +1,6 @@
-//! Architecture independent page table traits and helpers.
+//! 页表实现
+
+#![deny(missing_docs)]
 
 use core::mem::ManuallyDrop;
 use alloc::vec::Vec;
@@ -16,7 +18,7 @@ use super::{
 };
 
 bitflags! {
-    /// page table entry flags
+    /// 页表项各位的定义。目前对应 riscv64 的 Sv39 模式
     pub struct PTEFlags: u8 {
         const VALID = 1 << 0;
         const READ = 1 << 1;
@@ -31,7 +33,7 @@ bitflags! {
 
 //#[derive(Copy, Clone)]
 #[repr(C)]
-/// page table entry structure
+/// 页表项本体
 pub struct PageTableEntry {
     pub bits: usize,
 }
@@ -244,9 +246,7 @@ impl PageTable {
         satp::read().ppn() << 12
     }
 
-    /// # Safety
-    ///
-    /// This function is unsafe because it switches the virtual address space.
+    /// 写 satp 寄存器切换页表
     pub unsafe fn set_current_root_paddr(root_paddr: PhysAddr) {
         satp::set(satp::Mode::Sv39, 0, root_paddr >> 12)
     }
@@ -269,9 +269,9 @@ impl PageTable {
         unsafe { Self::from_root(Self::current_root_paddr()) }
     }
 
-    /// # Safety
-    ///
-    /// This function is unsafe because it switches the virtual address space.
+    /// 切换到这个页表
+    /// 
+    /// 调用者必须保证切换前后执行流是连续的
     pub unsafe fn set_current(&self) {
         let old_root = Self::current_root_paddr();
         let new_root = self.get_root_paddr();

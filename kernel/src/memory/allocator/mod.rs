@@ -1,3 +1,10 @@
+//! 各种分配器
+//! 
+//! - 使用 buddy_system_allocator::LockedHeap 作为堆分配器；
+//! - 使用 bitmap_allocator 作为其他编号的分配器，这个类型里的实现是用 bitset 做 radix tree
+
+#![deny(missing_docs)]
+
 mod heap;
 mod frame;
 mod pid;

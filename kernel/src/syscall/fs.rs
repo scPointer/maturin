@@ -96,13 +96,11 @@ fn get_dir_from_fd(tcb_inner: &MutexGuard<TaskControlBlockInner>, dir_fd: i32) -
     }
 }
 
-/// 创建目录，成功时返回0，失败时返回 -1
+/// 从输入的路径文件描述符和文件名，解析实际的父目录和文件名。
+/// 成功时返回 0，失败时返回 -1
 /// 
-/// - 如果path是相对路径，则它是相对于dirfd目录而言的。
-/// - 如果path是绝对路径，则dirfd被忽略。
-pub fn sys_mkdir(dir_fd: i32, path: *const u8, user_mode: u32) -> isize {
-    let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
+/// 适用于 open/madir/link/unlink 等
+fn resolve_path_from_fd<'a>(tcb_inner: &MutexGuard<TaskControlBlockInner>, dir_fd: i32, path: *const u8) -> Option<(String, &'a str)>{
     let file_path = unsafe { raw_ptr_to_ref_str(path) };
     let parent_dir = if file_path.starts_with("/") { // 绝对路径
         String::from("./") // 需要加上 '.'，因为 os 中约定根目录是以 '.' 开头
@@ -110,14 +108,25 @@ pub fn sys_mkdir(dir_fd: i32, path: *const u8, user_mode: u32) -> isize {
         if let Some(dir) = get_dir_from_fd(&tcb_inner, dir_fd) {
             dir
         } else {
-            return -1;
+            return None;
         }
     };
-    if mkdir(parent_dir.as_str(), file_path) {
-        0
-    } else {
-        -1
+    Some((parent_dir, file_path))
+}
+
+/// 创建目录，成功时返回 0，失败时返回 -1
+/// 
+/// - 如果path是相对路径，则它是相对于dirfd目录而言的。
+/// - 如果path是绝对路径，则dirfd被忽略。
+pub fn sys_mkdir(dir_fd: i32, path: *const u8, user_mode: u32) -> isize {
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+    if let Some((parent_dir, file_path)) = resolve_path_from_fd(&tcb_inner, dir_fd, path) {
+        if mkdir(parent_dir.as_str(), file_path) {
+            return 0;
+        }
     }
+    -1
 }
 
 /// 切换当前工作路径，**默认是相对路径**。切换成功时返回0，失败时返回-1
@@ -144,20 +153,13 @@ pub fn sys_chdir(path: *const u8) -> isize {
 pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
-    // 目前认为所有用户程序都在根目录下，所以直接把路径当作文件名
-    let file_name = unsafe { raw_ptr_to_ref_str(path) };
-    // println!("fd = {}, file name = {}", dir_fd, file_name);
-    // 因为 get_dir() 的所有权问题，这里只好用 String 暴力复制一遍了
-    let dir = if let Some(dir) = get_dir_from_fd(&tcb_inner, dir_fd) {
-        dir
-    } else {
-        return -1;
-    };
-    if let Some(node) = open_file(dir.as_str(), file_name, OpenFlags::from_bits(flags).unwrap()) {
-        //println!("opened");
-        if let Ok(fd) = tcb_inner.fd_manager.push(node) {
-            //println!("return fd {}", fd);
-            return fd as isize
+    if let Some((parent_dir, file_path)) = resolve_path_from_fd(&tcb_inner, dir_fd, path) {
+        if let Some(node) = open_file(parent_dir.as_str(), file_path, OpenFlags::from_bits(flags).unwrap()) {
+            //println!("opened");
+            if let Ok(fd) = tcb_inner.fd_manager.push(node) {
+                //println!("return fd {}", fd);
+                return fd as isize
+            }
         }
     }
     -1

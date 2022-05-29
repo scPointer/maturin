@@ -1,4 +1,6 @@
-//! Virtual memory management.
+//! 虚拟地址段映射管理
+
+#![deny(missing_docs)]
 
 use alloc::collections::{btree_map::Entry, BTreeMap};
 use alloc::sync::Arc;
@@ -26,14 +28,18 @@ use crate::constants::{
 };
 use crate::error::{OSError, OSResult};
 
-/// A set of virtual memory areas with the associated page table.
+/// 内存段和相关的页表
 pub struct MemorySet {
+    /// 标记内存段的位置
     areas: BTreeMap<usize, VmArea>,
+    /// 对应的页表
     pub pt: PageTable,
+    /// 是否是用户态的
     is_user: bool,
 }
 
 impl MemorySet {
+    /// 内核态的映射表
     pub fn new_kernel() -> Self {
         Self {
             areas: BTreeMap::new(),
@@ -42,7 +48,7 @@ impl MemorySet {
         }
     }
 
-    
+    /// 用户态的映射表
     pub fn new_user() -> Self {
         Self {
             areas: BTreeMap::new(),
@@ -59,10 +65,7 @@ impl MemorySet {
         */
     }
     
-
-    /// Find a free area with hint address `addr_hint` and length `len`.
-    /// Return the start address of found free area.
-    /// Used for mmap.
+    /// 寻找一个起始地址不小于 addr_hint，长为 len 的内存段。找不到时报错
     pub fn find_free_area(&self, addr_hint: VirtAddr, len: usize) -> OSResult<VirtAddr> {
         // brute force:
         // try each area's end address as the start
@@ -77,7 +80,7 @@ impl MemorySet {
         }
     }
 
-    /// Test whether [`start`, `end`) does not overlap with any existing areas.
+    /// 检查 [start, end) 是否与其他内存段冲突。
     fn test_free_area(&self, start: VirtAddr, end: VirtAddr) -> bool {
         if let Some((_, before)) = self.areas.range(..start).last() {
             if before.is_overlap_with(start, end) {
@@ -159,7 +162,7 @@ impl MemorySet {
         }
     }
 
-    /// Handle page fault.
+    /// 处理这个映射表对应的错误
     pub fn handle_page_fault(&mut self, vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
         if let Some((_, area)) = self.areas.range(..=vaddr).last() {
             if area.contains(vaddr) {
@@ -479,13 +482,14 @@ pub fn enable_kernel_page_table() {
     unsafe { KERNEL_MEMORY_SET.lock().activate() };
 }
 
-
+/// 为 ms 映射内存段的地址。ms 本身一般是用户态的
 fn map_kernel_regions(ms: &mut MemorySet) {
     let kernel_ms = KERNEL_MEMORY_SET.lock();
     let kernel_pt = &kernel_ms.pt;
     unsafe { ms.pt.map_kernel_regions(kernel_pt) };
 }
 
+/// 创建一个新的用户进程对应的内存映射。它的内核态可以访问内核态的所有映射，但不能修改
 pub fn new_memory_set_for_task() -> OSResult<MemorySet> {
     let mut ms = MemorySet::new_user();
     //init_kernel_memory_set(&mut ms).unwrap();

@@ -1,3 +1,7 @@
+//! 把物理地址段实现为 lazy 分配需要的页帧
+
+#![deny(missing_docs)]
+
 use alloc::{sync::Arc, vec::Vec};
 use core::fmt::{Debug, Formatter, Result};
 
@@ -10,7 +14,7 @@ use crate::memory::{
     Frame, PTEFlags, PhysAddr, VirtAddr, PAGE_SIZE, USER_VIRT_ADDR_LIMIT,
 };
 
-/// A discontiguous PMA which perform lazy allocation (e.g. in page fault handler).
+/// lazy 分配的物理地址段。当 page fault 发生时会由 VmArea 负责调用这段 PmAreaLazy 进行实际分配
 pub struct PmAreaLazy {
     frames: Vec<Option<Frame>>,
 }

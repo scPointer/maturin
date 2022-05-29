@@ -1,3 +1,7 @@
+//! 内存管理模块
+
+#![deny(missing_docs)]
+
 //use alloc::vec::{self, Vec};
 use alloc::vec::Vec;
 use core::ops::Range;

@@ -1,3 +1,9 @@
+//! 堆分配器
+//! 
+//! 使用 buddy_system_allocator::LockedHeap ，堆大小在 constants 中定义
+
+#![deny(missing_docs)]
+
 use buddy_system_allocator::LockedHeap;
 
 use crate::constants::KERNEL_HEAP_SIZE;

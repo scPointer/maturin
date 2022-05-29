@@ -1,3 +1,7 @@
+//! 地址段定义
+
+#![deny(missing_docs)]
+
 mod fixed;
 mod lazy;
 
@@ -15,34 +19,40 @@ use super::PAGE_SIZE;
 pub use fixed::PmAreaFixed;
 pub use lazy::PmAreaLazy;
 
-/// A physical memory area with same MMU flags, can be discontiguous and lazy allocated,
-/// or shared by multi-threads.
+/// 一段访问权限相同的物理地址。注意物理地址本身不一定连续，只是拥有对应长度的空间
+/// 
+/// 可实现为 lazy 分配
 pub trait PmArea: core::fmt::Debug + Send + Sync {
-    /// Size of total physical memory.
+    /// 地址段总长度
     fn size(&self) -> usize;
-    /// Get the start address of a 4KB physical frame relative to the index `idx`, perform
-    /// allocation if `need_alloc` is `true`.
+    /// 获取 idx 所在页的页帧。
+    /// 
+    /// 如果有 need_alloc，则会在 idx 所在页未分配时尝试分配
     fn get_frame(&mut self, idx: usize, need_alloc: bool) -> OSResult<Option<PhysAddr>>;
-    /// Release the given 4KB physical frame, perform deallocation if the frame has been allocated.
+    /// 释放 idx 地址对应的物理页
     fn release_frame(&mut self, idx: usize) -> OSResult;
-    /// Read data from this PMA at `offset`.
+    /// 读从 offset 开头的一段数据，成功时返回读取长度
     fn read(&mut self, offset: usize, dst: &mut [u8]) -> OSResult<usize>;
-    /// Write data to this PMA at `offset`.
+    /// 把数据写到从 offset 开头的地址，成功时返回写入长度
     fn write(&mut self, offset: usize, src: &[u8]) -> OSResult<usize>;
 }
 
-/// A contiguous virtual memory area with same MMU flags.
-/// The `start` and `end` address are page aligned.
+/// 一段访问权限相同的虚拟地址
 #[derive(Debug)]
 pub struct VmArea {
+    /// 地址段开头，需要对其页
     pub(super) start: VirtAddr,
+    /// 地址段结尾，需要对其页
     pub(super) end: VirtAddr,
+    /// 访问权限
     pub(super) flags: PTEFlags,
+    /// 对应的物理地址段
     pub(super) pma: Arc<Mutex<dyn PmArea>>,
     name: &'static str,
 }
 
 impl VmArea {
+    /// 新建地址段，成功时返回 VmArea 结构
     pub fn new(
         start: VirtAddr,
         end: VirtAddr,
@@ -76,12 +86,12 @@ impl VmArea {
         })
     }
 
-    /// Test whether a virtual address is contained in the memory area.
+    /// 当前地址段是否包含这个地址
     pub fn contains(&self, vaddr: VirtAddr) -> bool {
         self.start <= vaddr && vaddr < self.end
     }
 
-    /// Test whether this area is (page) overlap with region [`start`, `end`).
+    /// 当前地址段是否包含这一段地址
     pub fn is_overlap_with(&self, start: VirtAddr, end: VirtAddr) -> bool {
         let p0 = self.start;
         let p1 = self.end;
@@ -90,7 +100,9 @@ impl VmArea {
         !(p1 <= p2 || p0 >= p3)
     }
 
-    /// Create mapping between this VMA to the associated PMA.
+    /// 把虚拟地址段和对应的物理地址段的映射写入页表。
+    /// 
+    /// 如果是 lazy 分配的，或者说还没有对应页帧时，则不分配，等到 page fault 时再分配
     pub fn map_area(&self, pt: &mut PageTable) -> OSResult {
         //println!("create mapping: {:#x?}", self);
         let mut pma = self.pma.lock();
@@ -113,7 +125,9 @@ impl VmArea {
         Ok(())
     }
 
-    /// Destory mapping of this VMA.
+    /// 把虚拟地址段和对应的物理地址段的映射从页表中删除。
+    /// 
+    /// 如果页表中的描述和 VmArea 的描述不符，则返回 error
     pub fn unmap_area(&self, pt: &mut PageTable) -> OSResult {
         //println!("destory mapping: {:#x?}", self);
         let mut pma = self.pma.lock();
@@ -136,6 +150,7 @@ impl VmArea {
         Ok(())
     }
 
+    /// 这一段是否是用户态可见的
     pub fn is_user(&self) -> bool {
         self.flags.contains(PTEFlags::USER)
     }
@@ -183,7 +198,7 @@ impl VmArea {
         Ok(new_area)
     }
 
-    /// Handle page fault.
+    /// 处理 page fault
     pub fn handle_page_fault(
         &self,
         offset: usize,
