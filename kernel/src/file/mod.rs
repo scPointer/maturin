@@ -54,4 +54,6 @@ pub use device::{
     load_testcases,
     load_next_testcase,
     mkdir,
+    try_remove_link,
+    try_add_link,
 };

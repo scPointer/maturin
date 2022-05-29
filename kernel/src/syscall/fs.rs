@@ -15,7 +15,13 @@ use crate::task::{get_current_task};
 use crate::task::TaskControlBlockInner;
 use crate::utils::raw_ptr_to_ref_str;
 use crate::file::{OpenFlags, Pipe};
-use crate::file::{open_file, mkdir, check_dir_exists};
+use crate::file::{
+    open_file, 
+    mkdir, 
+    check_dir_exists,
+    try_add_link,
+    try_remove_link,
+};
 use crate::constants::{ROOT_DIR, AT_FDCWD};
 
 const FD_STDIN: usize = 0;
@@ -112,6 +118,32 @@ fn resolve_path_from_fd<'a>(tcb_inner: &MutexGuard<TaskControlBlockInner>, dir_f
         }
     };
     Some((parent_dir, file_path))
+}
+
+/// 创建硬链接。成功时返回0，失败时返回-1
+pub fn sys_linkat(old_dir_fd: i32, old_path: *const u8, new_dir_fd: i32, new_path: *const u8, flags: u32) -> isize {
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+    if let Some((old_path, old_file)) = resolve_path_from_fd(&tcb_inner, old_dir_fd, old_path) {
+        if let Some((new_path, new_file)) = resolve_path_from_fd(&tcb_inner, new_dir_fd, new_path) {
+            if try_add_link(old_path, old_file, new_path, new_file) {
+                return 0;
+            }
+        }
+    }
+    -1
+}
+
+/// 删除硬链接，并在链接数为0时实际删除文件。成功时返回0，失败时返回-1
+pub fn sys_unlinkat(dir_fd: i32, path: *const u8, flags: u32) -> isize {
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+    if let Some((path, file)) = resolve_path_from_fd(&tcb_inner, dir_fd,path) {
+        if try_remove_link(path, file){
+            return 0;
+        }
+    }
+    -1
 }
 
 /// 创建目录，成功时返回 0，失败时返回 -1

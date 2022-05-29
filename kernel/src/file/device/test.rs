@@ -31,8 +31,12 @@ pub fn load_next_testcase() -> Option<Arc<TaskControlBlock>> {
 }
 
 lazy_static! {
-    static ref TESTCASES_ITER: Mutex<Iter<'static, &'static str>> = Mutex::new(TESTCASES.into_iter());
+    static ref TESTCASES_ITER: Mutex<Iter<'static, &'static str>> = Mutex::new(SAMPLE.into_iter());
 }
+
+pub const SAMPLE: &[&str] = &[
+    "unlink",
+];
 
 pub const TESTCASES: &[&str] = &[
     "brk",

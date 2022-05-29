@@ -36,13 +36,17 @@ mod open_flags;
 mod fat_file;
 mod fat_dir;
 mod fd_dir;
+mod link;
 mod test;
 
 pub use open_flags::OpenFlags;
 pub use fat_file::FatFile;
 pub use fat_dir::FatDir;
 pub use fd_dir::FdDir;
+pub use link::{try_remove_link, try_add_link};
 pub use test::{load_testcases, load_next_testcase};
+
+use link::parse_file_name;
 
 lazy_static! {
     //static ref MEMORY_FS: Arc<Mutex<FileSystem<FsIO, FsTP, FsOCC>>> = Arc::new(Mutex::new(new_memory_mapped_fs()));
@@ -126,10 +130,28 @@ fn split_path_and_file<'a>(dir_name: &str, file_path: &'a str) -> Option<(String
     Some((dir, &file_path[pos..]))
 }
 
+/// 分割文件所在路径，然后经过link转换。
+fn map_path_and_file(dir_name: &str, file_path: &str) -> Option<(String, String)> {
+    if !dir_name.ends_with('/') {
+        return None;
+    }
+    let mut dir = String::from("./");
+    let start_pos = if dir_name.starts_with("./") { //一般来说，根目录是从 ./ 开始，所以 dir_name 也是 ./ 开头
+        2
+    } else if dir_name.starts_with("/") { // 但如果用户通过 getcwd 等方式获取目录，则这样的目录是以 / 开头的
+        1
+    } else { //又或者用户试图输入一个相对路径，这时需要把它变成相对于根路径的路径
+        0
+    };
+    parse_dir(&mut dir, &dir_name[start_pos..]);
+    let pos = parse_dir(&mut dir, file_path);
+    Some(parse_file_name((dir, String::from(&file_path[pos..]))))
+}
+
 /*
 /// 获取文件所在路径。
 fn get_file_dir<'a>(dir_name: &str, file_path: &'a str) -> String {
-    split_path_and_file(dir_name, file_path).unwrap().0
+    map_path_and_file(dir_name, file_path).unwrap().0
 }
 */
 
@@ -165,7 +187,8 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
     //let fs = MEMORY_FS.lock();
     //let root = fs.root_dir();
     let root = MEMORY_FS.root_dir();
-    let (real_dir, file_name) = split_path_and_file(dir_name, file_path)?;
+    let (real_dir, file_name) = map_path_and_file(dir_name, file_path)?;
+    let file_name = file_name.as_str();
     //println!("dir = {}, name = {}", real_dir, file_name);
     if let Some(dir) = inner_open_dir(root, real_dir.as_str()) {
         if flags.contains(OpenFlags::DIR) { // 要求打开目录
@@ -209,7 +232,7 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
     }
 }
 
-/// 检查文件是否存在。
+/// 检查文件是否存在。（不考虑link）
 /// 如果目录本身不存在，那么也会返回 false，不会报错。
 /// 
 /// 这里并不直接试图打开文件检查是否成功，而是检查目录下是否存在对应文件。
@@ -218,7 +241,7 @@ pub fn check_file_exists(dir_name: &str, file_path: &str) -> bool {
     //let fs = MEMORY_FS.lock();
     //let root = fs.root_dir();
     let root = MEMORY_FS.root_dir();
-    split_path_and_file(dir_name, file_path).map(|(real_dir, file_name)| {
+    map_path_and_file(dir_name, file_path).map(|(real_dir, file_name)| {
         info!("check file exists: dir = {}, name = {}", real_dir, file_name);
         inner_open_dir(root, real_dir.as_str()).map(|dir| {
             for entry in dir.iter() {
@@ -232,10 +255,19 @@ pub fn check_file_exists(dir_name: &str, file_path: &str) -> bool {
     }).map_or(false, |r| r)
 }
 
+/// 删除文件
+/// 
+/// **调用这个函数时默认文件存在，且 path/name 已经过 split_path_and_file 格式化**
+fn remove_file(path: &str, name: &str) {
+    let root = MEMORY_FS.root_dir();
+    let dir = inner_open_dir(root, path).unwrap();
+    dir.remove(name).unwrap();
+}
+
 /// 创建目录，返回是否成功
 pub fn mkdir(dir_name: &str, file_path: &str) -> bool {
     let root = MEMORY_FS.root_dir();
-    split_path_and_file(dir_name, file_path).map(|(real_dir, file_name)| {
+    map_path_and_file(dir_name, file_path).map(|(real_dir, file_name)| {
         inner_open_dir(root, real_dir.as_str()).map(|dir| {
             // 检查目录或者同名文件是否已存在
             for entry in dir.iter() {
@@ -244,7 +276,7 @@ pub fn mkdir(dir_name: &str, file_path: &str) -> bool {
                     return false;
                 }
             }
-            dir.create_dir(file_name).is_ok()
+            dir.create_dir(file_name.as_str()).is_ok()
         }).map_or(false, |r| r)
     }).map_or(false, |r| r)
 }
