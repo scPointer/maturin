@@ -85,3 +85,5 @@ pub const AT_FDCWD: i32 = -100;
 pub const SIGCHLD: usize = 17;
 /// 无父进程
 pub const NO_PARENT: usize = usize::MAX;
+/// 每一个目录项的大小
+pub const DIR_ENTRY_SIZE:usize = 32;

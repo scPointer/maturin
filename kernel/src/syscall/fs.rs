@@ -23,8 +23,11 @@ use crate::file::{
     try_remove_link,
     umount_fat_fs,
     mount_fat_fs,
+    get_kth_dir_entry_info_of_path,
 };
-use crate::constants::{ROOT_DIR, AT_FDCWD};
+use crate::constants::{ROOT_DIR, AT_FDCWD, DIR_ENTRY_SIZE};
+
+use super::{Dirent64, Dirent64_Type};
 
 const FD_STDIN: usize = 0;
 const FD_STDOUT: usize = 1;
@@ -243,7 +246,18 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
     if let Some((parent_dir, file_path)) = resolve_path_from_fd(&tcb_inner, dir_fd, path) {
-        if let Some(node) = open_file(parent_dir.as_str(), file_path, OpenFlags::from_bits(flags).unwrap()) {
+        let mut file_path = String::from(file_path);
+        // 特判当前目录。
+        // 根据测例文档描述，一般有3种情况
+        // 1. '/' 开头的绝对路径，如 /dev
+        // 2. './' 开头的相对路径，如 /abc
+        // 3. 字母数字开头的相对路径，如 def.txt
+        // 而把路径直接写成当前目录的情况比较特殊，不包含在以上三种之内
+        //println!("file path = {}, len = {}", file_path, file_path.len());
+        if file_path == "." {
+            file_path.push('/');
+        }
+        if let Some(node) = open_file(parent_dir.as_str(), file_path.as_str(), OpenFlags::from_bits(flags).unwrap()) {
             //println!("opened");
             if let Ok(fd) = tcb_inner.fd_manager.push(node) {
                 //println!("return fd {}", fd);
@@ -310,4 +324,30 @@ pub fn sys_dup3(old_fd: usize, new_fd: usize) -> isize {
     } else {
         -1
     }
+}
+
+pub fn sys_getdents64(fd: usize, buf: *mut Dirent64, len: usize) -> isize {
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+    if let Some(dir) = get_dir_from_fd(&tcb_inner, fd as i32) {
+        let entry_id = unsafe { (*buf).d_off as usize / DIR_ENTRY_SIZE };
+        if let Some((is_dir, file_name)) = get_kth_dir_entry_info_of_path(dir.as_str(), entry_id) {
+            unsafe {
+                (*buf).d_ino = 1;
+                (*buf).d_off += DIR_ENTRY_SIZE as i64;
+                (*buf).d_reclen = DIR_ENTRY_SIZE as u16;
+                (*buf).set_type(if is_dir { Dirent64_Type::DIR } else { Dirent64_Type::REG });
+                let name_start = (buf as usize + (*buf).d_name_offset()) as *mut u8;
+                // 算出还能放 d_name 的位置。其中字符串结尾加一个0保证最后不溢出
+                let len  = len - (*buf).d_name_offset() - 1;
+                let copy_len = if len < file_name.len() { len } else { file_name.len() };
+                let slice = unsafe { core::slice::from_raw_parts_mut(name_start, copy_len) };
+                slice.copy_from_slice(&file_name.as_bytes());
+                // 字符串结尾
+                *name_start.add(copy_len) = 0;
+                return (copy_len + (*buf).d_name_offset()) as isize;
+            }
+        }
+    }
+    -1
 }

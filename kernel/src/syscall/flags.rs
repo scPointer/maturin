@@ -7,6 +7,7 @@
 use bitflags::*;
 use core::ops::{Add};
 use core::cmp::Ordering;
+use core::mem::size_of;
 
 use crate::memory::PTEFlags;
 
@@ -104,5 +105,84 @@ impl Add for TimeSpec {
             new_ts.tv_nsec -= nsec_per_sec;
         }
         new_ts
+    }
+}
+
+/// sys_uname 中指定的结构体类型
+#[repr(C)]
+pub struct UtsName {
+    /// 系统名称
+    pub sysname: [u8; 65],
+    /// 网络上的主机名称
+    pub nodename: [u8; 65],
+    /// 发行编号
+    pub release: [u8; 65],
+    /// 版本
+    pub version: [u8; 65],
+    /// 硬件类型
+    pub machine: [u8; 65],
+    /// 域名
+    pub domainname: [u8; 65],
+}
+
+impl UtsName {
+    /// 默认 uname。这个结构的内容跟 os 没什么关系，所以就想写啥写啥了
+    pub fn default() -> Self {
+        Self {
+            sysname: Self::from_str("MaturinOS"),
+            nodename: Self::from_str("MaturinOS - machine[0]"),
+            release: Self::from_str("0.1"),
+            version: Self::from_str("0.1"),
+            machine: Self::from_str("RISC-V 64 on SIFIVE FU740"),
+            domainname: Self::from_str("https://github.com/scPointer/maturin"),
+        }
+    }
+    
+    fn from_str(info: &str) -> [u8; 65] {
+        let mut data: [u8; 65] = [0; 65];
+        data[..info.len()].copy_from_slice(info.as_bytes());
+        data
+    }
+}
+
+/// sys_getdents64 中指定的结构体类型
+#[repr(C)]
+pub struct Dirent64 {
+    /// inode 编号
+    pub d_ino: u64,
+    /// 到下一个 Dirent64 的偏移
+    pub d_off: i64,
+    /// 当前 Dirent 长度
+    pub d_reclen: u16,
+    /// 文件类型
+    pub d_type: u8,
+    /// 文件名
+    pub d_name: *mut u8,
+}
+
+pub enum Dirent64_Type {
+    UNKNOWN = 0,
+    /// 先进先出的文件/队列
+    FIFO = 1,
+    CHR = 2,
+    /// 目录
+    DIR = 4,
+    /// 块设备
+    BLK = 6,
+    /// 常规文件
+    REG = 8,
+    /// 符号链接
+    LNK = 10,
+    SOCK = 12,
+    WHT = 14,
+}
+impl Dirent64 {
+    /// 设置文件类型
+    pub fn set_type(&mut self, d_type: Dirent64_Type) {
+        self.d_type = d_type as u8;
+    }
+    /// 文件名字存的位置相对于结构体指针是多少
+    pub fn d_name_offset(&self) -> usize {
+        size_of::<u64>() + size_of::<i64>() +  size_of::<u16>() +  size_of::<u8>()
     }
 }

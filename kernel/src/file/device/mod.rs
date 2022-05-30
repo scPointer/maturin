@@ -190,9 +190,9 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
     let root = MEMORY_FS.root_dir();
     let (real_dir, file_name) = map_path_and_file(dir_name, file_path)?;
     let file_name = file_name.as_str();
-    //println!("dir = {}, name = {}", real_dir, file_name);
+    //println!("dir = {}, name = {}, name_len {}", real_dir, file_name, file_name.len());
     if let Some(dir) = inner_open_dir(root, real_dir.as_str()) {
-        if flags.contains(OpenFlags::DIR) { // 要求打开目录
+        if flags.contains(OpenFlags::DIR) || file_name.len() == 0 { // 要求打开目录
             // 用户传入 sys_open 的目录名如果是有斜线的，那么 file_path 就是空的了
             // 否则 file_path 是当前目录下的一个子目录的名字
             let dir = if file_name.len() == 0 { Ok(dir) } else { dir.open_dir(file_name) };
@@ -297,5 +297,25 @@ pub fn check_dir_exists(dir_name: &str) -> bool {
     inner_open_dir(root, dir_name.as_str()).is_some()
 }
 
-
+/// 获取目录下的第 entry_id 个 DirEntry，返回文件类型(是否是目录)以及文件名。如果找不到，返回 None
+/// 
+/// 这里实际上没有检查硬链接
+pub fn get_kth_dir_entry_info_of_path(dir_name: &str, entry_id: usize) -> Option<(bool, String)> {
+    //let fs = MEMORY_FS.lock();
+    //let root = fs.root_dir();
+    let root = MEMORY_FS.root_dir();
+    let dir_name = map_path_and_file(dir_name, "").unwrap().0;
+    info!("get dir: dir = {}", dir_name);
+    inner_open_dir(root, dir_name.as_str()).map(|dir| {
+        let mut now_id = 0;
+        for entry in dir.iter() {
+            if now_id == entry_id {
+                let file = entry.unwrap();
+                return Some((file.is_dir(), file.file_name()))
+            }
+            now_id += 1;
+        }
+        None
+    }).unwrap_or(None)
+}
 

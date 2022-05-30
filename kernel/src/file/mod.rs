@@ -73,4 +73,5 @@ pub use device::{
     mkdir,
     try_remove_link,
     try_add_link,
+    get_kth_dir_entry_info_of_path,
 };

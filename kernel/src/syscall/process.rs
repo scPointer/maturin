@@ -23,7 +23,7 @@ use crate::constants::{
     SIGCHLD,
 };
 
-use super::{WaitFlags, MMAPPROT};
+use super::{WaitFlags, MMAPPROT, UtsName};
 
 /// 进程退出，并提供 exit_code 供 wait 等 syscall 拿取
 pub fn sys_exit(exit_code: i32) -> ! {
@@ -248,4 +248,12 @@ pub fn sys_munmap(start: usize, len: usize) -> isize {
     } else {
         -1
     }
+}
+
+/// 获取系统信息
+pub fn sys_uname(uts:*mut UtsName) -> isize {
+    unsafe {
+        (*uts) = UtsName::default();
+    }
+    0
 }
