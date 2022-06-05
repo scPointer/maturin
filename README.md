@@ -1,6 +1,10 @@
-# maturin
+# Maturin
 
-An SMP OS written in Rust.
+一个内核。
+
+## Doc
+
+**初赛文档见<a href="doc/preliminary.md">这里</a>**
 
 ## Usage
 
@@ -115,7 +119,7 @@ OS比赛用到的测例。目前是2021年版本的，仅作为参考
 
 代码中用到的几乎所有常量
 
-### utils.rs
+#### utils.rs
 
 一些常用但跟 OS 设计关系不大的函数
 
