@@ -63,7 +63,7 @@ pub const MMIO_REGIONS: &[AddrArea] = &[AddrArea(0x10001000, 0x10002000)];
 /// 是否是比赛评测。线上评测时要求OS像一个批处理系统一样工作，这可能导致内核不会直接去拿初始进程并运行
 pub const IS_TEST_ENV: bool = true;
 /// 测试环境下，文件系统镜像是否是由qemu引入
-pub const IS_PRELOADED_FS_IMG: bool = true;
+pub const IS_PRELOADED_FS_IMG: bool = false;
 /// 文件系统镜像的大小。注意这个量和 fs-init 模块中 `/src/main.rs` 里生成镜像时的大小相同。
 /// 启动时会从 .data 段加载加载
 const LOCAL_FS_IMG_SIZE: usize = 16 * 2048 * 512; // 16MB

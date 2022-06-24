@@ -12,8 +12,11 @@
 $ rustup component add rust-src llvm-tools-preview
 $ rustup target add riscv64imac-unknown-none-elf
 $ cd kernel
+$ make testcases-img
 $ make run
 ```
+
+注意`qemu`版本至少应为`6.0.0`，`5.0`版本的`qemu`自带的`opensbi`的在启动时的行为不一样。
 
 ## Directory tree
 
