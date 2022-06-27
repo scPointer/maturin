@@ -4,6 +4,7 @@ src/functional/clocale_mbfuncs.exe
 src/functional/clock_gettime.exe
 src/functional/crypt.exe
 src/functional/dirname.exe
+src/functional/dlopen.exe
 src/functional/env.exe
 src/functional/fdopen.exe
 src/functional/fnmatch.exe
@@ -23,6 +24,7 @@ src/functional/search_hsearch.exe
 src/functional/search_insque.exe
 src/functional/search_lsearch.exe
 src/functional/search_tsearch.exe
+src/functional/sem_init.exe
 src/functional/setjmp.exe
 src/functional/snprintf.exe
 src/functional/socket.exe
@@ -46,13 +48,13 @@ src/functional/strtold.exe
 src/functional/swprintf.exe
 src/functional/tgmath.exe
 src/functional/time.exe
-src/functional/tls_align.exe
+src/functional/tls_init.exe
+src/functional/tls_local_exec.exe
 src/functional/udiv.exe
 src/functional/ungetc.exe
 src/functional/utime.exe
 src/functional/wcsstr.exe
 src/functional/wcstol.exe
-src/musl/pleval.exe
 src/regression/daemon-failure.exe
 src/regression/dn_expand-empty.exe
 src/regression/dn_expand-ptr-0.exe
@@ -81,7 +83,6 @@ src/regression/printf-fmt-g-round.exe
 src/regression/printf-fmt-g-zeros.exe
 src/regression/printf-fmt-n.exe
 src/regression/pthread-robust-detach.exe
-src/regression/pthread_cancel-sem_wait.exe
 src/regression/pthread_cond-smasher.exe
 src/regression/pthread_condattr_setclock.exe
 src/regression/pthread_exit-cancel.exe
@@ -105,6 +106,7 @@ src/regression/sscanf-eof.exe
 src/regression/statvfs.exe
 src/regression/strverscmp.exe
 src/regression/syscall-sign-extend.exe
+src/regression/tls_get_new-dtv.exe
 src/regression/uselocale-0.exe
 src/regression/wcsncpy-read-overflow.exe
 src/regression/wcsstr-false-negative.exe
