@@ -186,3 +186,10 @@ impl Dirent64 {
         size_of::<u64>() + size_of::<i64>() +  size_of::<u16>() +  size_of::<u8>()
     }
 }
+
+/// sys_writev / sys_readv 中指定的结构体类型
+#[repr(C)]
+pub struct IoVec {
+    pub base: *const u8,
+    pub len: usize,
+}

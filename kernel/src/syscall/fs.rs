@@ -27,7 +27,7 @@ use crate::file::{
 };
 use crate::constants::{ROOT_DIR, AT_FDCWD, DIR_ENTRY_SIZE};
 
-use super::{Dirent64, Dirent64_Type};
+use super::{Dirent64, Dirent64_Type, IoVec};
 
 const FD_STDIN: usize = 0;
 const FD_STDOUT: usize = 1;
@@ -89,6 +89,25 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
         }
     }
     -1
+}
+
+/// 写入一组字符串到同一个 fd 中。
+/// 目前这个 syscall 借用 sys_write 来实现
+pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> isize {
+    if iov_cnt < 0 {
+        return -1;
+    }
+    let mut written_len = 0;
+    for i in 0..iov_cnt {
+        let io_vec: &IoVec = unsafe { &*iov.add(i) };
+        let ret = sys_write(fd, io_vec.base, io_vec.len);
+        if ret == -1 {
+            break
+        } else {
+            written_len += ret;
+        }
+    }
+    written_len
 }
 
 /// 获取文件状态信息
