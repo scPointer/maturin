@@ -15,6 +15,7 @@ const SYSCALL_GETCWD: usize = 17;
 //const SYSCALL_DUP: usize = 24;
 const SYSCALL_DUP: usize = 23;
 const SYSCALL_DUP3: usize = 24;
+const SYSCALL_IOCTL: usize = 29;
 const SYSCALL_MKDIR: usize = 34;
 const SYSCALL_UNLINKAT: usize = 35;
 const SYSCALL_LINKAT: usize = 37;
@@ -29,6 +30,7 @@ const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
 const SYSCALL_FSTAT: usize = 80;
 const SYSCALL_EXIT: usize = 93;
+const SYSCALL_SET_TID_ADDRESS: usize = 96;
 const SYSCALL_NANOSLEEP: usize = 101;
 const SYSCALL_YIELD: usize = 124;
 const SYSCALL_TIMES: usize = 153;
@@ -91,6 +93,12 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_MMAP => sys_mmap(args[0], args[1], MMAPPROT::from_bits(args[2] as u32).unwrap(), args[3] as u32, args[4], args[5]),
         SYSCALL_EXECVE => sys_execve(args[0] as *const u8, args[1] as *const usize, args[2] as *const usize),
         SYSCALL_WAIT4 => sys_wait4(args[0] as isize, args[1] as *mut i32, WaitFlags::from_bits(args[2] as u32).unwrap()),
-        _ => panic!("Unsupported syscall_id: {}", syscall_id),
+        //_ => panic!("Unsupported syscall_id: {}", syscall_id),
+        SYSCALL_SET_TID_ADDRESS => 0,
+        SYSCALL_IOCTL => 0,
+        _ => {
+            println!("Unsupported syscall_id: {}", syscall_id);
+            -1
+        },
     }
 }

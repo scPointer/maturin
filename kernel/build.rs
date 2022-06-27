@@ -3,14 +3,14 @@ use std::io::{Result, Write};
 use std::path::Path;
 
 fn main() {
-    println!("cargo:rerun-if-changed=../user/src/");
-    println!("cargo:rerun-if-changed={}", TARGET_PATH);
+    println!("cargo:rerun-if-changed=../fat.img");
+    //println!("cargo:rerun-if-changed={}", TARGET_PATH);
 
     insert_fs_img().unwrap();
     //insert_app_data().unwrap();
 }
 
-static TARGET_PATH: &str = "../user/target/riscv64imac-unknown-none-elf/release/";
+//static TARGET_PATH: &str = "../user/target/riscv64imac-unknown-none-elf/release/";
 static IMG_PATH: &str = "../fat.img";
 
 fn insert_fs_img() -> Result<()> {

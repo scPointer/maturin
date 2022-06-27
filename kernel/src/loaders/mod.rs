@@ -86,10 +86,13 @@ impl<'a> ElfLoader<'a> {
                 SegmentData::Undefined(data) => data,
                 _ => return Err(OSError::Loader_InvalidSegment),
             };
+            //println!("data len {}", data.len());
             /*
             for i in 0..20 {
                 print!("{} ", data[i]);
             }
+            */
+            /*
             for i in 0..20 {
                 print!("{} ", d0[i]);
             }

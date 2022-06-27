@@ -4,7 +4,7 @@
 
 #![allow(dead_code)]
 /// 是否是 sifive 平台
-pub const PLATFORM_SIFIVE: bool = true;
+pub const PLATFORM_SIFIVE: bool = false;
 /// 编号最小的可用的 cpu_id
 /// - virt 下，每个核都可用，所以是从0开始
 /// - sifive 下，0号是小核，目前还用不到，所以从1开始
@@ -22,7 +22,7 @@ pub const IS_SINGLE_CORE: bool = true;
 /// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序
 pub const SPIN_LOOP_AFTER_BOOT: bool  = false;
 /// 运行时是否打印基本的信息
-pub const BASE_INFO: bool = false;
+pub const BASE_INFO: bool = true;
 /// 页表中每页的大小
 pub const PAGE_SIZE: usize = 0x1000; // 4 KB
 /// 即 log2(PAGE_SIZE)

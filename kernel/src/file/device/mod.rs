@@ -45,7 +45,10 @@ pub use fat_file::FatFile;
 pub use fat_dir::FatDir;
 pub use fd_dir::FdDir;
 pub use link::{try_remove_link, try_add_link, umount_fat_fs, mount_fat_fs, get_link_count};
-pub use test::{load_testcases, load_next_testcase};
+pub use test::{
+    //load_testcases, 
+    load_next_testcase,
+};
 
 use link::parse_file_name;
 

@@ -12,17 +12,30 @@ LDLIBS += -Os -s -lpthread -lm -lrt
 
 CFLAGS += -static
 
+COMMON_SRC_FILES = fdfill.c memfill.c mtest.c path.c print.c rand.c setrlim.c utf8.c vmfill.c
+COMMON_SRCS = $(addprefix src/common/,  $(COMMON_SRC_FILES))
+
 
 DIR=./src/
 TARGET_NAME=argv
 
 build: $(DIR)$(TARGET_NAME).out
 
+debug: $(DIR)$(TARGET_NAME).dbg
+
+asm: $(DIR)$(TARGET_NAME).S
+
 clean:
 	rm $(DIR)$(TARGET_NAME).out
 
 %.out : %.c
-	$(CC) $^ ./src/common/print.c $(CFLAGS) -o $@ 
+	$(CC) $^ $(COMMON_SRCS) $(CFLAGS) -o $@
+
+%.dbg : %.c
+	$(CC) $^ $(COMMON_SRCS) $(CFLAGS) -g -o $@ 
+
+%.S : %.out
+	$(OBJDUMP) -ld $^ > $@ 
 
 #$(CC) $(CFLAGS) -c $^ -o $@
 #chmod +x $@

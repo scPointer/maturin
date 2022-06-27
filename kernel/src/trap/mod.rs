@@ -84,7 +84,6 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
 
     let scause = scause::read(); // get trap cause
     let stval = stval::read(); // get extra value
-
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
             //let mut pc: usize;
@@ -138,7 +137,7 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             // println!("[cpu {}] timer interrupt", get_cpu_id());
-            // println!("[cpu {}] timer interrupt, sepc = {:#x}", get_cpu_id(), cx.sepc);
+            println!("[cpu {}] timer interrupt, sepc = {:#x}", get_cpu_id(), cx.sepc);
             
             // 之后需要判断如果是在内核态，则不切换任务
             set_next_trigger();
@@ -222,6 +221,7 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         }
         
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            println!("[cpu {}] timer interrupt(KERNEL), sepc = {:#x}", get_cpu_id(), cx.sepc);
             // 之后需要判断如果是在内核态，则不切换任务
             set_next_trigger();
             //suspend_current_and_run_next();

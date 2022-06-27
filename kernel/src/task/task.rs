@@ -93,7 +93,7 @@ impl TaskControlBlock {
         // 找到用户名对应的文件，将用户地址段信息插入页表和 VmArea
         parse_user_app(app_dir, app_name, &mut vm, args)
             .map(|(user_entry, user_stack)| {
-            // println!("user MemorySet {:#x?}", vm);
+            //println!("user MemorySet {:#x?}", vm);
             // 初始化内核栈，它包含关于进入用户程序的所有信息
             let kernel_stack = KernelStack::new().unwrap();
             //kernel_stack.print_info();

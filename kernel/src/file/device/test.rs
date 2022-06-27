@@ -12,6 +12,7 @@ pub use crate::task::TaskControlBlock;
 pub use crate::loaders::parse_user_app;
 pub use crate::constants::{ROOT_DIR, NO_PARENT};
 
+/*
 /// 加载用户程序。
 /// 因为是调度器 GLOBAL_TASK_SCHEDULER 初始化时就加载，所以不能用 task::push_task_to_scheduler
 pub fn load_testcases(scheduler: &mut Scheduler) {
@@ -23,7 +24,9 @@ pub fn load_testcases(scheduler: &mut Scheduler) {
         scheduler.push(Arc::new(tcb));
     }
 }
+*/
 
+/// 加载下一个用户程序。
 pub fn load_next_testcase() -> Option<Arc<TaskControlBlock>> {
     TESTCASES_ITER.lock().next().map(|user_prog_name| {
         Arc::new(TaskControlBlock::from_app_name(ROOT_DIR, user_prog_name, NO_PARENT).unwrap())
@@ -31,11 +34,11 @@ pub fn load_next_testcase() -> Option<Arc<TaskControlBlock>> {
 }
 
 lazy_static! {
-    static ref TESTCASES_ITER: Mutex<Iter<'static, &'static str>> = Mutex::new(TESTCASES.into_iter());
+    static ref TESTCASES_ITER: Mutex<Iter<'static, &'static str>> = Mutex::new(SAMPLE.into_iter());
 }
 
 pub const SAMPLE: &[&str] = &[
-    "getdents",
+    "argv.out",
 ];
 
 pub const TESTCASES: &[&str] = &[

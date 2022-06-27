@@ -13,6 +13,6 @@ int main(int argc, char **argv)
 	TEST(argv[1] == 0, "argv[1] should be NULL\n");
 	TEST(argv[0][0] != 0, "argv[0] should not be empty\n");
 	TEST(snprintf(buf, sizeof buf, "%s", argv[0]) < sizeof buf, "argv[0] is not a valid path\n");
-	printf("test end, status = %d", t_status);
+	printf("test end, argc = %d, status = %d\n", argc, t_status);
 	return t_status;
 }

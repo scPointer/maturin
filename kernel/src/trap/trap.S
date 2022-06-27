@@ -18,12 +18,13 @@ __alltraps:
     # sscratch = if trap from user (user stack) else ( if task is idle (0) else (kernel stack))
 __real_trap_entry:
 # allocate a TrapContext on kernel stack
-    addi sp, sp, -34*8
+    addi sp, sp, -35*8
     # save general-purpose registers
     sd x1, 1*8(sp)
     # skip sp(x2), we will save it later
     sd x3, 3*8(sp)
-    # skip tp(x4), application does not use it
+    # save tp(x4) for L I B C T E S T
+    sd tp, 4*8(sp)
     # save x5~x31
     .set n, 5
     .rept 27
@@ -38,6 +39,8 @@ __real_trap_entry:
     # read user stack from sscratch and save it on the kernel stack
     csrr t2, sscratch
     sd t2, 2*8(sp)
+    # load cpu_id
+    ld tp, 34*8(sp)
     # set input argument of trap_handler(cx: &mut TrapContext)
     mv a0, sp
     call trap_handler
@@ -48,6 +51,11 @@ __restore:
     ld t0, 32*8(sp)
     ld t1, 33*8(sp)
     ld t2, 2*8(sp)
+    # save cpu_id
+    sd tp, 34*8(sp)
+    # load user tp(x4)
+    # for kernel, value stayed same, which means 4*8(sp) == 34*8(sp)
+    ld tp, 4*8(sp)
     csrw sstatus, t0
     csrw sepc, t1
     csrw sscratch, t2
@@ -65,7 +73,7 @@ __user_trap_end:
         .set n, n+1
     .endr
     # release TrapContext on kernel stack
-    addi sp, sp, 34*8
+    addi sp, sp, 35*8
 
     csrrw sp, sscratch, sp
     # when sscratch == 0, trap is from kernel space
@@ -101,5 +109,5 @@ __kernel_trap_end:
         .set n, n+1
     .endr
     # release TrapContext on kernel stack
-    addi sp, sp, 34*8
+    addi sp, sp, 35*8
     sret

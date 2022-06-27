@@ -3,7 +3,7 @@ MODE ?= debug
 USERMODE ?= release
 PLATFORM ?= qemu
 SMP ?= 4
-MACHINE ?= sifive_u 
+MACHINE ?= virt 
 
 OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy

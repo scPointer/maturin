@@ -19,6 +19,8 @@ pub struct TrapContext {
     pub sstatus: Sstatus,
     /// CSR 寄存器 sepc，表示发生中断的位置
     pub sepc: usize,
+    /// CPU 的编号。在内核时，这个信息存在 tp 寄存器上
+    pub cpu_id: usize,
 }
 
 impl TrapContext {
@@ -30,6 +32,14 @@ impl TrapContext {
     pub fn get_sp(&self) -> usize {
         self.x[2]
     }
+    
+    /// 设置 gp 寄存器
+    /// 基于 `https://www.sifive.com/blog/all-aboard-part-3-linker-relaxation-in-riscv-toolchain`，
+    /// 在 sifive 板子上的设置似乎是 gp = .sdata 的位置 + 0x800
+    pub fn set_gp(&mut self, gp: usize) {
+        self.x[3] = gp;
+    }
+    
     /// 设置 a0 寄存器。
     /// 对于 sys_exec，它是参数 argc
     pub fn set_a0(&mut self, a0: usize) {
@@ -49,8 +59,13 @@ impl TrapContext {
             x: [0; 32],
             sstatus,
             sepc: entry, // sepc 设为用户程序入口
+            cpu_id: usize::MAX, // 这个信息会在 restore 进入用户时被保存，所以此处无需处理
         };
         cx.set_sp(sp); // 设置用户栈地址
+
+        cx.set_gp(0x17908); // 这个 magic number 参见 set_gp() 描述
+        cx.set_a0(sp);
+        
         cx // return initial Trap Context of app
     }
     /// 初始化用户程序的中断信息，并设置用户程序执行时的参数
@@ -66,6 +81,7 @@ impl TrapContext {
             x: [0; 32],
             sstatus: sstatus::read(),
             sepc: 0,
+            cpu_id: usize::MAX,
         }
     }
     
