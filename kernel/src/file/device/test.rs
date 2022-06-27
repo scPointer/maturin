@@ -29,8 +29,18 @@ pub fn load_testcases(scheduler: &mut Scheduler) {
 /// 加载下一个用户程序。
 pub fn load_next_testcase() -> Option<Arc<TaskControlBlock>> {
     TESTCASES_ITER.lock().next().map(|user_prog_name| {
+        info!(" --------------- load testcase: {} --------------- ", user_prog_name);
         Arc::new(TaskControlBlock::from_app_name(ROOT_DIR, user_prog_name, NO_PARENT).unwrap())
     })
+}
+
+
+/// 输出测试结果
+pub fn show_testcase_result(exit_code: i32) {
+    match exit_code {
+        0 => { info!(" --------------- test passed --------------- "); },
+        _ => { info!(" --------------- test failed, exit code = {} --------------- ", exit_code)},
+    }
 }
 
 lazy_static! {

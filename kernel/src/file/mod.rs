@@ -68,6 +68,7 @@ pub use device::{
     check_dir_exists,
     //load_testcases,
     load_next_testcase,
+    show_testcase_result,
     umount_fat_fs,
     mount_fat_fs,
     mkdir,

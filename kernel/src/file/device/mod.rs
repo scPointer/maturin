@@ -48,6 +48,7 @@ pub use link::{try_remove_link, try_add_link, umount_fat_fs, mount_fat_fs, get_l
 pub use test::{
     //load_testcases, 
     load_next_testcase,
+    show_testcase_result,
 };
 
 use link::parse_file_name;

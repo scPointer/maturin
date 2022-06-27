@@ -12,6 +12,7 @@ use crate::constants::{CPU_ID_LIMIT, IS_TEST_ENV, NO_PARENT};
 use crate::error::{OSResult, OSError};
 use crate::trap::TrapContext;
 use crate::memory::{VirtAddr, PTEFlags, enable_kernel_page_table};
+use crate::file::show_testcase_result;
 use crate::arch::get_cpu_id;
 
 use super::{__switch, __move_to_context};
@@ -234,6 +235,10 @@ fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
     }
     tcb_inner.children.clear();
     tcb_inner.task_status = TaskStatus::Zombie;
+    // 在测试环境中时，手动检查退出时的 exit_code
+    if IS_TEST_ENV {
+        show_testcase_result(tcb_inner.exit_code);
+    }
     /*
     // 释放用户段占用的物理页面
     // 如果这里不释放，等僵尸进程被回收时 MemorySet 被 Drop，也可以释放这些页面
