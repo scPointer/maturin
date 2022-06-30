@@ -33,7 +33,9 @@ const SYSCALL_FSTAT: usize = 80;
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_EXIT_GROUP: usize = 94;
 const SYSCALL_SET_TID_ADDRESS: usize = 96;
+const SYSCALL_FUTEX: usize = 98;
 const SYSCALL_NANOSLEEP: usize = 101;
+const SYSCALL_CLOCK_GET_TIME: usize = 113;
 const SYSCALL_YIELD: usize = 124;
 const SYSCALL_TIMES: usize = 153;
 const SYSCALL_UNAME: usize = 160;
@@ -45,9 +47,9 @@ const SYSCALL_BRK: usize = 214;
 const SYSCALL_MUNMAP: usize = 215;
 //const SYSCALL_FORK: usize = 220;
 const SYSCALL_CLONE: usize = 220;
-const SYSCALL_MMAP: usize = 222;
 //const SYSCALL_EXEC: usize = 221;
 const SYSCALL_EXECVE: usize = 221;
+const SYSCALL_MMAP: usize = 222;
 //const SYSCALL_WAITPID: usize = 260;
 const SYSCALL_WAIT4: usize = 260;
 
@@ -61,9 +63,29 @@ use process::*;
 use flags::*;
 use times::*;
 
+use lock::Mutex;
+use lazy_static::*;
+use crate::constants::IS_TEST_ENV;
+
+lazy_static! {
+    static ref WRITEV_COUNT:Mutex<usize> = Mutex::new(0);
+}
+
 /// 处理系统调用
 pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     info!("syscall {}", syscall_id);
+    if IS_TEST_ENV {
+        // libc-test 在某些 syscall 没有正确实现的时候，会不断循环调用 writev
+        // 为了避免内核死循环，这种情况下要手动结束进程
+        if syscall_id == SYSCALL_WRITEV {
+            *WRITEV_COUNT.lock() += 1;
+            if *WRITEV_COUNT.lock() >= 10 {
+                sys_exit(-100);
+            }
+        } else {
+            *WRITEV_COUNT.lock() = 0;
+        }
+    }
     match syscall_id {
         SYSCALL_GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
         SYSCALL_DUP => sys_dup(args[0]),
@@ -85,6 +107,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_EXIT => sys_exit(args[0] as i32),
         SYSCALL_EXIT_GROUP => sys_exit(args[0] as i32),
         SYSCALL_NANOSLEEP => sys_nanosleep(args[0] as *const TimeSpec, args[1] as *mut TimeSpec),
+        SYSCALL_CLOCK_GET_TIME => sys_get_time_of_day(args[1] as *mut TimeSpec),
         SYSCALL_YIELD => sys_yield(),
         SYSCALL_TIMES => sys_times(args[0] as *mut TMS),
         SYSCALL_UNAME => sys_uname(args[0] as *mut UtsName),
@@ -100,6 +123,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         //_ => panic!("Unsupported syscall_id: {}", syscall_id),
         SYSCALL_SET_TID_ADDRESS => 0,
         SYSCALL_IOCTL => 0,
+        SYSCALL_FUTEX => sys_exit(-100),
         _ => {
             println!("Unsupported syscall_id: {}", syscall_id);
             -1

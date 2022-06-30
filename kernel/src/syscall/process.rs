@@ -21,6 +21,7 @@ use crate::utils::{
 };
 use crate::constants::{
     SIGCHLD,
+    MMAP_LEN_LIMIT,
 };
 
 use super::{WaitFlags, MMAPPROT, UtsName};
@@ -216,6 +217,9 @@ fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 
 /// 映射一段内存
 pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: u32, fd: usize, offset: usize) -> isize {
+    if len > MMAP_LEN_LIMIT {
+        return -1;
+    }
     let mut data = Vec::new();
     data.resize(len, 0);
 

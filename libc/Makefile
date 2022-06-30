@@ -52,6 +52,9 @@ test:
 	@echo $(STATIC_TESTCASES)
 
 build_static: $(STATIC_TESTCASES)
+
+str_array_in_rust:
+	ls build | xargs -i echo \"{}\",
 	
 
 .PHONY: all build debug asm clean test build_static
