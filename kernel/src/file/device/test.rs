@@ -71,6 +71,13 @@ impl TestStatus {
 
     /// 更新执行结果
     pub fn update_result(&mut self, exit_code: i32) {
+        // 检查是否已有退出
+        // 这一步检查是因为测例中可能使用 fork/clone，但每个进程退出都会执行 update_result
+        // 这件事的本质原因是进程退出后 cpu_local 无法知道这是否是一个测例，如果需要改这一点就需要把 exit_code 留存 scheduler 为空。
+        // 但如果这样改会导致需要更多的全局 lazy_static，在内核中不太合适
+        if self.now == None {
+            return;
+        }
         //cnt += 1;
         match exit_code {
             0 => {
@@ -82,6 +89,7 @@ impl TestStatus {
                 self.failed_tests.push(self.now.unwrap());
             },
         }
+        self.now = None;
     }
 
     /// 最终输出测试信息
@@ -103,8 +111,7 @@ lazy_static! {
 }
 
 pub const SAMPLE: &[&str] = &[
-    "clock_gettime",
-    "env",
+    "daemon_failure",
 ];
 
 pub const TESTCASES: &[&str] = &[

@@ -102,15 +102,16 @@ impl MemorySet {
     /// 输入时默认已保证 start + data.len() == end
     pub fn push_with_data(&mut self, start: VirtAddr, end: VirtAddr, flags: PTEFlags, data: &[u8], anywhere: bool) -> OSResult<usize> {
         let (start, end) = if anywhere {
+            let len = end - start;
             let start = self.find_free_area(1, end - start)?;
-            (start, start + data.len())
+            (start, start + len)
         } else {
             (start, end)
         };
         // 起始地址在页内的偏移量
         let off = page_offset(start);
         // 注意实际占用的页数不仅看 data.len()，还要看请求的地址跨越了几页
-        let mut pma = PmAreaLazy::new(page_count(off + data.len()))?;
+        let mut pma = PmAreaLazy::new(page_count(off + end - start))?;
         pma.write(off, data)?;
         //println!("before align: start {:x}, end {:x}", start, end);
         let start = align_down(start);

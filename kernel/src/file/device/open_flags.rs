@@ -15,6 +15,8 @@ bitflags! {
         const RDWR = 1 << 1;
         /// 如文件不存在，可创建它
         const CREATE = 1 << 6;
+        /// 
+        const NOFOLLOW = 1 << 17;
         /// 是否是目录
         const DIR = 1 << 21;
     }

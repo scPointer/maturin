@@ -27,7 +27,7 @@ use crate::file::{
 };
 use crate::constants::{ROOT_DIR, AT_FDCWD, DIR_ENTRY_SIZE};
 
-use super::{Dirent64, Dirent64_Type, IoVec};
+use super::{Dirent64, Dirent64_Type, OpenatError, IoVec};
 
 const FD_STDIN: usize = 0;
 const FD_STDOUT: usize = 1;
@@ -90,6 +90,7 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     }
     -1
 }
+
 
 /// 写入一组字符串到同一个 fd 中。
 /// 目前这个 syscall 借用 sys_write 来实现
@@ -240,20 +241,28 @@ pub fn sys_mkdir(dir_fd: i32, path: *const u8, user_mode: u32) -> isize {
     -1
 }
 
-/// 切换当前工作路径，**默认是相对路径**。切换成功时返回0，失败时返回-1
+/// 切换当前工作路径，如果以.开头，默认是相对路径；如果以/开头，默认是绝对路径。切换成功时返回0，失败时返回-1
 /// 
 /// 会先检查要切换到的路径是否存在。
 pub fn sys_chdir(path: *const u8) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
     let file_path = unsafe { raw_ptr_to_ref_str(path) };
-    let current_path = &mut tcb_inner.dir;
-    if !current_path.ends_with("/") { // 添加路径尾的斜杠
-        *current_path += "/";
-    }
-    let new_path = current_path.clone() + file_path;
+    
+    let new_path = {
+        if file_path.starts_with("/") {
+            String::from(".") + file_path
+        } else {
+            let current_path = &mut tcb_inner.dir;
+            if !current_path.ends_with("/") { // 添加路径尾的斜杠
+            *current_path += "/";
+            }
+            current_path.clone() + file_path
+        }
+    };
+    //info!("new path = {}", new_path);
     if check_dir_exists(new_path.as_str()) {
-        *current_path = new_path;
+        *(&mut tcb_inner.dir) = new_path;
         0
     } else {
         -1
@@ -264,6 +273,11 @@ pub fn sys_chdir(path: *const u8) -> isize {
 pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
+
+    // 如果 fd 已满，则不再添加
+    if tcb_inner.fd_manager.is_full() {
+        return OpenatError::EMFILE as isize;
+    }
     if let Some((parent_dir, file_path)) = resolve_path_from_fd(&tcb_inner, dir_fd, path) {
         let mut file_path = String::from(file_path);
         // 特判当前目录。
@@ -272,7 +286,7 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
         // 2. './' 开头的相对路径，如 /abc
         // 3. 字母数字开头的相对路径，如 def.txt
         // 而把路径直接写成当前目录的情况比较特殊，不包含在以上三种之内
-        //println!("file path = {}, len = {}", file_path, file_path.len());
+        //println!("file path = {}, len = {}, flags = {:x}", file_path, file_path.len(), flags);
         if file_path == "." {
             file_path.push('/');
         }
@@ -286,7 +300,7 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
             }
         }
     }
-    -1
+    OpenatError::ENOENT as isize
 }
 
 /// 关闭文件，成功时返回 0，失败时返回 -1
@@ -332,7 +346,7 @@ pub fn sys_dup(fd: usize) -> isize {
     if let Ok(new_fd) = tcb_inner.fd_manager.copy_fd_anywhere(fd) {
         new_fd as isize
     } else {
-        -1
+        OpenatError::EMFILE as isize
     }
 }
 

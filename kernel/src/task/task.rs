@@ -220,7 +220,7 @@ impl TaskControlBlock {
     }
     /// 映射一段内存地址到文件或设备
     pub fn mmap(&self, start: VirtAddr, end: VirtAddr, flags: PTEFlags, data: &[u8], anywhere: bool) -> Option<usize> {
-        if end - start != data.len() {
+        if end - start < data.len() {
            None
         } else {
             self.inner.lock().vm.push_with_data(start, end, flags, data, anywhere).ok()

@@ -119,4 +119,13 @@ impl FdManager {
             Ok(self.files[fd].take().unwrap())
         }
     }
+    /// 测试fd是否已经满了
+    pub fn is_full(&mut self) -> bool {
+        if let Some(fd) = self.fd_allocator.alloc() {
+            self.fd_allocator.dealloc(fd);
+            false
+        } else {
+            true
+        }
+    }
 }

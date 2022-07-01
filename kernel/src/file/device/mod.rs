@@ -192,6 +192,7 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
     //let fs = MEMORY_FS.lock();
     //let root = fs.root_dir();
     let root = MEMORY_FS.root_dir();
+    //println!("dir_name {}, file_path {}", dir_name, file_path);
     let (real_dir, file_name) = map_path_and_file(dir_name, file_path)?;
     let file_name = file_name.as_str();
     //println!("dir = {}, name = {}, name_len {}", real_dir, file_name, file_name.len());

@@ -52,6 +52,46 @@ impl Into<PTEFlags> for MMAPPROT {
     }
 }
 
+bitflags! {
+    pub struct MMAPFlags: u32 {
+        /// 对这段内存的修改是共享的
+        const MAP_SHARED = 1 << 0;
+        /// 对这段内存的修改是私有的
+        const MAP_PRIVATE = 1 << 1;
+        // 以上两种只能选其一
+
+        /// 取消原来这段位置的映射
+        const MAP_FIXED = 1 << 4;
+        /// 不映射到实际文件
+        const MAP_ANONYMOUS = 1 << 5;
+        /// 映射时不保留空间，即可能在实际使用mmp出来的内存时内存溢出
+        const MAP_NORESERVE = 1 << 14;
+    }
+}
+
+// from libc (sys/mman.h)
+/*
+#define MAP_SHARED     0x01
+#define MAP_PRIVATE    0x02
+#define MAP_SHARED_VALIDATE 0x03
+#define MAP_TYPE       0x0f
+#define MAP_FIXED      0x10
+#define MAP_ANON       0x20
+#define MAP_ANONYMOUS  MAP_ANON
+#define MAP_NORESERVE  0x4000
+#define MAP_GROWSDOWN  0x0100
+#define MAP_DENYWRITE  0x0800
+#define MAP_EXECUTABLE 0x1000
+#define MAP_LOCKED     0x2000
+#define MAP_POPULATE   0x8000
+#define MAP_NONBLOCK   0x10000
+#define MAP_STACK      0x20000
+#define MAP_HUGETLB    0x40000
+#define MAP_SYNC       0x80000
+#define MAP_FIXED_NOREPLACE 0x100000
+*/
+
+
 /// sys_times 中指定的结构体类型
 #[repr(C)]
 pub struct TMS {
@@ -192,4 +232,10 @@ impl Dirent64 {
 pub struct IoVec {
     pub base: *const u8,
     pub len: usize,
+}
+
+#[repr(C)]
+pub enum OpenatError {
+    ENOENT = -1, // 找不到文件或目录
+    EMFILE = -24, // fd（文件描述符）已满
 }

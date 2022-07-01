@@ -92,6 +92,7 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             //println!("syscall");
             cx.sepc += 4;
             cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14],cx.x[15]]) as usize;
+            info!("return a0 = {}", cx.x[10] as isize);
         }
         Trap::Exception(Exception::StoreFault) => {
             info!("[kernel] StoreFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);

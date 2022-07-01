@@ -24,7 +24,7 @@ use crate::constants::{
     MMAP_LEN_LIMIT,
 };
 
-use super::{WaitFlags, MMAPPROT, UtsName};
+use super::{WaitFlags, MMAPPROT, MMAPFlags, UtsName};
 
 /// 进程退出，并提供 exit_code 供 wait 等 syscall 拿取
 pub fn sys_exit(exit_code: i32) -> ! {
@@ -54,6 +54,12 @@ pub fn sys_getppid() -> isize {
     get_current_task().unwrap().get_ppid() as isize
 }
 
+/// 获取当前线程的编号。
+/// 每个进程的初始线程的编号就是它的 pid
+pub fn sys_gettid() -> isize {
+    get_current_task().unwrap().get_pid_num() as isize
+}
+
 /// 修改用户堆大小，
 /// 
 /// - 如输入 brk 为 0 ，则返回堆顶地址
@@ -62,6 +68,7 @@ pub fn sys_brk(brk: usize) -> isize {
     if brk == 0 {
         get_current_task().unwrap().get_user_heap_top() as isize
     } else {
+        //info!("user try to move brk at {}", brk);
         if get_current_task().unwrap().set_user_heap_top(brk) {
             0
         } else {
@@ -216,7 +223,8 @@ fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 }
 
 /// 映射一段内存
-pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: u32, fd: usize, offset: usize) -> isize {
+pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: i32, offset: usize) -> isize {
+    println!("try mmap {} {} {:#?} {:x} {} {}", start, len, prot, flags, fd, offset);
     if len > MMAP_LEN_LIMIT {
         return -1;
     }
@@ -226,7 +234,16 @@ pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: u32, fd: usize,
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
 
-    if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
+    //不实际映射到文件
+    if flags.contains(MMAPFlags::MAP_ANONYMOUS) {
+        drop(tcb_inner);
+        // 根据linuz规范需要 fd 设为 -1 且 offset 设为 0
+        if fd == -1 && offset == 0 {
+            if let Some(start) = task.mmap(start, start + len, prot.into(), &[], start == 0) {
+                return start as isize;
+            }
+        }
+    } else if let Ok(file) = tcb_inner.fd_manager.get_file(fd as usize) {
         if let Some(off) = file.seek(SeekFrom::Start(offset as u64)) {
             // 读文件可能触发进程切换
             drop(tcb_inner);
@@ -234,7 +251,7 @@ pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: u32, fd: usize,
                 //println!("try mmap {} {} {} {} {}", start, len, fd, read_len, len);
                 if read_len == len { // 至此才从文件中拿到了需要的数据，准备 mmap
                     // 重新拿锁
-                    if let Some(start) = get_current_task().unwrap().mmap(start, start + len, prot.into(), &data[..], start == 0) {
+                    if let Some(start) = task.mmap(start, start + len, prot.into(), &data[..], start == 0) {
                         //println!("start {:x}", start);
                         return start as isize;
                     }

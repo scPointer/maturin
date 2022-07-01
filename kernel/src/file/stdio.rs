@@ -45,8 +45,12 @@ impl File for Stdout {
     }
     /// UTF-8 格式写
     fn write(&self, buf: &[u8]) -> Option<usize> {
-        print!("{}", core::str::from_utf8(buf).unwrap());
-        Some(buf.len())
+        if let Ok(data) = core::str::from_utf8(buf) {
+            print!("{}", data);
+            Some(buf.len())
+        } else {
+            None
+        }
     }
 }
 
