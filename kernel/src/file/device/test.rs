@@ -111,7 +111,7 @@ lazy_static! {
 }
 
 pub const SAMPLE: &[&str] = &[
-    "daemon_failure",
+    "sscanf_long",
 ];
 
 pub const TESTCASES: &[&str] = &[

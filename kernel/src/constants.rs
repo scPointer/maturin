@@ -89,4 +89,4 @@ pub const NO_PARENT: usize = usize::MAX;
 pub const DIR_ENTRY_SIZE:usize = 32;
 
 /// 限制 mmap 的最长长度
-pub const MMAP_LEN_LIMIT:usize = 1_000_000;
+pub const MMAP_LEN_LIMIT:usize = 0x100_0000; // 16 MB

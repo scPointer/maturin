@@ -105,11 +105,17 @@ pub struct TMS {
     pub tms_cstime: usize,
 }
 
-//pub const nsec_per_sec: usize = 1_000_000_000;
+/// 每秒的纳秒数
+pub const NSEC_PER_SEC: usize = 1_000_000_000;
+/// 当 nsec 为这个特殊值时，指示修改时间为现在
+pub const UTIME_NOW: usize = 0x3fffffff;
+/// 当 nsec 为这个特殊值时，指示不修改时间
+pub const UTIME_OMIT: usize = 0x3ffffffe;
 // 因为测例库说明里的 tv_nsec 实际实现是 usec，所以要把这个量当微秒实现
-pub const nsec_per_sec: usize = 1_000_000;
+// 以上的说明的初赛测例。决赛时的测例都正确按执行上面语义执行
+//pub const nsec_per_sec: usize = 1_000_000;
 
-/// sys_gettimeofday 和 sys_nanosleep 中指定的结构体类型
+/// sys_gettimeofday / sys_nanosleep / sys_utimensat 中指定的结构体类型
 #[repr(C)]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct TimeSpec {
@@ -124,12 +130,20 @@ impl TimeSpec {
         let left = seconds - tv_sec as f64;
         Self {
             tv_sec: tv_sec,
-            tv_nsec: (left * nsec_per_sec as f64) as usize,
+            tv_nsec: (left * NSEC_PER_SEC as f64) as usize,
         }
     }
     /// 返回以秒为单位的时间
     pub fn time_in_sec(&self) -> f64 {
         self.tv_sec as f64 + self.tv_nsec as f64 / 1_000_000_000 as f64
+    }
+    /// 需要修改时间为现在
+    pub fn should_set_to_current_time(&self) -> bool {
+        self.tv_nsec == UTIME_NOW
+    }
+    /// 不需要修改时间
+    pub fn should_left_unchanged(&self) -> bool {
+        self.tv_nsec == UTIME_OMIT
     }
 }
 
@@ -140,11 +154,18 @@ impl Add for TimeSpec {
             tv_sec: self.tv_sec + other.tv_sec,
             tv_nsec: self.tv_nsec + other.tv_nsec,
         };
-        if new_ts.tv_nsec >= nsec_per_sec {
+        if new_ts.tv_nsec >= NSEC_PER_SEC {
             new_ts.tv_sec += 1;
-            new_ts.tv_nsec -= nsec_per_sec;
+            new_ts.tv_nsec -= NSEC_PER_SEC;
         }
         new_ts
+    }
+}
+
+bitflags! {
+    pub struct UtimensatFlags: u32 {
+        /// 表示更新时间时如果是指向符号链接，则仅更新符号链接本身的时间，不更新其指向文件的时间
+        const SYMLINK_NOFOLLOW = 1 << 8;
     }
 }
 

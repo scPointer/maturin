@@ -38,6 +38,7 @@ mod fat_file;
 mod fat_dir;
 mod fd_dir;
 mod link;
+mod time;
 mod test;
 
 pub use open_flags::OpenFlags;

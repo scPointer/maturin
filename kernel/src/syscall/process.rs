@@ -228,8 +228,6 @@ pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: 
     if len > MMAP_LEN_LIMIT {
         return -1;
     }
-    let mut data = Vec::new();
-    data.resize(len, 0);
 
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
@@ -237,6 +235,7 @@ pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: 
     //不实际映射到文件
     if flags.contains(MMAPFlags::MAP_ANONYMOUS) {
         drop(tcb_inner);
+        info!("here");
         // 根据linuz规范需要 fd 设为 -1 且 offset 设为 0
         if fd == -1 && offset == 0 {
             if let Some(start) = task.mmap(start, start + len, prot.into(), &[], start == 0) {
@@ -247,6 +246,8 @@ pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: 
         if let Some(off) = file.seek(SeekFrom::Start(offset as u64)) {
             // 读文件可能触发进程切换
             drop(tcb_inner);
+            let mut data = Vec::new();
+            data.resize(len, 0);
             if let Some(read_len) = file.read(&mut data[..]) {
                 //println!("try mmap {} {} {} {} {}", start, len, fd, read_len, len);
                 if read_len == len { // 至此才从文件中拿到了需要的数据，准备 mmap

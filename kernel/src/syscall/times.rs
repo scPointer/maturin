@@ -13,10 +13,10 @@ use crate::task::{
 };
 use crate::constants::CLOCK_FREQ;
 
-use super::{TMS, TimeSpec, nsec_per_sec};
+use super::{TMS, TimeSpec, UtimensatFlags, NSEC_PER_SEC};
 
 const ticks_per_sec: f64 = CLOCK_FREQ as f64;
-const ticks_per_nsec: f64 = ticks_per_sec / nsec_per_sec as f64;
+const ticks_per_nsec: f64 = ticks_per_sec / NSEC_PER_SEC as f64;
 
 /// 当前时间为多少秒(浮点数格式)
 fn get_time_f64() -> f64 {
@@ -64,4 +64,8 @@ pub fn sys_times(tms_ptr: *mut TMS) -> isize {
         (*tms_ptr).tms_cstime = passed_ms;
     }
     passed as isize
+}
+
+pub fn sys_utimensat(dir_fd: i32, path: *const u8, time_spec: *const TimeSpec, flags: UtimensatFlags) -> isize {
+    -1
 }
