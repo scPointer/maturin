@@ -78,8 +78,8 @@ dynamic_test: $(DSO_SOS) $(DIR)$(TARGET_NAME).c
 	$(CC) $(LDFLAGS) $(CFLAGS) $(DIR)$(TARGET_NAME).c -DDYNAMIC $(COMMON_SRCS) -Lsrc/functional -Lsrc/regression -ltls_align_dso -ltls_init_dso -ldlopen_dso -ltls_get_new-dtv_dso -Wl,-rpath ./ -o dynamic.dout
 
 str_array_in_rust:
-	ls build | xargs -i echo \"{}\",
-	
+	ls build --ignore=*.dout --ignore=*.so | xargs -i echo \"{}\",
+	find build -name "*.dout" | xargs basename -a | xargs -i echo \"dyn/{}\",
 
 .PHONY: all build debug asm clean test build_static build_dynamic
 #$(CC) $(CFLAGS) -c $^ -o $@
