@@ -4,7 +4,7 @@ CC=$(PREFIX)gcc
 OBJCOPY=$(PREFIX)objcopy
 
 STATIC_TESTCASES = $(shell cat static_testcases.txt)
-#DYAMIC_TESTCASES = $(shell cat dynamic_testcases.txt)
+DYAMIC_TESTCASES = $(shell cat dynamic_testcases.txt)
 OUTPUT_TESTCASES = $(addprefix build/,  $(subst -,_,$(notdir $(basename $(STATIC_TESTCASES)))))
 
 CFLAGS += -pipe -std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wno-unused-function -Wno-missing-braces -Wno-unused -Wno-overflow
@@ -36,14 +36,24 @@ asm: $(DIR)$(TARGET_NAME).S
 
 clean:
 	find src -name '*.out' | xargs -t rm
+	find src -name '*.dout' | xargs -t rm
 
+# 静态测例
 %.out : %.c
-	$(CC) $^ $(COMMON_SRCS) $(CFLAGS) -o $@
+	$(CC) $^ $(COMMON_SRCS) $(CFLAGS) -static -o $@
 	mkdir -p build
 	cp $@ $(addprefix build/,  $(subst -,_,$(notdir $(basename $@))))
 
+#动态测例
+%.dout : %.c
+	$(CC) $(LDFLAGS) $(CFLAGS) $^ -DDYNAMIC $(COMMON_SRCS) -Lsrc/functional -Lsrc/regression -ltls_align_dso -ltls_init_dso -ldlopen_dso -ltls_get_new-dtv_dso -Wl,-rpath ./ -o $@
+	mkdir -p build
+	cp $@ $(addprefix build/,  $(subst -,_,$(notdir $@)))
+
 %.so : %.c
 	$(CC) $(CFLAGS) -shared -fPIC $^ -o $(dir $@)/lib$(notdir $@)
+	mkdir -p build
+	cp $(dir $@)/lib$(notdir $@) $(addprefix build/lib,  $(notdir $@))
 
 src/functional/tls_align.out: src/functional/tls_align.c src/functional/tls_align_dso.c
 	$(CC) $^ $(COMMON_SRCS) $(CFLAGS) -o $@	
@@ -59,10 +69,13 @@ test:
 
 build_static: $(STATIC_TESTCASES)
 
-build_dynamic: $(DSO_SOS)
+build_dynamic: $(DSO_SOS) $(DYAMIC_TESTCASES)
+	mkdir -p build
+	cp ./libc.so ./build/libc.so
+
 
 dynamic_test: $(DSO_SOS) $(DIR)$(TARGET_NAME).c
-	$(CC) $(LDFLAGS) $(CFLAGS) $(DIR)$(TARGET_NAME).c -DDYNAMIC $(COMMON_SRCS) -Lsrc/functional -Lsrc/regression -ltls_align_dso -ltls_init_dso -ldlopen_dso -ltls_get_new-dtv_dso -Wl,-rpath ./ -o dynamic.out
+	$(CC) $(LDFLAGS) $(CFLAGS) $(DIR)$(TARGET_NAME).c -DDYNAMIC $(COMMON_SRCS) -Lsrc/functional -Lsrc/regression -ltls_align_dso -ltls_init_dso -ldlopen_dso -ltls_get_new-dtv_dso -Wl,-rpath ./ -o dynamic.dout
 
 str_array_in_rust:
 	ls build | xargs -i echo \"{}\",
