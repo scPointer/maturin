@@ -90,3 +90,9 @@ pub const DIR_ENTRY_SIZE:usize = 32;
 
 /// 限制 mmap 的最长长度
 pub const MMAP_LEN_LIMIT:usize = 0x100_0000; // 16 MB
+/// 比赛修改过的 libc-test 中，动态库在测例ELF中写的地址
+pub const LIBC_SO_NAME: &str = "/lib/ld-musl-riscv64.so.1";
+/// 比赛修改过的 libc-test 中，动态库 libc.so 的实际地址
+pub const LIBC_SO_FILE: &str = "libc.so";
+/// 比赛修改过的 libc-test 中，动态库 libc.so 所在目录
+pub const LIBC_SO_DIR: &str = ROOT_DIR;

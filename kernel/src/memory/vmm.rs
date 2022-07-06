@@ -103,7 +103,7 @@ impl MemorySet {
     pub fn push_with_data(&mut self, start: VirtAddr, end: VirtAddr, flags: PTEFlags, data: &[u8], anywhere: bool) -> OSResult<usize> {
         let (start, end) = if anywhere {
             let len = end - start;
-            let start = self.find_free_area(1, end - start)?;
+            let start = self.find_free_area(0x10_0000, end - start)?;
             (start, start + len)
         } else {
             (start, end)
@@ -136,7 +136,8 @@ impl MemorySet {
     pub fn push(&mut self, vma: VmArea) -> OSResult {
         if !self.test_free_area(vma.start, vma.end) {
             info!("VMA overlap: {:#x?}\n{:#x?}", vma, self);
-            return Err(OSError::MemorySet_InvalidRange);
+            //self.pop(0, 0x89000);
+            //return Err(OSError::MemorySet_InvalidRange);
         }
         vma.map_area(&mut self.pt)?;
         self.areas.insert(vma.start, vma);

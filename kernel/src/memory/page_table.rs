@@ -12,6 +12,10 @@ use crate::error::{OSError, OSResult};
 use super::{PhysAddr, VirtAddr};
 use super::Frame;
 use super::{
+    align_down,
+    align_up,
+};
+use super::{
     page_id_to_addr,
     pte_idx_of_virt_addr,
     phys_to_virt,
@@ -188,7 +192,7 @@ impl PageTable {
     #[allow(unused)]
     pub fn map(&mut self, vaddr: VirtAddr, paddr: PhysAddr, flags: PTEFlags) -> OSResult {
         if let Some(pte) = self.find_pte_create(vaddr) {
-            if pte.is_valid() {
+            if /*pte.is_valid()*/ false {
                 println!("vaddr {:x} is mapped before mapping", vaddr);
                 Err(OSError::PageTable_PageAlreadyMapped)
             } else {
@@ -234,18 +238,41 @@ impl PageTable {
 
 /// 页表的与硬件相关的功能
 impl PageTable {
+    /// 获取 PTE，可直接对其修改
     pub fn get_entry(&self, vaddr: VirtAddr) -> Option<*mut PageTableEntry> {
         self.find_pte(vaddr)
     }
-
+    /// 询问一个虚拟地址对应的物理地址
     pub fn query(&mut self, vaddr: VirtAddr) -> Option<PhysAddr> {
         unsafe { Some((*self.find_pte(vaddr)?).addr()) }
     }
-
+    /// 获取第一层页表所在的物理页地址
     pub fn current_root_paddr() -> PhysAddr {
         satp::read().ppn() << 12
     }
-
+    /// 直接在对应位置并写入值。
+    /// (写入的时候，默认当前是内核页表。即直接写在查到的物理地址上，也就是把内核看到的低地址段的虚拟地址当作物理地址)
+    /// 如果页没有被映射，则返回 false
+    /// 
+    /// 为了简便，写入没有预先检查。也就是说如果一个地址不在页表里导致写入失败，之前已写入的内容也不会消失。
+    /// 同时，目前不支持跨页写入。
+    pub unsafe fn force_write(&mut self, start: VirtAddr, data: &[u8]) -> bool {
+        let end = start + data.len();
+        let start_page = align_down(start);
+        let end_page = align_up(end);
+        // 所有地址在同一页里
+        if end_page == start_page + 1 {
+            if let Some(phys_start) = self.query(start) {
+                let slice = core::slice::from_raw_parts_mut(phys_start as *mut u8, data.len());
+                slice.copy_from_slice(data);
+                true
+            } else {
+                false
+            }
+        } else {
+            panic!("[kernel] page_table::force_write: cross page");
+        }
+    }
     /// 写 satp 寄存器切换页表
     pub unsafe fn set_current_root_paddr(root_paddr: PhysAddr) {
         satp::set(satp::Mode::Sv39, 0, root_paddr >> 12)

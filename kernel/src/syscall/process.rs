@@ -224,7 +224,7 @@ fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 
 /// 映射一段内存
 pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: i32, offset: usize) -> isize {
-    println!("try mmap {} {} {:#?} {:x} {} {}", start, len, prot, flags, fd, offset);
+    println!("try mmap {:x} {} prot=[{:#?}] flags=[{:#?}] {} {}", start, len, prot, flags, fd, offset);
     if len > MMAP_LEN_LIMIT {
         return -1;
     }
@@ -243,6 +243,7 @@ pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: 
             }
         }
     } else if let Ok(file) = tcb_inner.fd_manager.get_file(fd as usize) {
+        //info!("get file");
         if let Some(off) = file.seek(SeekFrom::Start(offset as u64)) {
             // 读文件可能触发进程切换
             drop(tcb_inner);
@@ -250,11 +251,17 @@ pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: 
             data.resize(len, 0);
             if let Some(read_len) = file.read(&mut data[..]) {
                 //println!("try mmap {} {} {} {} {}", start, len, fd, read_len, len);
-                if read_len == len { // 至此才从文件中拿到了需要的数据，准备 mmap
+                if read_len <= len { // 至此才从文件中拿到了需要的数据，准备 mmap
                     // 重新拿锁
-                    if let Some(start) = task.mmap(start, start + len, prot.into(), &data[..], start == 0) {
+                    if let Some(start) = task.mmap(start, start + len, prot.into(), &data[..read_len], start == 0) {
                         //println!("start {:x}", start);
                         return start as isize;
+                    } else if !flags.contains(MMAPFlags::MAP_FIXED) {
+                        // 重定位到其他地方
+                        if let Some(start) = task.mmap(0, len, prot.into(), &data[..read_len], true) {
+                            //println!("start {:x}", start);
+                            return start as isize;
+                        }
                     }
                 }
             }
@@ -265,6 +272,7 @@ pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: 
 
 /// 取消映射一段内存
 pub fn sys_munmap(start: usize, len: usize) -> isize {
+    info!("start {:x}, len {}", start, len);
     if get_current_task().unwrap().munmap(start, start + len) {
         0
     } else {

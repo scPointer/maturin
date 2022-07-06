@@ -17,6 +17,8 @@ bitflags! {
         const CREATE = 1 << 6;
         /// 
         const NOFOLLOW = 1 << 17;
+        ///
+        const LARGEFILE = 1 << 19;
         /// 是否是目录
         const DIR = 1 << 21;
     }

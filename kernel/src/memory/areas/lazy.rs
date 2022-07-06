@@ -39,11 +39,13 @@ impl PmArea for PmAreaLazy {
         Ok(())
     }
     fn read(&mut self, offset: usize, dst: &mut [u8]) -> OSResult<usize> {
+        //info!("pma read");
         self.for_each_frame(offset, dst.len(), |processed: usize, frame: &mut [u8]| {
             dst[processed..processed + frame.len()].copy_from_slice(frame);
         })
     }
     fn write(&mut self, offset: usize, src: &[u8]) -> OSResult<usize> {
+        //info!("pma write");
         self.for_each_frame(offset, src.len(), |processed: usize, frame: &mut [u8]| {
             frame.copy_from_slice(&src[processed..processed + frame.len()]);
         })
@@ -97,6 +99,7 @@ impl PmAreaLazy {
             let idx = start_align / PAGE_SIZE;
             if self.frames[idx].is_none() {
                 if let Some(mut frame) = Frame::new() {
+                    //info!("new frame vstart {:x} len {:x} (self_size {:x})pstart {:x}", start, len, self.size(), frame.start_paddr());
                     frame.zero();
                     self.frames[idx] = Some(frame);
                 } else {

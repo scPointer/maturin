@@ -67,7 +67,7 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
         // 读文件可能触发进程切换
         drop(tcb_inner);
         if let Some(read_len) = file.read(slice) {
-            //println!("[kernel] read syscall size {}", read_len);
+            //println!("[kernel] read syscall size {} wanted {}", read_len, len);
             return read_len as isize
         }
     }
@@ -98,9 +98,11 @@ pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> isize {
     if iov_cnt < 0 {
         return -1;
     }
+    info!("writev fd {}", fd);
     let mut written_len = 0;
     for i in 0..iov_cnt {
         let io_vec: &IoVec = unsafe { &*iov.add(i) };
+        println!("io_vec.base {:x}, len {:x}", io_vec.base as usize, io_vec.len);
         let ret = sys_write(fd, io_vec.base, io_vec.len);
         if ret == -1 {
             break
@@ -145,6 +147,7 @@ fn get_dir_from_fd(tcb_inner: &MutexGuard<TaskControlBlockInner>, dir_fd: i32) -
 /// 适用于 open/madir/link/unlink 等
 fn resolve_path_from_fd<'a>(tcb_inner: &MutexGuard<TaskControlBlockInner>, dir_fd: i32, path: *const u8) -> Option<(String, &'a str)>{
     let file_path = unsafe { raw_ptr_to_ref_str(path) };
+    //println!("file_path {}", file_path);
     if file_path.starts_with("/") { // 绝对路径
         Some((String::from("./"), &file_path[1..])) // 需要加上 '.'，因为 os 中约定根目录是以 '.' 开头
     } else { // 相对路径
@@ -273,7 +276,6 @@ pub fn sys_chdir(path: *const u8) -> isize {
 pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
-
     // 如果 fd 已满，则不再添加
     if tcb_inner.fd_manager.is_full() {
         return OpenatError::EMFILE as isize;
@@ -286,11 +288,15 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
         // 2. './' 开头的相对路径，如 /abc
         // 3. 字母数字开头的相对路径，如 def.txt
         // 而把路径直接写成当前目录的情况比较特殊，不包含在以上三种之内
-        //println!("file path = {}, len = {}, flags = {:x}", file_path, file_path.len(), flags);
+        println!("file path = {}, len = {}, flags = {:x}", file_path, file_path.len(), flags);
         if file_path == "." {
             file_path.push('/');
+        } else if file_path.starts_with(".//") {
+            file_path.remove(1);
         }
+        //println!("try open parent_dir {} file_path {} flag {}", parent_dir, file_path, flags);
         if let Some(open_flags) = OpenFlags::from_bits(flags) {
+            //println!("opened");
             if let Some(node) = open_file(parent_dir.as_str(), file_path.as_str(), open_flags) {
                 //println!("opened");
                 if let Ok(fd) = tcb_inner.fd_manager.push(node) {

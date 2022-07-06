@@ -220,6 +220,7 @@ impl TaskControlBlock {
     }
     /// 映射一段内存地址到文件或设备
     pub fn mmap(&self, start: VirtAddr, end: VirtAddr, flags: PTEFlags, data: &[u8], anywhere: bool) -> Option<usize> {
+        //info!("start {} , end {}, data.len {}", start, end, data.len());
         if end - start < data.len() {
            None
         } else {
