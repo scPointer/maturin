@@ -4,6 +4,7 @@
 
 mod fixed;
 mod lazy;
+mod diff_set;
 
 use alloc::sync::Arc;
 use lock::Mutex;
@@ -18,6 +19,7 @@ use super::PAGE_SIZE;
 
 pub use fixed::PmAreaFixed;
 pub use lazy::PmAreaLazy;
+pub use diff_set::DiffSet;
 
 /// 一段访问权限相同的物理地址。注意物理地址本身不一定连续，只是拥有对应长度的空间
 /// 
@@ -35,6 +37,21 @@ pub trait PmArea: core::fmt::Debug + Send + Sync {
     fn read(&mut self, offset: usize, dst: &mut [u8]) -> OSResult<usize>;
     /// 把数据写到从 offset 开头的地址，成功时返回写入长度
     fn write(&mut self, offset: usize, src: &[u8]) -> OSResult<usize>;
+    /// 从左侧缩短一段(new_start是相对于地址段开头的偏移)
+    fn shrink_left(&mut self, new_start: usize) -> OSResult;
+    /// 从右侧缩短一段(new_end是相对于地址段开头的偏移)
+    fn shrink_right(&mut self, new_end: usize) -> OSResult;
+    /// 分成两个区间(输入参数都是相对于地址段开头的偏移)
+    fn split(&mut self, left_end: usize, right_start: usize) -> OSResult<Arc<Mutex<dyn PmArea>>>;
+}
+
+
+/// 要求物理地址段可以去掉中间的一段，分成 (原来的start, left_end) 和 (right_start, 原来的end) 两段
+/// 
+/// 因为这个方法会创建一个新的满足 PmArea 的结构，所以不能塞进 trait PmArea 里，否则会导致递归定义
+pub trait PmAreaSplit {
+
+    //fn split(&mut self, left_end: usize, right_start: usize) -> OSResult<Arc<Mutex<dyn PmArea>>>;
 }
 
 /// 一段访问权限相同的虚拟地址
@@ -100,6 +117,41 @@ impl VmArea {
         !(p1 <= p2 || p0 >= p3)
     }
 
+    /// 尝试空出[start, end)区间。即删除当前区间中和[start, end)相交的部分。
+    /// 
+    /// **注意，这个函数在内部已经 unmap 了对应的区间中的映射，调用后不需要再手动 unmap**。
+    /// 这个函数默认参数中的 start 和 end 是按页对齐的
+    pub fn shrink_or_split_if_overlap(&mut self, pt: &mut PageTable, start: VirtAddr, end: VirtAddr) -> OSResult<DiffSet> {
+        if end <= self.start || self.end <= start { // 不相交
+            Ok(DiffSet::Unchanged)
+        } else if start <= self.start && self.end <= end { // 被包含
+            self.unmap_area(pt)?;
+            Ok(DiffSet::Removed)
+        } else if self.start < start && end < self.end { // 需要分割
+            let offset_start = start - self.start; // 相对起始位置
+            let offset_end = end - self.start; // 相对结束位置
+            self.unmap_area_partial(pt, start, end)?;
+            let right_pma = self.pma.lock().split(offset_start, offset_end)?;
+            Ok(DiffSet::Splitted(
+                VmArea::new(self.start, start, PTEFlags::from_bits(self.flags.bits()).unwrap(), self.pma.clone(), &self.name)?,
+                VmArea::new(end, self.end, PTEFlags::from_bits(self.flags.bits()).unwrap(), right_pma, &self.name)?
+            ))
+        } else if end < self.end { // 需要删除前半段
+            let offset_start = end - self.start; // 相对结束位置，也即新的开始位置
+            self.unmap_area_partial(pt, self.start, end)?;
+            self.pma.lock().shrink_left(offset_start)?;
+            self.start = end;
+            Ok(DiffSet::Shrinked)
+        } else { // 删除后半段
+            assert_eq!(self.start < start, true); // 最后一种情况一定是后半段重叠
+            let offset_end = start - self.start; // 相对开始位置，也即新的结束位置
+            self.unmap_area_partial(pt, start, self.end)?;
+            self.pma.lock().shrink_right(offset_end)?;
+            self.end = start;
+            Ok(DiffSet::Shrinked)
+        }
+    }
+
     /// 把虚拟地址段和对应的物理地址段的映射写入页表。
     /// 
     /// 如果是 lazy 分配的，或者说还没有对应页帧时，则不分配，等到 page fault 时再分配
@@ -125,13 +177,10 @@ impl VmArea {
         Ok(())
     }
 
-    /// 把虚拟地址段和对应的物理地址段的映射从页表中删除。
-    /// 
-    /// 如果页表中的描述和 VmArea 的描述不符，则返回 error
-    pub fn unmap_area(&self, pt: &mut PageTable) -> OSResult {
-        //println!("destory mapping: {:#x?}", self);
+    /// 删除部分虚拟地址映射
+    fn unmap_area_partial(&self, pt: &mut PageTable, start: VirtAddr, end: VirtAddr) -> OSResult {
         let mut pma = self.pma.lock();
-        for vaddr in (self.start..self.end).step_by(PAGE_SIZE) {
+        for vaddr in (start..end).step_by(PAGE_SIZE) {
             let res = pma.release_frame((vaddr - self.start) / PAGE_SIZE);
             //if vaddr == 0x3fff_f000 { println!("page {:#x?} at {:x}", res, pt.get_root_paddr()); }
             // 如果触发 OSError::PmAreaLazy_ReleaseNotAllocatedPage，
@@ -148,6 +197,14 @@ impl VmArea {
             }
         }
         Ok(())
+    }
+
+    /// 把虚拟地址段和对应的物理地址段的映射从页表中删除。
+    /// 
+    /// 如果页表中的描述和 VmArea 的描述不符，则返回 error
+    pub fn unmap_area(&self, pt: &mut PageTable) -> OSResult {
+        //println!("destory mapping: {:#x?}", self);
+        self.unmap_area_partial(pt, self.start, self.end)
     }
 
     /// 这一段是否是用户态可见的
@@ -230,7 +287,7 @@ impl VmArea {
                 } else {
                     (*entry).set_all(paddr, self.flags | PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY);
                     pt.flush_tlb(Some(vaddr));
-                    info!("[Handler] Lazy alloc a page for user.");
+                    //info!("[Handler] Lazy alloc a page for user.");
                     Ok(())
                 }
             }

@@ -192,7 +192,7 @@ impl PageTable {
     #[allow(unused)]
     pub fn map(&mut self, vaddr: VirtAddr, paddr: PhysAddr, flags: PTEFlags) -> OSResult {
         if let Some(pte) = self.find_pte_create(vaddr) {
-            if /*pte.is_valid()*/ false {
+            if pte.is_valid() {
                 println!("vaddr {:x} is mapped before mapping", vaddr);
                 Err(OSError::PageTable_PageAlreadyMapped)
             } else {

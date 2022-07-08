@@ -38,6 +38,8 @@ pub enum OSError {
 
     PmArea_OutOfRange,
     PmArea_InvalidRange,
+    PmArea_ShrinkFailed,
+    PmArea_SplitFailed,
     PmAreaLazy_ReleaseNotAllocatedPage,
 
     
@@ -45,7 +47,8 @@ pub enum OSError {
     Memory_RunOutOfMemory,
     // *虚拟*地址空间中找不到足够长的连续空间
     Memory_RunOutOfConsecutiveMemory,
-    
+    // syscall_mmap 需要的地址和内核地址相交
+    MemorySet_UserMmapIntersectWithKernel,
     MemorySet_InvalidRange,
     MemorySet_UnmapAreaNotFound,
     Task_MmapLengthDisagree,

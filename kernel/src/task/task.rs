@@ -218,7 +218,10 @@ impl TaskControlBlock {
             //println!("sp = {:x}, entry = {:x}, sstatus = {:x}", trap_context.x[2], trap_context.sepc, trap_context.sstatus.bits()); 
         }).is_ok()
     }
-    /// 映射一段内存地址到文件或设备
+    /// 映射一段内存地址到文件或设备。
+    /// 
+    /// anywhere 选项指示是否可以映射到任意位置，一般与 `MAP_FIXED` 关联。
+    /// 如果 anywhere=true，则将 start 视为 hint
     pub fn mmap(&self, start: VirtAddr, end: VirtAddr, flags: PTEFlags, data: &[u8], anywhere: bool) -> Option<usize> {
         //info!("start {} , end {}, data.len {}", start, end, data.len());
         if end - start < data.len() {

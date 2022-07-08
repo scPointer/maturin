@@ -37,6 +37,11 @@ pub fn page_count(size: usize) -> usize {
     align_up(size) / PAGE_SIZE
 }
 
+/// 从地址获取页号
+pub fn addr_to_page_id(addr: usize) -> usize {
+    addr / PAGE_SIZE
+}
+
 /// 地址转页内偏移
 pub fn page_offset(addr: usize) -> usize {
     addr & (PAGE_SIZE - 1)

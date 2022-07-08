@@ -7,7 +7,7 @@ use core::slice;
 
 use lock::Mutex;
 
-use super::{PmArea, VmArea};
+use super::{PmArea, PmAreaSplit, VmArea};
 use crate::error::{OSError, OSResult};
 use crate::memory::{
     addr::{align_down, align_up},
@@ -25,14 +25,17 @@ impl PmArea for PmAreaFixed {
     fn size(&self) -> usize {
         self.end - self.start
     }
+
     fn get_frame(&mut self, idx: usize, _need_alloc: bool) -> OSResult<Option<PhysAddr>> {
         let paddr = self.start + idx * PAGE_SIZE;
         debug_assert!(paddr < self.end);
         Ok(Some(paddr))
     }
+
     fn release_frame(&mut self, _idx: usize) -> OSResult {
         Ok(())
     }
+
     fn read(&mut self, offset: usize, dst: &mut [u8]) -> OSResult<usize> {
         if offset >= self.size() {
             println!(
@@ -46,6 +49,7 @@ impl PmArea for PmAreaFixed {
         dst.copy_from_slice(data);
         Ok(len)
     }
+
     fn write(&mut self, offset: usize, src: &[u8]) -> OSResult<usize> {
         if offset >= self.size() {
             println!(
@@ -59,8 +63,39 @@ impl PmArea for PmAreaFixed {
         data.copy_from_slice(src);
         Ok(len)
     }
+
+    fn shrink_left(&mut self, new_start: usize) -> OSResult {
+        if new_start < self.end - self.start {
+            self.start += new_start;
+            Ok(())
+        } else {
+            Err(OSError::PmArea_ShrinkFailed)
+        }
+    }
+
+    fn shrink_right(&mut self, new_end: usize) -> OSResult {
+        if new_end < self.end - self.start {
+            self.end = self.start + new_end;
+            Ok(())
+        } else {
+            Err(OSError::PmArea_ShrinkFailed)
+        }
+    }
+
+    fn split(&mut self, left_end: usize, right_start: usize) -> OSResult<Arc<Mutex<dyn PmArea>>> {
+        if left_end < right_start && right_start < self.end - self.start {
+            let old_end = self.end;
+            self.end = self.start + left_end;
+            Ok(Arc::new(Mutex::new(PmAreaFixed::new(self.start + right_start, old_end).unwrap())))
+        } else {
+            Err(OSError::PmArea_SplitFailed)
+        }
+    }
 }
 
+impl PmAreaSplit for PmAreaFixed {
+
+}
 impl PmAreaFixed {
     pub fn new(start: PhysAddr, end: PhysAddr) -> OSResult<Self> {
         if start >= end {

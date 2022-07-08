@@ -30,18 +30,7 @@ use crate::error::{
     OSResult,
 };
 
-pub use addr::{
-    PhysAddr, 
-    VirtAddr,
-    align_up,
-    align_down,
-    virt_to_phys,
-    phys_to_virt,
-    page_count,
-    page_offset,
-    page_id_to_addr,
-    pte_idx_of_virt_addr,
-};
+pub use addr::*;
 
 pub use allocator::{
     Frame,
@@ -70,6 +59,7 @@ pub use areas::{
     PmArea,
     PmAreaLazy,
     PmAreaFixed,
+    DiffSet,
 };
 
 pub use vmm::{

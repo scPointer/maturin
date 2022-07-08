@@ -6,7 +6,8 @@
 //#![deny(warnings)]
 #![feature(panic_info_message)]
 #![feature(default_alloc_error_handler)]
-
+// MemorySet 处理相交的 VmArea 时需要
+#![feature(btree_drain_filter)]
 #[macro_use]
 mod console;
 

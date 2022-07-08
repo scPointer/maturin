@@ -228,7 +228,12 @@ pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: 
     if len > MMAP_LEN_LIMIT {
         return -1;
     }
-
+    // start == 0 表明需要OS为其找一段内存，而 MAP_FIXED 表明必须 mmap 在固定位置。两者是冲突的
+    if start == 0 && flags.contains(MMAPFlags::MAP_FIXED) {
+        return -1;
+    }
+    // 是否可以放在任意位置
+    let anywhere = start == 0 || !flags.contains(MMAPFlags::MAP_FIXED);
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
 
@@ -238,7 +243,7 @@ pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: 
         info!("here");
         // 根据linuz规范需要 fd 设为 -1 且 offset 设为 0
         if fd == -1 && offset == 0 {
-            if let Some(start) = task.mmap(start, start + len, prot.into(), &[], start == 0) {
+            if let Some(start) = task.mmap(start, start + len, prot.into(), &[], anywhere) {
                 return start as isize;
             }
         }
@@ -253,15 +258,9 @@ pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: 
                 //println!("try mmap {} {} {} {} {}", start, len, fd, read_len, len);
                 if read_len <= len { // 至此才从文件中拿到了需要的数据，准备 mmap
                     // 重新拿锁
-                    if let Some(start) = task.mmap(start, start + len, prot.into(), &data[..read_len], start == 0) {
+                    if let Some(start) = task.mmap(start, start + len, prot.into(), &data[..read_len], anywhere) {
                         //println!("start {:x}", start);
                         return start as isize;
-                    } else if !flags.contains(MMAPFlags::MAP_FIXED) {
-                        // 重定位到其他地方
-                        if let Some(start) = task.mmap(0, len, prot.into(), &data[..read_len], true) {
-                            //println!("start {:x}", start);
-                            return start as isize;
-                        }
                     }
                 }
             }
