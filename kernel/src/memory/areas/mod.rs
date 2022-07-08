@@ -45,15 +45,6 @@ pub trait PmArea: core::fmt::Debug + Send + Sync {
     fn split(&mut self, left_end: usize, right_start: usize) -> OSResult<Arc<Mutex<dyn PmArea>>>;
 }
 
-
-/// 要求物理地址段可以去掉中间的一段，分成 (原来的start, left_end) 和 (right_start, 原来的end) 两段
-/// 
-/// 因为这个方法会创建一个新的满足 PmArea 的结构，所以不能塞进 trait PmArea 里，否则会导致递归定义
-pub trait PmAreaSplit {
-
-    //fn split(&mut self, left_end: usize, right_start: usize) -> OSResult<Arc<Mutex<dyn PmArea>>>;
-}
-
 /// 一段访问权限相同的虚拟地址
 #[derive(Debug)]
 pub struct VmArea {

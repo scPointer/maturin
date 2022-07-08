@@ -7,7 +7,7 @@ use core::slice;
 
 use lock::Mutex;
 
-use super::{PmArea, PmAreaSplit, VmArea};
+use super::{PmArea, VmArea};
 use crate::error::{OSError, OSResult};
 use crate::memory::{
     addr::{align_down, align_up},
@@ -93,9 +93,6 @@ impl PmArea for PmAreaFixed {
     }
 }
 
-impl PmAreaSplit for PmAreaFixed {
-
-}
 impl PmAreaFixed {
     pub fn new(start: PhysAddr, end: PhysAddr) -> OSResult<Self> {
         if start >= end {
