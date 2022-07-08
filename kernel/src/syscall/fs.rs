@@ -294,7 +294,7 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
         } else if file_path.starts_with(".//") {
             file_path.remove(1);
         }
-        //println!("try open parent_dir {} file_path {} flag {}", parent_dir, file_path, flags);
+        println!("try open parent_dir={} file_path={} flag={:x}", parent_dir, file_path, flags);
         if let Some(open_flags) = OpenFlags::from_bits(flags) {
             //println!("opened");
             if let Some(node) = open_file(parent_dir.as_str(), file_path.as_str(), open_flags) {

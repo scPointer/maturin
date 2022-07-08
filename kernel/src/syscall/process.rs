@@ -224,7 +224,7 @@ fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 
 /// 映射一段内存
 pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: i32, offset: usize) -> isize {
-    println!("try mmap {:x} {} prot=[{:#?}] flags=[{:#?}] {} {}", start, len, prot, flags, fd, offset);
+    println!("try mmap start={:x} len={:x} prot=[{:#?}] flags=[{:#?}] fd={} offset={:x}", start, len, prot, flags, fd, offset);
     if len > MMAP_LEN_LIMIT {
         return -1;
     }
@@ -240,7 +240,6 @@ pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: 
     //不实际映射到文件
     if flags.contains(MMAPFlags::MAP_ANONYMOUS) {
         drop(tcb_inner);
-        info!("here");
         // 根据linuz规范需要 fd 设为 -1 且 offset 设为 0
         if fd == -1 && offset == 0 {
             if let Some(start) = task.mmap(start, start + len, prot.into(), &[], anywhere) {

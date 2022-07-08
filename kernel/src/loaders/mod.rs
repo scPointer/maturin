@@ -123,7 +123,9 @@ impl<'a> ElfLoader<'a> {
                     ELF_BASE_RELOCATE
                 }
             } else {
-                return Err(OSError::Loader_PhdrNotFound);
+                //return Err(OSError::Loader_PhdrNotFound);
+                // 自行构造的测例(rcore/初赛)可能会出现这种情况，而且也没有 phdr 段，此时认为 base addr = 0
+                0
             };
         
         for ph in self.elf.program_iter() {

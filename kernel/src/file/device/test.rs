@@ -104,14 +104,14 @@ impl TestStatus {
 }
 
 lazy_static! {
-    static ref TESTCASES_ITER: Mutex<Iter<'static, &'static str>> = Mutex::new(DYNAMIC_TESTCASES.into_iter());
-    static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(DYNAMIC_TESTCASES));
+    static ref TESTCASES_ITER: Mutex<Iter<'static, &'static str>> = Mutex::new(SAMPLE.into_iter());
+    static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(SAMPLE));
     //static ref TEST_COUNT: Mutex<usize> = Mutex::new(0);
     //static ref TEST_PASSED: Mutex<usize> = Mutex::new(0);
 }
 
 pub const SAMPLE: &[&str] = &[
-    "dyn/basename.dout",
+    "getpid",
 ];
 
 pub const DYNAMIC_TESTCASES: &[&str] = &[
