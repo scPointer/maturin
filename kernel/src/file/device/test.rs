@@ -111,7 +111,7 @@ lazy_static! {
 }
 
 pub const SAMPLE: &[&str] = &[
-    "dyn/argv.dout",
+    "dyn/basename.dout",
 ];
 
 pub const DYNAMIC_TESTCASES: &[&str] = &[
@@ -309,7 +309,7 @@ pub const TESTCASES: &[&str] = &[
     "socket",
     "sscanf",
     "sscanf_eof",
-    "sscanf_long",
+    //"sscanf_long",
     "stat",
     "statvfs",
     "strftime",

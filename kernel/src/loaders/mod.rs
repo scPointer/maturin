@@ -14,6 +14,7 @@ use crate::constants::{
     LIBC_SO_NAME,
     LIBC_SO_FILE,
     LIBC_SO_DIR,
+    ELF_BASE_RELOCATE,
 };
 use crate::file::{open_file, OpenFlags};
 use crate::utils::raw_ptr_to_ref_str;
@@ -103,10 +104,28 @@ impl<'a> ElfLoader<'a> {
             info!("args {:#?}", new_args);
             return parse_user_app(LIBC_SO_DIR, LIBC_SO_FILE, vm, new_args);
         }
-
-        let base = 0x30_0000;
-        // push ELF segments to `vm`
-        let mut elf_base_vaddr = 0;
+        // 动态程序在加载时用到的地址。如果是静态程序，则这里是 0
+        let mut dyn_base = 0;
+        // 先获取起始位置。
+        // 虽然比较繁琐，但因为之后对 VmArea 的处理涉及这个基地址，所以需要提前获取
+        let mut elf_base_vaddr = if let Some(header) = self.elf.program_iter()
+            .find(|ph| ph.get_type() == Ok(Type::Load) && ph.offset() == 0) {
+                // 找到第一段指示的地址
+                let phdr = header.virtual_addr() as usize;
+                info!("phdr = {:x}", phdr);
+                // 如果是 0，如 libc.so，则需要放到一个非零的合法地址。此处规定从某个特定位置开始往后找。
+                // 这样设置是因为，动态库运行时可能会mmap实际的用户程序且指定 MAP_FIXED，
+                // 而用户程序的地址一般较低。为了让它们直接尽可能不冲突，所以会放到稍高的地址
+                if phdr != 0 { 
+                    phdr
+                } else {
+                    dyn_base = ELF_BASE_RELOCATE;
+                    ELF_BASE_RELOCATE
+                }
+            } else {
+                return Err(OSError::Loader_PhdrNotFound);
+            };
+        
         for ph in self.elf.program_iter() {
             if ph.get_type() != Ok(Type::Load) {
                 continue;
@@ -138,17 +157,14 @@ impl<'a> ElfLoader<'a> {
             //println!("creating MemorySet from ELF");
             pma.write(pgoff, data)?;
             let seg = VmArea::new(
-                ph.virtual_addr() as VirtAddr + base,
-                (ph.virtual_addr() + ph.mem_size()) as VirtAddr + base,
+                ph.virtual_addr() as VirtAddr + dyn_base,
+                (ph.virtual_addr() + ph.mem_size()) as VirtAddr + dyn_base,
                 ph.flags().into(),
                 Arc::new(Mutex::new(pma)),
                 "elf_segment",
             )?;
-            //println!("{:#?}", seg);
+            println!("{:#?}", seg);
             vm.push(seg)?;
-            if ph.offset() == 0 {
-                elf_base_vaddr = ph.virtual_addr() as usize;
-            }
         }
 
         // 如果需要重定位，即这是动态执行程序
@@ -171,23 +187,23 @@ impl<'a> ElfLoader<'a> {
                         let dynsym = &dynamic_symbols[entry.get_symbol_table_index() as usize];
                         let symval = if dynsym.shndx() == 0 {
                             let name = dynsym.get_name(&self.elf)?;
-                            panic!("need to find symbol: {:?}", name);
+                            panic!("symbol not found: {:?}", name);
                         } else {
-                            base + dynsym.value() as usize
+                            dyn_base + dynsym.value() as usize
                         };
                         let value = symval + entry.get_addend() as usize;
-                        let addr = base + entry.get_offset() as usize;
-                        info!("GOT write: {:#x} @ {:#x}", value, addr);
+                        let addr = dyn_base + entry.get_offset() as usize;
+                        //info!("write: {:#x} @ {:#x} type = {}", value, addr, entry.get_type() as usize);
                         vm.write(addr, core::mem::size_of::<usize>(), &value.to_ne_bytes(), PTEFlags::empty())?;
                         //vmar.write_memory(addr, &value.to_ne_bytes()).map_err(|_| "Invalid Vmar")?;
                     }
                     abi::REL_RELATIVE | abi::R_RISCV_RELATIVE => {
-                        let value = base + entry.get_addend() as usize;
-                        let addr = base + entry.get_offset() as usize;
-                        info!("RELATIVE write: {:#x} @ {:#x}", value, addr);
+                        let value = dyn_base + entry.get_addend() as usize;
+                        let addr = dyn_base + entry.get_offset() as usize;
+                        //info!("write: {:#x} @ {:#x} type = {}", value, addr, entry.get_type() as usize);
                         vm.write(addr, core::mem::size_of::<usize>(), &value.to_ne_bytes(), PTEFlags::empty())?;
                     }
-                    t => unimplemented!("unknown type: {}", t),
+                    t => panic!("[kernel] unknown entry, type = {}", t),
                 }
             }
         }
@@ -205,28 +221,27 @@ impl<'a> ElfLoader<'a> {
                     _ => return Err(OSError::Loader_InvalidSection),
                 };
             for entry in data.iter() {
-                //info!("here");
                 match entry.get_type() {
                     5 => {
                         let dynsym = &dynamic_symbols[entry.get_symbol_table_index() as usize];
                         let symval = if dynsym.shndx() == 0 {
                             let name = dynsym.get_name(&self.elf)?;
-                            panic!("need to find symbol: {:?}", name);
+                            panic!("symbol not found: {:?}", name);
                         } else {
                             dynsym.value() as usize
                         };
-                        let value = base + symval;
-                        let addr = base + entry.get_offset() as usize;
-                        //info!("type = {} write: {:#x} @ {:#x}", entry.get_type() as usize, value, addr);
+                        let value = dyn_base + symval;
+                        let addr = dyn_base + entry.get_offset() as usize;
+                        //info!("write: {:#x} @ {:#x} type = {}", value, addr, entry.get_type() as usize);
                         vm.write(addr, core::mem::size_of::<usize>(), &value.to_ne_bytes(), PTEFlags::empty())?;
                         //vmar.write_memory(addr, &value.to_ne_bytes()).map_err(|_| "Invalid Vmar")?;
                     }
-                    t => unimplemented!("unknown type: {}", t),
+                    t => panic!("[kernel] unknown entry, type = {}", t),
                 }
             }
         }
 
-        let entry = self.elf.header.pt2.entry_point() as usize;
+        let user_entry = self.elf.header.pt2.entry_point() as usize;
         let stack_bottom = USER_STACK_OFFSET;
         let mut stack_top = stack_bottom + USER_STACK_SIZE;
         let mut stack_pma = PmAreaLazy::new(page_count(USER_STACK_SIZE))?;
@@ -238,12 +253,12 @@ impl<'a> ElfLoader<'a> {
             auxv: {
                 use alloc::collections::btree_map::BTreeMap;
                 let mut map = BTreeMap::new();
-                map.insert(abi::AT_BASE, elf_base_vaddr + base);
+                //map.insert(abi::AT_BASE, elf_base_vaddr);
                 map.insert(
                     abi::AT_PHDR,
-                    elf_base_vaddr + base + self.elf.header.pt2.ph_offset() as usize,
+                    elf_base_vaddr + self.elf.header.pt2.ph_offset() as usize,
                 );
-                map.insert(abi::AT_ENTRY, entry);
+                //map.insert(abi::AT_ENTRY, user_entry);
                 map.insert(abi::AT_PHENT, self.elf.header.pt2.ph_entry_size() as usize);
                 map.insert(abi::AT_PHNUM, self.elf.header.pt2.ph_count() as usize);
                 map.insert(abi::AT_PAGESZ, PAGE_SIZE);
@@ -264,7 +279,7 @@ impl<'a> ElfLoader<'a> {
         )?;
         vm.push(stack_vma)?;
         // println!("{:#x?}", vm);
-        Ok((entry + base, stack_top))
+        Ok((user_entry + dyn_base, stack_top))
     }
 }
 
