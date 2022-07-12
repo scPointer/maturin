@@ -116,7 +116,6 @@ pub const SAMPLE: &[&str] = &[
     "clocale_mbfuncs",
     "clock_gettime",
     "crypt",
-    "daemon_failure",
     "dirname",
 ];
 

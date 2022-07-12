@@ -4,7 +4,7 @@
 
 #![allow(dead_code)]
 /// 是否是 sifive 平台
-pub const PLATFORM_SIFIVE: bool = false;
+pub const PLATFORM_SIFIVE: bool = true;
 /// 编号最小的可用的 cpu_id
 /// - virt 下，每个核都可用，所以是从0开始
 /// - sifive 下，0号是小核，目前还用不到，所以从1开始
@@ -18,7 +18,7 @@ pub const LAST_CPU_ID: usize = CPU_ID_LIMIT - 1;
 /// 时钟频率，和平台有关
 pub const CLOCK_FREQ: usize = if PLATFORM_SIFIVE { 100_0000 } else { 1250_0000 };
 /// 是否单核运行。单核运行时，则其他核只启动，不运行用户程序
-pub const IS_SINGLE_CORE: bool = true;
+pub const IS_SINGLE_CORE: bool = false;
 /// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序
 pub const SPIN_LOOP_AFTER_BOOT: bool  = false;
 /// 运行时是否打印基本的信息
