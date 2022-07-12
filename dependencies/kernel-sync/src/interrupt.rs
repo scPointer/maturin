@@ -110,7 +110,7 @@ impl<T> SafeRefCell<T> {
 #[allow(clippy::declare_interior_mutable_const)]
 const DEFAULT_CPU: SafeRefCell<Cpu> = SafeRefCell::new(Cpu::new());
 
-const MAX_CORE_NUM: usize = 4;
+const MAX_CORE_NUM: usize = 16;
 
 static CPUS: [SafeRefCell<Cpu>; MAX_CORE_NUM] = [DEFAULT_CPU; MAX_CORE_NUM];
 

@@ -15,6 +15,7 @@ riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
 virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers" }
 bitmap-allocator = { path = "../dependencies/bitmap-allocator" }
 lock = { path = "../dependencies/kernel-sync" }
+# lock = { git = "https://github.com/DeathWish5/kernel-sync" }
 easy-fs = { path = "../dependencies/easy-fs" }
 fatfs = { path = "../rust-fatfs", version = "0.4", default-features = false, features = ["alloc", "lfn"] }
 fscommon = { path = "../fscommon", version = "0.1.1" }

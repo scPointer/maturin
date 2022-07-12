@@ -6,7 +6,7 @@
 
 use clap::{App, Arg, ArgMatches};
 use std::env;
-use std::fs::{self, File};
+use std::fs::{self, File, DirEntry};
 use fatfs::{
     format_volume, 
     FormatVolumeOptions, 
@@ -66,19 +66,7 @@ fn pack_up_user_applications() {
     }
 
     for dir_entry in root.iter() {
-        let file = dir_entry.unwrap();
-        println!("{:4}  {}  {}", file_size_to_str(file.len()), date_time_to_str(file.modified()), file.file_name());
-        // 如果是子目录，则再继续遍历
-        if file.is_dir() {
-            println!("{}/", file.file_name());
-            for dir_entry in root.open_dir(file.file_name().as_str()).unwrap().iter() {
-                let file = dir_entry.unwrap();
-                // "." 开头的是当前目录、父目录以及(未来可能的)隐藏文件
-                if !file.file_name().starts_with(".") {
-                    println!("\t{:4}  {}  {}", file_size_to_str(file.len()), date_time_to_str(file.modified()), file.file_name());
-                }
-            }
-        }
+        traverse_fat_dir(&root, dir_entry.unwrap(), String::from(""));
     }
 }
 
@@ -164,29 +152,56 @@ fn get_app_names_from_code_dir(path: &str) -> Vec<String> {
 }
 
 /// 从已编译好的用户程序的目录中读取每个用户程序的名字。
-/// **默认最多只有一层目录**
 /// 
 /// 因为可能有目录，所以每次拿到的 DirEntry 可能内含多个文件，所以就不能 map-collect 了
 fn get_app_names_from_bin_dir(path: &str) -> Vec<String> {
     let mut names: Vec<String> = vec![];
     for dir_entry in fs::read_dir(path).unwrap() {
         let file = dir_entry.unwrap();
-        if file.path().is_dir() {
-            println!("dir: {}",file.file_name().into_string().unwrap());
-            let dir_name = file.file_name().into_string().unwrap();
-            names.push(format!("{}/", dir_name));
-            for inner_entry in fs::read_dir(file.path()).unwrap() {
-                let inner_file = inner_entry.unwrap();
-                // 略去第二层目录项。之后可以把这个函数改成递归的
-                if !inner_file.path().is_dir() {
-                    names.push(format!("{}/{}", dir_name, inner_file.file_name().into_string().unwrap()))
-                }
-            }
-        } else {
-            names.push(file.file_name().into_string().unwrap());
-        }
+        traverse_dir(file, String::from(""), &mut names);
     }
     names
+}
+
+/// 递归(当前环境下，非构造的FAT32)遍历目录，把目录名写入names中
+/// 
+/// file 是当前环境的目录， target_dir 是FAT32下需要对应构造的目录。target_dir 的需要有 '/'
+fn traverse_dir(file: DirEntry, target_dir: String, names: &mut Vec<String>) {
+    let file_name = file.file_name().into_string().unwrap();
+    if file.path().is_dir() {
+        println!("dir: {}", file.file_name().into_string().unwrap());
+        //let dir_name = file.file_name().into_string().unwrap();
+        names.push(format!("{}{}/", target_dir, file_name));
+        for inner_entry in fs::read_dir(file.path()).unwrap() {
+            traverse_dir(inner_entry.unwrap(), format!("{}{}/", target_dir, file_name), names);
+        }
+    } else {
+        names.push(format!("{}{}", target_dir, file_name));
+    }
+}
+
+//type FatDirEntry = fatfs::DirEntry<'static, fatfs::StdIoWrapper<fscommon::BufStream<std::fs::File>>, fatfs::ChronoTimeProvider, fatfs::LossyOemCpConverter>;
+//type FatRoot = fatfs::Dir<'static, fatfs::StdIoWrapper<fscommon::BufStream<std::fs::File>>, fatfs::ChronoTimeProvider, fatfs::LossyOemCpConverter>;
+/// 递归遍历构造的FAT32中的目录，并显示文件信息
+fn traverse_fat_dir<'a>(
+    root: &fatfs::Dir<'_, fatfs::StdIoWrapper<fscommon::BufStream<std::fs::File>>, fatfs::ChronoTimeProvider, fatfs::LossyOemCpConverter>,
+    file: fatfs::DirEntry<'_, fatfs::StdIoWrapper<fscommon::BufStream<std::fs::File>>, fatfs::ChronoTimeProvider, fatfs::LossyOemCpConverter>, 
+    dir_now: String) {
+    if dir_now != "" {
+        print!("\t");
+    }
+    println!("{:4}  {}  {}", file_size_to_str(file.len()), date_time_to_str(file.modified()), file.file_name());
+    // 如果是子目录，则再继续遍历
+    if file.is_dir() {
+        println!("{}{}/", dir_now, file.file_name());
+        let inner_dir = dir_now + file.file_name().as_str();
+        for dir_entry in root.open_dir(inner_dir.as_str()).unwrap().iter() {
+            let file = dir_entry.unwrap();
+            if !file.file_name().starts_with(".") {
+                traverse_fat_dir(root, file, inner_dir.clone() + "/");
+            }
+        }
+    }
 }
 
 #[test]

@@ -111,7 +111,13 @@ lazy_static! {
 }
 
 pub const SAMPLE: &[&str] = &[
-    "getpid",
+    "argv",
+    "basename",
+    "clocale_mbfuncs",
+    "clock_gettime",
+    "crypt",
+    "daemon_failure",
+    "dirname",
 ];
 
 pub const DYNAMIC_TESTCASES: &[&str] = &[
