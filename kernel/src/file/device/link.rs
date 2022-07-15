@@ -112,6 +112,7 @@ pub fn try_remove_link(path: String, file: &str) -> bool {
             // 如果已经没有链接了，则需要删除这个文件
             if *count == 0 {
                 count_map.remove(&value).unwrap();
+                info!("file removed.");
                 remove_file(real_path.as_str(), real_file.as_str());
             }
             return true;

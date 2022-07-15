@@ -41,6 +41,7 @@ const SYSCALL_NANOSLEEP: usize = 101;
 const SYSCALL_CLOCK_GET_TIME: usize = 113;
 const SYSCALL_YIELD: usize = 124;
 const SYSCALL_SIGACTION: usize = 134;
+const SYSCALL_SIGPROCMASK: usize = 135;
 const SYSCALL_TIMES: usize = 153;
 const SYSCALL_UNAME: usize = 160;
 //const SYSCALL_GET_TIME: usize = 169;
@@ -140,6 +141,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_MPROTECT => 0,
         SYSCALL_FUTEX => sys_exit(-100),
         SYSCALL_SIGACTION => 0,
+        SYSCALL_SIGPROCMASK => 0,
         _ => {
             println!("Unsupported syscall_id: {}", syscall_id);
             -1

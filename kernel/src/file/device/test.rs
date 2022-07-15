@@ -4,6 +4,7 @@
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use alloc::string::String;
 use lock::Mutex;
 use core::slice::Iter;
 use lazy_static::*;
@@ -32,9 +33,10 @@ pub fn load_next_testcase() -> Option<Arc<TaskControlBlock>> {
     TESTCASES_ITER.lock().next().map_or_else(|| {
         TEST_STATUS.lock().final_info();
         None
-    },|user_prog_name| {
-        TEST_STATUS.lock().load(user_prog_name);
-        Some(Arc::new(TaskControlBlock::from_app_name(ROOT_DIR, user_prog_name, NO_PARENT).unwrap()))
+    },|&user_command| {
+        let argv: Vec<String> = user_command.split(' ').map(|s| s.into()).collect();
+        TEST_STATUS.lock().load(&argv[0]);
+        Some(Arc::new(TaskControlBlock::from_app_name(ROOT_DIR, NO_PARENT, argv).unwrap()))
     })
 }
 
@@ -48,8 +50,8 @@ pub fn show_testcase_result(exit_code: i32) {
 struct TestStatus {
     cnt: usize,
     passed: usize,
-    now: Option<&'static str>,
-    failed_tests: Vec<&'static str>,
+    now: Option<String>,
+    failed_tests: Vec<String>,
 }
 
 impl TestStatus {
@@ -64,9 +66,9 @@ impl TestStatus {
     }
 
     /// 输入测试
-    pub fn load(&mut self, testcase: &&'static str) {
+    pub fn load(&mut self, testcase: &String) {
         info!(" --------------- load testcase: {} --------------- ", testcase);
-        self.now = Some(&testcase);
+        self.now = Some(testcase.into());
     }
 
     /// 更新执行结果
@@ -83,20 +85,20 @@ impl TestStatus {
             0 => {
                 info!(" --------------- test passed --------------- "); 
                 self.passed += 1;
+                self.now.take();
             },
             _ => {
                 info!(" --------------- TEST FAILED, exit code = {} --------------- ", exit_code);
-                self.failed_tests.push(self.now.unwrap());
+                self.failed_tests.push(self.now.take().unwrap());
             },
         }
-        self.now = None;
     }
 
     /// 最终输出测试信息
     pub fn final_info(&self) {
         info!(" --------------- all test ended, passed {} / {} --------------- ", self.passed, self.cnt);
         info!(" --------------- failed tests: --------------- ");
-        for &test in &self.failed_tests {
+        for test in &self.failed_tests {
             info!("{}", test);
         }
         info!(" --------------- end --------------- ");
@@ -111,7 +113,20 @@ lazy_static! {
 }
 
 pub const SAMPLE: &[&str] = &[
-    "lua"
+    "lua file_io.lua",
+    "lua remove.lua",
+];
+
+pub const LUA_TESTCASES: &[&str] = &[
+    "lua date.lua",
+    "lua file_io.lua",
+    "lua max_min.lua",
+    "lua random.lua",
+    "lua remove.lua",
+    "lua round_num.lua",
+    "lua sin30.lua",
+    "lua sort.lua",
+    "lua strings.lua",
 ];
 
 pub const DYNAMIC_TESTCASES: &[&str] = &[

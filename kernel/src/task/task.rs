@@ -71,7 +71,7 @@ pub struct TaskControlBlockInner {
 }
 
 impl TaskControlBlock {
-    /// 从用户程序名生成 TCB
+    /// 从用户程序名生成 TCB，其中文件名默认为 args[0]
     /// 
     /// 在目前的实现下，如果生成 TCB 失败，只有以下情况：
     /// 1. 找不到文件名所对应的文件
@@ -83,18 +83,17 @@ impl TaskControlBlock {
     /// 
     /// 目前只有初始进程(/task/mod.rs: ORIGIN_USER_PROC) 直接通过这个函数初始化，
     /// 其他进程应通过 fork / exec 生成
-    pub fn from_app_name(app_dir: &str, app_name: &str, ppid: usize) -> Option<Self> {
+    pub fn from_app_name(app_dir: &str, ppid: usize, args: Vec<String>) -> Option<Self> {
+        if args.len() < 1 { // 需要至少有一项指定文件名
+            return None
+        }
+        let app_name_string: String = args[0].clone();
+        let app_name = app_name_string.as_str();
         if !check_file_exists(app_dir, app_name) {
             return None
         }
         // 新建页表，包含内核段
         let mut vm = new_memory_set_for_task().unwrap();
-        let mut args = vec![String::from(app_name)];
-        if app_name == "lua" {
-            args.push(String::from("file_io.lua"));
-        } else if app_name == "busybox" {
-            args.push(String::from("sh"));
-        }
         // 找到用户名对应的文件，将用户地址段信息插入页表和 VmArea
         parse_user_app(app_dir, app_name, &mut vm, args)
             .map(|(user_entry, user_stack)| {
