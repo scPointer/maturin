@@ -91,7 +91,7 @@ impl TaskControlBlock {
         let mut vm = new_memory_set_for_task().unwrap();
         let mut args = vec![String::from(app_name)];
         if app_name == "lua" {
-            args.push(String::from("date.lua"));
+            args.push(String::from("file_io.lua"));
         } else if app_name == "busybox" {
             args.push(String::from("sh"));
         }

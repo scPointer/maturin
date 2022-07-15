@@ -323,6 +323,9 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
                 if let Ok(fd) = tcb_inner.fd_manager.push(node) {
                     println!("return fd {}", fd);
                     return fd as isize
+                } else if open_flags.contains(OpenFlags::EXCL) {
+                    // 要求创建文件却打开失败，说明是文件已存在
+                    return OpenatError::EEXIST as isize
                 }
             }
         }

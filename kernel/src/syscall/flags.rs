@@ -258,5 +258,7 @@ pub struct IoVec {
 #[repr(C)]
 pub enum OpenatError {
     ENOENT = -1, // 找不到文件或目录
+    EBUSY = -16, // 设备或者资源被占用
+    EEXIST = -17, // 文件已存在
     EMFILE = -24, // fd（文件描述符）已满
 }
