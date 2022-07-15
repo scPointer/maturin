@@ -91,6 +91,26 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     -1
 }
 
+/// 从同一个 fd 中读取一组字符串。
+/// 目前这个 syscall 借用 sys_read 来实现
+pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> isize {
+    if iov_cnt < 0 {
+        return -1;
+    }
+    info!("readv fd {}", fd);
+    let mut read_len = 0;
+    for i in 0..iov_cnt {
+        let io_vec: &IoVec = unsafe { &*iov.add(i) };
+        println!("sys_readv: io_vec.base {:x}, len {:x}", io_vec.base as usize, io_vec.len);
+        let ret = sys_read(fd, io_vec.base, io_vec.len);
+        if ret == -1 {
+            break
+        } else {
+            read_len += ret;
+        }
+    }
+    read_len
+}
 
 /// 写入一组字符串到同一个 fd 中。
 /// 目前这个 syscall 借用 sys_write 来实现
@@ -102,7 +122,7 @@ pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> isize {
     let mut written_len = 0;
     for i in 0..iov_cnt {
         let io_vec: &IoVec = unsafe { &*iov.add(i) };
-        println!("io_vec.base {:x}, len {:x}", io_vec.base as usize, io_vec.len);
+        println!("sys_writev: io_vec.base {:x}, len {:x}", io_vec.base as usize, io_vec.len);
         let ret = sys_write(fd, io_vec.base, io_vec.len);
         if ret == -1 {
             break
@@ -296,6 +316,7 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
         }
         println!("try open parent_dir={} file_path={} flag={:x}", parent_dir, file_path, flags);
         if let Some(open_flags) = OpenFlags::from_bits(flags) {
+            println!("[{:#?}]", open_flags);
             //println!("opened");
             if let Some(node) = open_file(parent_dir.as_str(), file_path.as_str(), open_flags) {
                 //println!("opened");

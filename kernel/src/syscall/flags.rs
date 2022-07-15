@@ -251,7 +251,7 @@ impl Dirent64 {
 /// sys_writev / sys_readv 中指定的结构体类型
 #[repr(C)]
 pub struct IoVec {
-    pub base: *const u8,
+    pub base: *mut u8,
     pub len: usize,
 }
 

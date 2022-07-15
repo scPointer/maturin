@@ -40,6 +40,7 @@ const SYSCALL_FUTEX: usize = 98;
 const SYSCALL_NANOSLEEP: usize = 101;
 const SYSCALL_CLOCK_GET_TIME: usize = 113;
 const SYSCALL_YIELD: usize = 124;
+const SYSCALL_SIGACTION: usize = 134;
 const SYSCALL_TIMES: usize = 153;
 const SYSCALL_UNAME: usize = 160;
 //const SYSCALL_GET_TIME: usize = 169;
@@ -111,6 +112,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_GETDENTS64 => sys_getdents64(args[0], args[1] as *mut Dirent64, args[2]),
         SYSCALL_READ => sys_read(args[0], args[1] as *mut u8, args[2]),
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
+        SYSCALL_READV => sys_readv(args[0], args[1] as *mut IoVec, args[2]),
         SYSCALL_WRITEV => sys_writev(args[0], args[1] as *const IoVec, args[2]),
         SYSCALL_FSTAT => sys_fstat(args[0], args[1] as *mut crate::file::Kstat),
         SYSCALL_UTIMENSAT => sys_utimensat(args[0] as i32, args[1] as *const u8, args[2] as *const TimeSpec, UtimensatFlags::from_bits(args[3] as u32).unwrap()),
@@ -137,6 +139,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_FCNTL64 => 0,
         SYSCALL_MPROTECT => 0,
         SYSCALL_FUTEX => sys_exit(-100),
+        SYSCALL_SIGACTION => 0,
         _ => {
             println!("Unsupported syscall_id: {}", syscall_id);
             -1
