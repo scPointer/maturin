@@ -29,6 +29,7 @@ const SYSCALL_PIPE: usize = 59;
 const SYSCALL_GETDENTS64: usize = 61;
 const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
+const SYSCALL_READV: usize = 65;
 const SYSCALL_WRITEV: usize = 66;
 const SYSCALL_FSTAT: usize = 80;
 const SYSCALL_UTIMENSAT: usize = 88;
@@ -88,6 +89,10 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             }
         } else {
             *WRITEV_COUNT.lock() = 0;
+        }
+
+        if syscall_id == SYSCALL_MMAP {
+            info!("prot {:x} flags {:x}", args[2], args[3]);
         }
     }
     let a0 = match syscall_id {

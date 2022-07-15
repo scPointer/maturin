@@ -278,7 +278,7 @@ impl VmArea {
                 } else {
                     (*entry).set_all(paddr, self.flags | PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY);
                     pt.flush_tlb(Some(vaddr));
-                    //info!("[Handler] Lazy alloc a page for user.");
+                    info!("[Handler] Lazy alloc a page for user.");
                     Ok(())
                 }
             }

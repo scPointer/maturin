@@ -89,7 +89,12 @@ impl TaskControlBlock {
         }
         // 新建页表，包含内核段
         let mut vm = new_memory_set_for_task().unwrap();
-        let args = vec![String::from(app_name)];
+        let mut args = vec![String::from(app_name)];
+        if app_name == "lua" {
+            args.push(String::from("date.lua"));
+        } else if app_name == "busybox" {
+            args.push(String::from("sh"));
+        }
         // 找到用户名对应的文件，将用户地址段信息插入页表和 VmArea
         parse_user_app(app_dir, app_name, &mut vm, args)
             .map(|(user_entry, user_stack)| {
@@ -98,7 +103,7 @@ impl TaskControlBlock {
             let kernel_stack = KernelStack::new().unwrap();
             //kernel_stack.print_info();
             let pid = Pid::new().unwrap();
-            // println!("pid = {}", pid.0);
+            println!("pid = {}", pid.0);
             let stack_top = kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
             TaskControlBlock {
                 kernel_stack: kernel_stack,
