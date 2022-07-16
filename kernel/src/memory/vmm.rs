@@ -238,6 +238,16 @@ impl MemorySet {
         Err(OSError::PageFaultHandler_Unhandled)
     }
 
+    /// 检查一个地址是否分配，如果未分配则强制分配它
+    pub fn manually_alloc_page(&mut self, vaddr: VirtAddr) -> OSResult {
+        if let Some((_, area)) = self.areas.range(..=vaddr).last() {
+            if area.contains(vaddr) {
+                return area.manually_alloc_page(vaddr - area.start, &mut self.pt);
+            }
+        }
+        Err(OSError::PageFaultHandler_Unhandled)
+    }
+    
     /// 清空用户段的地址映射
     pub fn clear_user(&mut self) {
         if !self.is_user {

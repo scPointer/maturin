@@ -255,10 +255,20 @@ pub struct IoVec {
     pub len: usize,
 }
 
+/// 错误编号
 #[repr(C)]
-pub enum OpenatError {
-    ENOENT = -1, // 找不到文件或目录
+pub enum ErrorNo {
+    EPERM = -1, // 非法操作
+    ENOENT = -2, // 找不到文件或目录
+    EBADF = -9, // 错误的文件描述符
     EBUSY = -16, // 设备或者资源被占用
     EEXIST = -17, // 文件已存在
+    EINVAL = -22, // 非法参数
     EMFILE = -24, // fd（文件描述符）已满
+    ERANGE = -34, // 超过范围。例如用户提供的buffer不够长
 }
+
+/// sys_lseek 时对应的条件
+const SEEK_SET:isize = 0; // 从文件开头
+const SEEK_CUR:isize = 1;  // 从当前位置
+const SEEK_END:isize = 2;  // 从文件结尾

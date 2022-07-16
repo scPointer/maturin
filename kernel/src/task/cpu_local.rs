@@ -76,7 +76,7 @@ pub fn run_tasks() -> ! {
             task.set_status(TaskStatus::Running);
 
             //let pid = task.get_pid_num();
-            // if pid == 1 { println!("[cpu {}] now running on pid = {}", cpu_id, pid);}
+            //if pid == 2 { println!("[cpu {}] now running on pid = {}", cpu_id, pid);}
             //drop(task_inner);
             unsafe { task.inner.lock().vm.activate(); }
             cpu_local.current = Some(task);

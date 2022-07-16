@@ -8,6 +8,8 @@
 #![feature(default_alloc_error_handler)]
 // MemorySet 处理相交的 VmArea 时需要
 #![feature(btree_drain_filter)]
+// test.rs 输入 argv 需要
+#![feature(drain_filter)]
 #[macro_use]
 mod console;
 

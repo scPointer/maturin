@@ -175,37 +175,37 @@ impl<'a> ElfLoader<'a> {
                 SectionData::Rela64(data) => data,
                 _ => return Err(OSError::Loader_InvalidSection),
             };
-            // 有 .rela.dyn 就应该对应有 .dynsym，所以不再用 if let 检查，直接上问号表达式
-            let dynamic_symbols = match self.elf.find_section_by_name(".dynsym")
-                .ok_or(OSError::Loader_InvalidSection)?
-                .get_data(&self.elf)
-                .unwrap() {
+            
+            // 再检查是否有 .dynsym，如果没有说明应该是静态编译的，那么不处理 .rela.dyn
+            if let Some(dynsym_header) = self.elf.find_section_by_name(".dynsym") {
+                let dynamic_symbols = match dynsym_header.get_data(&self.elf).unwrap() {
                     SectionData::DynSymbolTable64(dsym) => dsym,
                     _ => return Err(OSError::Loader_InvalidSection),
                 };
-            for entry in data.iter() {
-                match entry.get_type() {
-                    abi::REL_GOT | abi::REL_PLT | abi::R_RISCV_64 => {
-                        let dynsym = &dynamic_symbols[entry.get_symbol_table_index() as usize];
-                        let symval = if dynsym.shndx() == 0 {
-                            let name = dynsym.get_name(&self.elf)?;
-                            panic!("symbol not found: {:?}", name);
-                        } else {
-                            dyn_base + dynsym.value() as usize
-                        };
-                        let value = symval + entry.get_addend() as usize;
-                        let addr = dyn_base + entry.get_offset() as usize;
-                        //info!("write: {:#x} @ {:#x} type = {}", value, addr, entry.get_type() as usize);
-                        vm.write(addr, core::mem::size_of::<usize>(), &value.to_ne_bytes(), PTEFlags::empty())?;
-                        //vmar.write_memory(addr, &value.to_ne_bytes()).map_err(|_| "Invalid Vmar")?;
+                for entry in data.iter() {
+                    match entry.get_type() {
+                        abi::REL_GOT | abi::REL_PLT | abi::R_RISCV_64 => {
+                            let dynsym = &dynamic_symbols[entry.get_symbol_table_index() as usize];
+                            let symval = if dynsym.shndx() == 0 {
+                                let name = dynsym.get_name(&self.elf)?;
+                                panic!("symbol not found: {:?}", name);
+                            } else {
+                                dyn_base + dynsym.value() as usize
+                            };
+                            let value = symval + entry.get_addend() as usize;
+                            let addr = dyn_base + entry.get_offset() as usize;
+                            //info!("write: {:#x} @ {:#x} type = {}", value, addr, entry.get_type() as usize);
+                            vm.write(addr, core::mem::size_of::<usize>(), &value.to_ne_bytes(), PTEFlags::empty())?;
+                            //vmar.write_memory(addr, &value.to_ne_bytes()).map_err(|_| "Invalid Vmar")?;
+                        }
+                        abi::REL_RELATIVE | abi::R_RISCV_RELATIVE => {
+                            let value = dyn_base + entry.get_addend() as usize;
+                            let addr = dyn_base + entry.get_offset() as usize;
+                            //info!("write: {:#x} @ {:#x} type = {}", value, addr, entry.get_type() as usize);
+                            vm.write(addr, core::mem::size_of::<usize>(), &value.to_ne_bytes(), PTEFlags::empty())?;
+                        }
+                        t => panic!("[kernel] unknown entry, type = {}", t),
                     }
-                    abi::REL_RELATIVE | abi::R_RISCV_RELATIVE => {
-                        let value = dyn_base + entry.get_addend() as usize;
-                        let addr = dyn_base + entry.get_offset() as usize;
-                        //info!("write: {:#x} @ {:#x} type = {}", value, addr, entry.get_type() as usize);
-                        vm.write(addr, core::mem::size_of::<usize>(), &value.to_ne_bytes(), PTEFlags::empty())?;
-                    }
-                    t => panic!("[kernel] unknown entry, type = {}", t),
                 }
             }
         }
@@ -242,7 +242,6 @@ impl<'a> ElfLoader<'a> {
                 }
             }
         }
-
         let user_entry = self.elf.header.pt2.entry_point() as usize;
         let stack_bottom = USER_STACK_OFFSET;
         let mut stack_top = stack_bottom + USER_STACK_SIZE;

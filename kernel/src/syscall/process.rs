@@ -286,3 +286,23 @@ pub fn sys_uname(uts:*mut UtsName) -> isize {
     }
     0
 }
+
+/// 获取用户 id。在实现多用户权限前默认为最高权限
+pub fn sys_getuid() -> isize {
+    0
+}
+
+/// 获取有效用户 id，即相当于哪个用户的权限。在实现多用户权限前默认为最高权限
+pub fn sys_geteuid() -> isize {
+    0
+}
+
+/// 获取用户组 id。在实现多用户权限前默认为最高权限
+pub fn sys_getgid() -> isize {
+    0
+}
+
+/// 获取有效用户组 id，即相当于哪个用户的权限。在实现多用户权限前默认为最高权限
+pub fn sys_getegid() -> isize {
+    0
+}
