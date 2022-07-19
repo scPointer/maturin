@@ -158,6 +158,6 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             -1
         },
     };
-    info!("[[kernel -> return {}]]", a0);
+    info!("[[kernel -> return {}  =0x{:x}]]", a0, a0);
     a0
 }

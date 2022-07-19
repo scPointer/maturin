@@ -114,7 +114,7 @@ lazy_static! {
 }
 
 pub const SAMPLE: &[&str] = &[
-    "lua max_min.lua",
+    "lmbench_all",
 ];
 
 pub const BUSYBOX_TESTCASES: &[&str] = &[

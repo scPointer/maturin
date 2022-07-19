@@ -1,7 +1,21 @@
-mod abi;
+mod flags;
+use flags::*;
+mod init_info;
+use init_info::InitInfo;
+mod init_stack;
+use init_stack::InitStack;
+
 
 use alloc::{string::String, sync::Arc, vec::Vec};
 use core::convert::From;
+use lock::Mutex;
+use xmas_elf::{
+    header,
+    symbol_table::{DynEntry64, Entry},
+    program::{Flags, SegmentData, Type},
+    sections::SectionData,
+    ElfFile,
+};
 
 use crate::error::{OSError, OSResult};
 use crate::memory::addr::{page_count, page_offset, VirtAddr};
@@ -19,15 +33,6 @@ use crate::constants::{
 use crate::file::{open_file, OpenFlags};
 use crate::utils::raw_ptr_to_ref_str;
 
-use lock::Mutex;
-use xmas_elf::{
-    header,
-    symbol_table::{DynEntry64, Entry},
-    program::{Flags, SegmentData, Type},
-    sections::SectionData,
-    ElfFile,
-};
-
 pub struct ElfLoader<'a> {
     elf: ElfFile<'a>,
 }
@@ -42,14 +47,9 @@ impl From<&str> for OSError {
 impl<'a> ElfLoader<'a> {
     pub fn new(elf_data: &'a [u8]) -> OSResult<Self> {
         let elf = ElfFile::new(elf_data).unwrap();
-
-        #[cfg(target_pointer_width = "32")]
-        if elf.header.pt1.class() != header::Class::ThirtyTwo {
-            return Err("64-bit ELF is not supported on the 32-bit system".into());
-        }
-        #[cfg(target_pointer_width = "64")]
+        // 检查类型
         if elf.header.pt1.class() != header::Class::SixtyFour {
-            return Err("32-bit ELF is not supported on the 64-bit system".into());
+            return Err("32-bit ELF is not supported on the riscv64".into());
         }
 /*
         if elf.header.pt2.type_().as_type() != header::Type::Executable {
@@ -155,8 +155,12 @@ impl<'a> ElfLoader<'a> {
             for i in 0..20 {
                 print!("{} ", d0[i]);
             }
-            */
             //println!("creating MemorySet from ELF");
+            info!("ph virtual addr {:x} pgoff {:x}", ph.virtual_addr(), pgoff);
+            if ph.virtual_addr() == 0xf51c0 {
+                info!("data {:x}", data[0xfb300 - ph.virtual_addr() as usize]);
+            }
+            */
             pma.write(pgoff, data)?;
             let seg = VmArea::new(
                 ph.virtual_addr() as VirtAddr + dyn_base,
@@ -184,7 +188,7 @@ impl<'a> ElfLoader<'a> {
                 };
                 for entry in data.iter() {
                     match entry.get_type() {
-                        abi::REL_GOT | abi::REL_PLT | abi::R_RISCV_64 => {
+                        REL_GOT | REL_PLT | R_RISCV_64 => {
                             let dynsym = &dynamic_symbols[entry.get_symbol_table_index() as usize];
                             let symval = if dynsym.shndx() == 0 {
                                 let name = dynsym.get_name(&self.elf)?;
@@ -198,7 +202,7 @@ impl<'a> ElfLoader<'a> {
                             vm.write(addr, core::mem::size_of::<usize>(), &value.to_ne_bytes(), PTEFlags::empty())?;
                             //vmar.write_memory(addr, &value.to_ne_bytes()).map_err(|_| "Invalid Vmar")?;
                         }
-                        abi::REL_RELATIVE | abi::R_RISCV_RELATIVE => {
+                        REL_RELATIVE | R_RISCV_RELATIVE => {
                             let value = dyn_base + entry.get_addend() as usize;
                             let addr = dyn_base + entry.get_offset() as usize;
                             //info!("write: {:#x} @ {:#x} type = {}", value, addr, entry.get_type() as usize);
@@ -248,25 +252,28 @@ impl<'a> ElfLoader<'a> {
         let mut stack_pma = PmAreaLazy::new(page_count(USER_STACK_SIZE))?;
 
         // push `ProcInitInfo` to user stack
-        let info = abi::ProcInitInfo {
+        let info = InitInfo {
             args,
             envs: Vec::new(),
             auxv: {
                 use alloc::collections::btree_map::BTreeMap;
                 let mut map = BTreeMap::new();
-                //map.insert(abi::AT_BASE, elf_base_vaddr);
+                //map.insert(AT_BASE, elf_base_vaddr);
                 map.insert(
-                    abi::AT_PHDR,
+                    AT_PHDR,
                     elf_base_vaddr + self.elf.header.pt2.ph_offset() as usize,
                 );
-                //map.insert(abi::AT_ENTRY, user_entry);
-                map.insert(abi::AT_PHENT, self.elf.header.pt2.ph_entry_size() as usize);
-                map.insert(abi::AT_PHNUM, self.elf.header.pt2.ph_count() as usize);
-                map.insert(abi::AT_PAGESZ, PAGE_SIZE);
+                //map.insert(AT_ENTRY, user_entry);
+                map.insert(AT_PHENT, self.elf.header.pt2.ph_entry_size() as usize);
+                map.insert(AT_PHNUM, self.elf.header.pt2.ph_count() as usize);
+                // AT_RANDOM 比较特殊，要求指向栈上的 16Byte 的随机子串。因此这里的 0 只是占位，在之后序列化时会特殊处理
+                map.insert(AT_RANDOM, 0);
+                map.insert(AT_PAGESZ, PAGE_SIZE);
                 map
             },
         };
-        let init_stack = info.push_at(stack_top);
+        let init_stack = info.serialize(stack_top);
+        info!("stack len {}", init_stack.len());
         stack_pma.write(USER_STACK_SIZE - init_stack.len(), &init_stack)?;
         stack_top -= init_stack.len();
 

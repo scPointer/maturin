@@ -279,15 +279,16 @@ impl TaskControlBlock {
     pub fn get_user_heap_top(&self) -> usize {
         self.inner.lock().user_heap_top
     }
-    /// 重新设置堆顶地址，返回是否成功。
+    /// 重新设置堆顶地址，如成功则返回设置后的堆顶地址，否则保持不变，并返回之前的堆顶地址。
     /// 新地址需要在用户栈内，并且不能碰到目前的栈
-    pub fn set_user_heap_top(&self, new_top: usize) -> bool {
+    pub fn set_user_heap_top(&self, new_top: usize) -> usize {
         let user_sp = unsafe { (*self.kernel_stack.get_first_context()).get_sp() };
+        let mut inner = self.inner.lock();
         if new_top >= USER_STACK_OFFSET && new_top < user_sp {
-            self.inner.lock().user_heap_top = new_top;
-            true
+            inner.user_heap_top = new_top;
+            new_top
         } else {
-            false
+            inner.user_heap_top
         }
     }
     /// 如果当前进程已是运行结束，则获取其 exit_code，否则返回 None

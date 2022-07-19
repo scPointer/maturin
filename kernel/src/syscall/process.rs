@@ -68,12 +68,8 @@ pub fn sys_brk(brk: usize) -> isize {
     if brk == 0 {
         get_current_task().unwrap().get_user_heap_top() as isize
     } else {
-        //info!("user try to move brk at {}", brk);
-        if get_current_task().unwrap().set_user_heap_top(brk) {
-            0
-        } else {
-            -1
-        }
+        info!("user try to move brk at {:x}", brk);
+        get_current_task().unwrap().set_user_heap_top(brk) as isize // 如果设置不合法，会保持不变并返回原来的堆顶
     }
 }
 

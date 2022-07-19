@@ -33,6 +33,8 @@ pub const KERNEL_STACK_SIZE: usize = 0x8_000; // 1 MB
 pub const KERNEL_HEAP_SIZE: usize = 0x40_0000; // 4 MB
 /// 用户栈大小
 pub const USER_STACK_SIZE: usize = 0x2_0000; // 128 KB,
+/// 初始用户栈大小，用于存放 argc/argv/envs/auxv
+pub const USER_INIT_STACK_SIZE: usize = 0x4000; // 16 KB,
 /// 用户栈底位置。同时也是最开始的用户堆顶位置
 pub const USER_STACK_OFFSET: usize = 0x4000_0000 - USER_STACK_SIZE;
 /// 用户地址最大不能超过这个值
