@@ -192,8 +192,8 @@ impl UtsName {
         Self {
             sysname: Self::from_str("MaturinOS"),
             nodename: Self::from_str("MaturinOS - machine[0]"),
-            release: Self::from_str("0.1"),
-            version: Self::from_str("0.1"),
+            release: Self::from_str("233"),
+            version: Self::from_str("1.0"),
             machine: Self::from_str("RISC-V 64 on SIFIVE FU740"),
             domainname: Self::from_str("https://github.com/scPointer/maturin"),
         }

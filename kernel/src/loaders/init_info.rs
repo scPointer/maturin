@@ -39,6 +39,7 @@ impl InitInfo {
         // 辅助参数
         writer.push_slice(&[null::<u8>(), null::<u8>()]);
         for (&type_, &value) in self.auxv.iter() {
+            //info!("auxv {} {:x}", type_ ,value);
             match type_ {
                 AT_RANDOM => writer.push_slice(&[type_ as usize, random_pos]),
                 _ => writer.push_slice(&[type_ as usize, value]),

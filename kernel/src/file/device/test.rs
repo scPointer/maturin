@@ -114,7 +114,7 @@ lazy_static! {
 }
 
 pub const SAMPLE: &[&str] = &[
-    "lmbench_all",
+    "lmbench_all lat_syscall -P 1 null",
 ];
 
 pub const BUSYBOX_TESTCASES: &[&str] = &[

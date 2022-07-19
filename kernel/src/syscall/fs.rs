@@ -149,7 +149,6 @@ pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> isize {
 pub fn sys_fstat(fd: usize, kstat: *mut Kstat) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
-
     if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
         if file.get_stat(kstat) {
             return 0;
