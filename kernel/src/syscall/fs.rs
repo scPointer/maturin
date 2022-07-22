@@ -30,6 +30,7 @@ use crate::constants::{ROOT_DIR, AT_FDCWD, DIR_ENTRY_SIZE};
 
 use super::{Dirent64, Dirent64_Type, ErrorNo, IoVec};
 use super::{TimeSpec, UtimensatFlags};
+use super::{SEEK_SET, SEEK_CUR, SEEK_END};
 
 const FD_STDIN: usize = 0;
 const FD_STDOUT: usize = 1;

@@ -269,6 +269,11 @@ pub enum ErrorNo {
 }
 
 /// sys_lseek 时对应的条件
-const SEEK_SET:isize = 0; // 从文件开头
-const SEEK_CUR:isize = 1;  // 从当前位置
-const SEEK_END:isize = 2;  // 从文件结尾
+pub const SEEK_SET:isize = 0; // 从文件开头
+pub const SEEK_CUR:isize = 1;  // 从当前位置
+pub const SEEK_END:isize = 2;  // 从文件结尾
+
+/// sys_sigprocmask 时对应的选择
+pub const SIG_BLOCK:i32 = 0; // 和当前 mask 取并集
+pub const SIG_UNBLOCK:i32 = 1; // 从当前 mask 中去除对应位
+pub const SIG_SETMASK:i32 = 2; // 重新设置当前 mask

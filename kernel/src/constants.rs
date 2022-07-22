@@ -100,3 +100,8 @@ pub const LIBC_SO_FILE: &str = "libc.so";
 pub const LIBC_SO_DIR: &str = ROOT_DIR;
 /// 如果 elf 的 phdr 指示 base 是 0(如 libc-test 的 libc.so)，则需要找一个非0的位置放置
 pub const ELF_BASE_RELOCATE: usize = 0x400_0000;
+
+/// signal 中用到的 bitset 长度。
+pub const SIGSET_SIZE_IN_BYTE: usize = 8;
+/// 所有可能的信号数。有多少可能的信号，内核就要为其保存多少个 SigAction
+pub const SIGSET_SIZE_IN_BIT: usize = SIGSET_SIZE_IN_BYTE * 8; // =64

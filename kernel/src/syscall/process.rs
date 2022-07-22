@@ -5,6 +5,7 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use alloc::string::String;
+use core::mem::size_of;
 
 use crate::task::{
     exit_current_task, 
@@ -15,6 +16,7 @@ use crate::task::{
 };
 use crate::task::TaskStatus;
 use crate::file::SeekFrom;
+use crate::signal::{Bitset, SigAction};
 use crate::utils::{
     raw_ptr_to_string,
     str_ptr_array_to_vec_string,
@@ -22,9 +24,11 @@ use crate::utils::{
 use crate::constants::{
     SIGCHLD,
     MMAP_LEN_LIMIT,
+    SIGSET_SIZE_IN_BYTE,
 };
 
-use super::{WaitFlags, MMAPPROT, MMAPFlags, UtsName};
+use super::{WaitFlags, MMAPPROT, MMAPFlags, UtsName, ErrorNo};
+use super::{SIG_BLOCK, SIG_UNBLOCK, SIG_SETMASK};
 
 /// 进程退出，并提供 exit_code 供 wait 等 syscall 拿取
 pub fn sys_exit(exit_code: i32) -> ! {
@@ -300,5 +304,101 @@ pub fn sys_getgid() -> isize {
 
 /// 获取有效用户组 id，即相当于哪个用户的权限。在实现多用户权限前默认为最高权限
 pub fn sys_getegid() -> isize {
+    0
+}
+
+/// 向 pid 指定的进程发送信号。
+/// 如果进程中有多个线程，则会发送给任意一个未阻塞的线程。
+/// 
+/// pid 有如下情况
+/// 1. pid > 0，则发送给指定进程
+/// 2. pid = 0，则发送给所有同组进程
+/// 3. pid = -1，则发送给除了初始进程(pid=1)外的所有当前进程有权限的进程
+/// 4. pid < -2，则发送给组内 pid 为参数相反数的进程
+/// 
+/// 目前 2/3/4 未实现。对于 1，仿照 zCore 的设置，认为**当前进程自己或其直接子进程** 是"有权限"或者"同组"的进程。
+pub fn sys_kill(pid: isize, signal_id: isize) -> isize {
+    info!("kill pid {}, signal id {}", pid, signal_id);
+    0
+}
+
+/// 向 tid 指定的线程发送信号。
+/// 
+/// 在 `https://man7.org/linux/man-pages/man2/tkill.2.html` 中，建议使用 tgkill 替代，
+/// 这需要多加一个 tgid 参数，以防止错误的线程( tid 已被删除后重用)发送信号。
+/// 但 libc 的测例中仍会使用这个 tkill
+pub fn sys_tkill(tid: isize, signal_id: isize) -> isize {
+    info!("tkill tid {}, signal id {}", tid, signal_id);
+    0
+}
+
+/// 改变当前线程屏蔽的信号类型。
+/// 
+/// 所有信号类型存放在 sigsetsize Byte 大小的一个 bitset 里(因为是riscv64，默认为 8)
+/// 根据 how 将目前的信号类型对 set 取并集/差集或直接设为 set，并将旧信号存入 old_set 中。
+/// 
+/// 如果 set 为 0，则不设置；如果 old_set 为 0，则不存入。
+pub fn sys_sigprocmask(how: i32, set: *const usize, old_set: *mut usize, sigsetsize: usize) -> isize {
+    if sigsetsize != SIGSET_SIZE_IN_BYTE {
+        return ErrorNo::EINVAL as isize;
+    }
+
+    // 这里仅输出调试信息，与处理无关
+    info!("how {}, set {:x}", how, if set as usize == 0 { 0 } else { unsafe{ *set } });
+
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+    let mut signals = task.signals.lock();
+
+    if old_set as usize != 0 { // old_set 非零说明要求写入到这个地址
+        if tcb_inner.vm.manually_alloc_page(old_set as usize).is_err() {
+            return ErrorNo::EINVAL as isize; // 地址不合法
+        }
+        unsafe { *old_set = signals.mask.0; }
+    }
+    if set as usize != 0 { // set 非零时才考虑 how 并修改
+        if tcb_inner.vm.manually_alloc_page(set as usize).is_err() {
+            return ErrorNo::EINVAL as isize; // 地址不合法
+        }
+        let set_val = Bitset::new(unsafe { *set });
+        match how {
+            SIG_BLOCK => signals.mask.get_union(set_val),
+            SIG_UNBLOCK => signals.mask.get_difference(set_val),
+            SIG_SETMASK => signals.mask.set_new(set_val),
+            _ => { return ErrorNo::EINVAL as isize; },
+        };
+    }
+    0
+}
+
+/// 改变当前进程的信号处理函数。
+/// 
+/// 如果 action 为 0，则不设置；如果 old_action 为 0，则不存入。
+pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut SigAction) -> isize {
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+    let mut signals = task.signals.lock();
+
+    let old_addr = old_action as usize;
+    if old_addr != 0 { // old_set 非零说明要求写入到这个地址
+        if tcb_inner.vm.manually_alloc_page(old_addr).is_err()
+            || tcb_inner.vm.manually_alloc_page(old_addr + size_of::<SigAction>() - 1).is_err() {
+            return ErrorNo::EINVAL as isize; // 地址不合法
+        }
+        
+    }
+
+    let addr = action as usize;
+    if addr != 0 { // set 非零时才考虑 how 并修改
+        if tcb_inner.vm.manually_alloc_page(addr).is_err() 
+            || tcb_inner.vm.manually_alloc_page(addr + size_of::<SigAction>() - 1).is_err() {
+            return ErrorNo::EINVAL as isize; // 地址不合法
+        }
+    }
+
+    
+    unsafe {
+        info!("action {:#?}", *action);
+    }
     0
 }

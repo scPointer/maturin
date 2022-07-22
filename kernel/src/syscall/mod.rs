@@ -43,6 +43,8 @@ const SYSCALL_FUTEX: usize = 98;
 const SYSCALL_NANOSLEEP: usize = 101;
 const SYSCALL_CLOCK_GET_TIME: usize = 113;
 const SYSCALL_YIELD: usize = 124;
+const SYSCALL_KILL: usize = 129;
+const SYSCALL_TKILL: usize = 130;
 const SYSCALL_SIGACTION: usize = 134;
 const SYSCALL_SIGPROCMASK: usize = 135;
 const SYSCALL_TIMES: usize = 153;
@@ -80,6 +82,7 @@ use times::*;
 use lock::Mutex;
 use lazy_static::*;
 use crate::constants::IS_TEST_ENV;
+use crate::signal::SigAction;
 
 lazy_static! {
     static ref WRITEV_COUNT:Mutex<usize> = Mutex::new(0);
@@ -130,6 +133,10 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_NANOSLEEP => sys_nanosleep(args[0] as *const TimeSpec, args[1] as *mut TimeSpec),
         SYSCALL_CLOCK_GET_TIME => sys_get_time_of_day(args[1] as *mut TimeSpec),
         SYSCALL_YIELD => sys_yield(),
+        SYSCALL_KILL => sys_kill(args[0] as isize, args[1] as isize),
+        SYSCALL_TKILL => sys_tkill(args[0] as isize, args[1] as isize),
+        SYSCALL_SIGACTION => sys_sigaction(args[0], args[1] as *const SigAction, args[2] as *mut SigAction),
+        SYSCALL_SIGPROCMASK => sys_sigprocmask(args[0] as i32, args[1] as *const usize, args[2] as *mut usize, args[3]),
         SYSCALL_TIMES => sys_times(args[0] as *mut TMS),
         SYSCALL_UNAME => sys_uname(args[0] as *mut UtsName),
         SYSCALL_GET_TIME_OF_DAY => sys_get_time_of_day(args[0] as *mut TimeSpec),
@@ -147,13 +154,11 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_EXECVE => sys_execve(args[0] as *const u8, args[1] as *const usize, args[2] as *const usize),
         SYSCALL_WAIT4 => sys_wait4(args[0] as isize, args[1] as *mut i32, WaitFlags::from_bits(args[2] as u32).unwrap()),
         //_ => panic!("Unsupported syscall_id: {}", syscall_id),
-        SYSCALL_SET_TID_ADDRESS => 0,
+        SYSCALL_SET_TID_ADDRESS => sys_gettid(),
         SYSCALL_IOCTL => 0,
         SYSCALL_FCNTL64 => 0,
         SYSCALL_MPROTECT => 0,
         SYSCALL_FUTEX => sys_exit(-100),
-        SYSCALL_SIGACTION => 0,
-        SYSCALL_SIGPROCMASK => 0,
         _ => {
             println!("Unsupported syscall_id: {}", syscall_id);
             -1

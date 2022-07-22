@@ -13,6 +13,7 @@ use crate::loaders::{ElfLoader, parse_user_app};
 use crate::memory::{MemorySet, Pid, new_memory_set_for_task};
 use crate::memory::{VirtAddr, PTEFlags};
 use crate::trap::TrapContext;
+use crate::signal::Signals;
 use crate::file::{FdManager, check_file_exists};
 use crate::timer::get_time;
 use crate::constants::{USER_STACK_OFFSET, NO_PARENT};
@@ -33,6 +34,9 @@ pub struct TaskControlBlock {
     pub kernel_stack: KernelStack,
     /// 进程 id
     pub pid: Pid,
+    /// 信号量相关信息。
+    /// 因为发送信号是通过 pid/tid 查找的，因此放在 inner 中一起调用时更容易导致死锁
+    pub signals: Arc<Mutex<Signals>>,
     /// 任务的状态信息
     pub inner: Mutex<TaskControlBlockInner>,
 }
@@ -104,9 +108,11 @@ impl TaskControlBlock {
             let pid = Pid::new().unwrap();
             println!("pid = {}", pid.0);
             let stack_top = kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
+            let signals = Signals::new();
             TaskControlBlock {
                 kernel_stack: kernel_stack,
                 pid: pid,
+                signals: Arc::new(Mutex::new(signals)),
                 inner: Mutex::new(TaskControlBlockInner {
                     dir: String::from(app_dir),
                     ppid: ppid,
@@ -118,7 +124,7 @@ impl TaskControlBlock {
                     parent: None,
                     children: Vec::new(),
                     exit_code: 0,
-                    fd_manager: FdManager::new()
+                    fd_manager: FdManager::new(),
                 }),
             }
         }).ok()
@@ -151,9 +157,13 @@ impl TaskControlBlock {
         let pid = Pid::new().unwrap();
         let dir = String::from(&inner.dir[..]);
         let ppid = self.pid.0;
+        // 注意虽然 fork 之后信号模块的值不变，但两个进程已经完全分离了，对信号的修改不会联动
+        // 所以不能只复制 Arc，要复制整个模块的值
+        let new_signals = Arc::new(Mutex::new(self.signals.lock().clone()));
         let new_tcb = Arc::new(TaskControlBlock {
             pid: pid,
             kernel_stack: kernel_stack,
+            signals: new_signals,
             inner: {
                 Mutex::new(TaskControlBlockInner {
                     dir: dir,
@@ -191,6 +201,8 @@ impl TaskControlBlock {
         inner.user_heap_top = USER_STACK_OFFSET;
         // 清空 MemorySet 中用户段的地址
         inner.vm.clear_user_and_save_kernel();
+        // 清空信号模块
+        self.signals.lock().clear();
         // 如果用户程序调用时没有参数，则手动加上程序名作为唯一的参数
         // 需要这个调整，是因为用户库(/user下)使用了 rCore 的版本，
         // 里面的 user_shell 调用 exec 时会加上程序名作为 args 的第一个参数
@@ -199,7 +211,7 @@ impl TaskControlBlock {
         let args = if args.len() == 0 { vec![String::from(app_name)] } else { args };
         
         for i in 0..args.len() {
-            info!("[cpu {}] args[{}] = '{}'", get_cpu_id(), i, args[i])
+            info!("[cpu {}] args[{}] = '{}'", get_cpu_id(), i, args[i]);
         }
         
         // 然后把新的信息插入页表和 VmArea
