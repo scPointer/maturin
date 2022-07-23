@@ -36,7 +36,6 @@ pub struct SigAction {
     pub mask: Bitset,
 }
 
-/// bit 位参数
 bitflags! {
     #[derive(Default)]
     /// 信号处理指定参数，详见 `https://man7.org/linux/man-pages/man2/rt_sigaction.2.html`

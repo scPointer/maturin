@@ -10,7 +10,12 @@ mod sig_action;
 pub use sig_action::{SigAction, SigActionFlags};
 mod bitset;
 pub use bitset::Bitset;
-
+mod tid2signals;
+pub use tid2signals::{
+    global_register_signals,
+    global_logoff_signals,
+    get_signals_from_tid,
+};
 use crate::constants::SIGSET_SIZE_IN_BIT;
 
 /// 一个进程对应的信号相关变量及处理
@@ -41,5 +46,32 @@ impl Signals {
         }
         self.mask = Bitset::new(0);
         self.sig_received = Bitset::new(0);
+    }
+    /// 获取某个信号对应的 SigAction。
+    /// 因为 signum 的范围是 [1,64]，所以要 -1
+    pub fn get_action<'a>(&self, signum: usize, action_pos: *mut SigAction) {
+        if let Some(action) = self.actions[signum - 1] {
+            unsafe { *action_pos = action; }
+        }
+    }
+    /// 修改某个信号对应的 SigAction。
+    /// 因为 signum 的范围是 [1,64]，所以要 -1
+    pub fn set_action(&mut self, signum: usize, action_pos: *const SigAction) {
+        unsafe { self.actions[signum - 1] = Some(*action_pos); }
+    }
+
+    /// 处理一个信号。如果有收到的信号，则返回信号编号。否则返回 None
+    pub fn get_one_signal(&mut self) -> Option<usize> {
+        self.sig_received.find_first_one().map(|pos| {
+            self.sig_received.remove_bit(pos);
+            pos + 1
+        })
+    }
+}
+
+/// 发送一个信号给进程 tid
+pub fn send_signal(tid: usize, signum: usize) {
+    if let Some(signals) = get_signals_from_tid(tid as usize) { // 获取目标线程(可以是自己)的 signals 数组
+        signals.lock().sig_received.add_bit(signum - 1);
     }
 }

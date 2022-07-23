@@ -16,7 +16,7 @@ use crate::task::{
 };
 use crate::task::TaskStatus;
 use crate::file::SeekFrom;
-use crate::signal::{Bitset, SigAction};
+use crate::signal::{Bitset, SigAction, SignalNo, send_signal};
 use crate::utils::{
     raw_ptr_to_string,
     str_ptr_array_to_vec_string,
@@ -319,7 +319,12 @@ pub fn sys_getegid() -> isize {
 /// 目前 2/3/4 未实现。对于 1，仿照 zCore 的设置，认为**当前进程自己或其直接子进程** 是"有权限"或者"同组"的进程。
 pub fn sys_kill(pid: isize, signal_id: isize) -> isize {
     info!("kill pid {}, signal id {}", pid, signal_id);
-    0
+    if pid > 0 {
+        send_signal(pid as usize, signal_id as usize);
+        0
+    } else {
+        -1
+    }
 }
 
 /// 向 tid 指定的线程发送信号。
@@ -329,7 +334,12 @@ pub fn sys_kill(pid: isize, signal_id: isize) -> isize {
 /// 但 libc 的测例中仍会使用这个 tkill
 pub fn sys_tkill(tid: isize, signal_id: isize) -> isize {
     info!("tkill tid {}, signal id {}", tid, signal_id);
-    0
+    if tid > 0 {
+        send_signal(tid as usize, signal_id as usize);
+        0
+    } else {
+        -1
+    }
 }
 
 /// 改变当前线程屏蔽的信号类型。
@@ -375,9 +385,16 @@ pub fn sys_sigprocmask(how: i32, set: *const usize, old_set: *mut usize, sigsets
 /// 
 /// 如果 action 为 0，则不设置；如果 old_action 为 0，则不存入。
 pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut SigAction) -> isize {
+    if signum == SignalNo::SIGKILL as usize || signum == SignalNo::SIGSTOP as usize { 
+        return ErrorNo::EINVAL as isize; // 特殊信号不能被覆盖
+    }
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
     let mut signals = task.signals.lock();
+
+    unsafe {
+        info!("action {:#?}", *action);
+    }
 
     let old_addr = old_action as usize;
     if old_addr != 0 { // old_set 非零说明要求写入到这个地址
@@ -385,7 +402,7 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
             || tcb_inner.vm.manually_alloc_page(old_addr + size_of::<SigAction>() - 1).is_err() {
             return ErrorNo::EINVAL as isize; // 地址不合法
         }
-        
+        signals.get_action(signum, old_action);
     }
 
     let addr = action as usize;
@@ -394,11 +411,7 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
             || tcb_inner.vm.manually_alloc_page(addr + size_of::<SigAction>() - 1).is_err() {
             return ErrorNo::EINVAL as isize; // 地址不合法
         }
-    }
-
-    
-    unsafe {
-        info!("action {:#?}", *action);
+        signals.set_action(signum, action);
     }
     0
 }

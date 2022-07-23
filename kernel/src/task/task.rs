@@ -13,7 +13,7 @@ use crate::loaders::{ElfLoader, parse_user_app};
 use crate::memory::{MemorySet, Pid, new_memory_set_for_task};
 use crate::memory::{VirtAddr, PTEFlags};
 use crate::trap::TrapContext;
-use crate::signal::Signals;
+use crate::signal::{Signals, global_register_signals};
 use crate::file::{FdManager, check_file_exists};
 use crate::timer::get_time;
 use crate::constants::{USER_STACK_OFFSET, NO_PARENT};
@@ -108,11 +108,12 @@ impl TaskControlBlock {
             let pid = Pid::new().unwrap();
             println!("pid = {}", pid.0);
             let stack_top = kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
-            let signals = Signals::new();
+            let signals = Arc::new(Mutex::new(Signals::new()));
+            global_register_signals(pid.0, signals.clone());
             TaskControlBlock {
                 kernel_stack: kernel_stack,
                 pid: pid,
-                signals: Arc::new(Mutex::new(signals)),
+                signals: signals,
                 inner: Mutex::new(TaskControlBlockInner {
                     dir: String::from(app_dir),
                     ppid: ppid,
@@ -160,6 +161,8 @@ impl TaskControlBlock {
         // 注意虽然 fork 之后信号模块的值不变，但两个进程已经完全分离了，对信号的修改不会联动
         // 所以不能只复制 Arc，要复制整个模块的值
         let new_signals = Arc::new(Mutex::new(self.signals.lock().clone()));
+        // 但是存入全局表中的 signals 是只复制指针
+        global_register_signals(pid.0, new_signals.clone());
         let new_tcb = Arc::new(TaskControlBlock {
             pid: pid,
             kernel_stack: kernel_stack,
