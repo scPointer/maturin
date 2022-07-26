@@ -1,7 +1,5 @@
 //! 错误类型
 
-#![deny(missing_docs)]
-
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
 #[repr(i32)]

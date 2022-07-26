@@ -14,11 +14,12 @@ use crate::arch::stdin::getchar;
 use crate::task::{get_current_task};
 use crate::task::TaskControlBlockInner;
 use crate::utils::raw_ptr_to_ref_str;
-use crate::file::{OpenFlags, Pipe, Kstat};
+use crate::file::{OpenFlags, Pipe, Kstat, SeekFrom};
 use crate::file::{
     open_file, 
     mkdir, 
     check_dir_exists,
+    check_file_exists,
     try_add_link,
     try_remove_link,
     umount_fat_fs,
@@ -27,7 +28,9 @@ use crate::file::{
 };
 use crate::constants::{ROOT_DIR, AT_FDCWD, DIR_ENTRY_SIZE};
 
-use super::{Dirent64, Dirent64_Type, OpenatError, IoVec};
+use super::{Dirent64, Dirent64_Type, ErrorNo, IoVec};
+use super::{TimeSpec, UtimensatFlags};
+use super::{SEEK_SET, SEEK_CUR, SEEK_END};
 
 const FD_STDIN: usize = 0;
 const FD_STDOUT: usize = 1;
@@ -36,22 +39,29 @@ const FD_STDOUT: usize = 1;
 pub fn sys_getcwd(buf: *mut u8, len: usize) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
+    if tcb_inner.vm.manually_alloc_page(buf as usize).is_err() {
+        return -1; // 地址不合法
+    }
     let dir = &tcb_inner.dir;
     // buf 可以塞下这个目录
     // 注意 + 1 是因为要塞 '\0'，- 1 是因为要去掉路径最开头的 '.'
     if dir.len() - 1 + 1 <= len {
         let slice = unsafe { core::slice::from_raw_parts_mut(buf, dir.len() - 1) };
+        //info!("buf at {:x}, len {}, slice len {}", buf as usize, len, slice.len());
         slice.copy_from_slice(&dir[1..].as_bytes());
         // 写入 '\0'
         unsafe { *buf.add(dir.len() - 1) = 0; }
         buf as isize
-    } else { // 否则，buf 长度不够，但还是尽量把工作路径写进去
+    } else { // 否则，buf 长度不够，按照规范返回 ERANGE
+        ErrorNo::ERANGE as isize
+        /*
         if len - 1 > 0 {
             let slice = unsafe { core::slice::from_raw_parts_mut(buf, len - 1) };
             slice.copy_from_slice(&dir[1..len-1].as_bytes());
             unsafe { *buf.add(len - 1) = 0; }
         }
         0isize
+        */
     }
 }
 
@@ -59,7 +69,10 @@ pub fn sys_getcwd(buf: *mut u8, len: usize) -> isize {
 pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
-
+    //info!("fd {} buf {} len {}", fd, buf as usize, len);
+    if tcb_inner.vm.manually_alloc_page(buf as usize).is_err() {
+        return -1; // 地址不合法
+    }
     let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
 
     // 尝试了一下用 .map 串来写，但实际效果好像不如直接 if... 好看
@@ -91,6 +104,26 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     -1
 }
 
+/// 从同一个 fd 中读取一组字符串。
+/// 目前这个 syscall 借用 sys_read 来实现
+pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> isize {
+    if iov_cnt < 0 {
+        return -1;
+    }
+    info!("readv fd {}", fd);
+    let mut read_len = 0;
+    for i in 0..iov_cnt {
+        let io_vec: &IoVec = unsafe { &*iov.add(i) };
+        println!("sys_readv: io_vec.base {:x}, len {:x}", io_vec.base as usize, io_vec.len);
+        let ret = sys_read(fd, io_vec.base, io_vec.len);
+        if ret == -1 {
+            break
+        } else {
+            read_len += ret;
+        }
+    }
+    read_len
+}
 
 /// 写入一组字符串到同一个 fd 中。
 /// 目前这个 syscall 借用 sys_write 来实现
@@ -102,7 +135,7 @@ pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> isize {
     let mut written_len = 0;
     for i in 0..iov_cnt {
         let io_vec: &IoVec = unsafe { &*iov.add(i) };
-        println!("io_vec.base {:x}, len {:x}", io_vec.base as usize, io_vec.len);
+        println!("sys_writev: io_vec.base {:x}, len {:x}", io_vec.base as usize, io_vec.len);
         let ret = sys_write(fd, io_vec.base, io_vec.len);
         if ret == -1 {
             break
@@ -117,7 +150,6 @@ pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> isize {
 pub fn sys_fstat(fd: usize, kstat: *mut Kstat) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
-
     if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
         if file.get_stat(kstat) {
             return 0;
@@ -278,7 +310,7 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
     let mut tcb_inner = task.inner.lock();
     // 如果 fd 已满，则不再添加
     if tcb_inner.fd_manager.is_full() {
-        return OpenatError::EMFILE as isize;
+        return ErrorNo::EMFILE as isize;
     }
     if let Some((parent_dir, file_path)) = resolve_path_from_fd(&tcb_inner, dir_fd, path) {
         let mut file_path = String::from(file_path);
@@ -296,17 +328,21 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
         }
         println!("try open parent_dir={} file_path={} flag={:x}", parent_dir, file_path, flags);
         if let Some(open_flags) = OpenFlags::from_bits(flags) {
+            println!("[{:#?}]", open_flags);
             //println!("opened");
             if let Some(node) = open_file(parent_dir.as_str(), file_path.as_str(), open_flags) {
                 //println!("opened");
                 if let Ok(fd) = tcb_inner.fd_manager.push(node) {
-                    //println!("return fd {}", fd);
+                    println!("return fd {}", fd);
                     return fd as isize
+                } else if open_flags.contains(OpenFlags::EXCL) {
+                    // 要求创建文件却打开失败，说明是文件已存在
+                    return ErrorNo::EEXIST as isize
                 }
             }
         }
     }
-    OpenatError::ENOENT as isize
+    ErrorNo::ENOENT as isize
 }
 
 /// 关闭文件，成功时返回 0，失败时返回 -1
@@ -352,7 +388,7 @@ pub fn sys_dup(fd: usize) -> isize {
     if let Ok(new_fd) = tcb_inner.fd_manager.copy_fd_anywhere(fd) {
         new_fd as isize
     } else {
-        OpenatError::EMFILE as isize
+        ErrorNo::EMFILE as isize
     }
 }
 
@@ -367,6 +403,7 @@ pub fn sys_dup3(old_fd: usize, new_fd: usize) -> isize {
     }
 }
 
+/// 获取目录项信息
 pub fn sys_getdents64(fd: usize, buf: *mut Dirent64, len: usize) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
@@ -391,4 +428,40 @@ pub fn sys_getdents64(fd: usize, buf: *mut Dirent64, len: usize) -> isize {
         }
     }
     -1
+}
+
+/// 修改文件的访问时间和/或修改时间。
+/// 
+/// 因为它要求文件访问的部分更多，因此放在 fs.rs 而非 times.rs
+pub fn sys_utimensat(dir_fd: i32, path: *const u8, time_spec: *const TimeSpec, flags: UtimensatFlags) -> isize {
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+    if let Some((parent_dir, file_path)) = resolve_path_from_fd(&tcb_inner, dir_fd, path) {
+        if check_file_exists(parent_dir.as_str(), file_path) {
+            return 0;
+        }
+    }
+    ErrorNo::ENOENT as isize
+}
+
+/// 修改
+pub fn sys_lseek(fd: usize, offset: isize, whence: isize) -> isize {
+    info!("lseek fd {} offset {} whence {}", fd, offset, whence);
+    let task = get_current_task().unwrap();
+    let mut tcb_inner = task.inner.lock();
+    if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
+        if let Some(new_offset) = file.seek(
+            match whence {
+                SEEK_SET => SeekFrom::Start(offset as u64),
+                SEEK_CUR => SeekFrom::Current(offset as i64),
+                SEEK_END => SeekFrom::End(offset as i64),
+                _ => { return ErrorNo::EINVAL as isize; } 
+            }
+        ) {
+            return new_offset as isize;
+        } else {
+            return ErrorNo::EINVAL as isize;
+        }
+    }
+    ErrorNo::EBADF as isize
 }

@@ -15,6 +15,14 @@ bitflags! {
         const RDWR = 1 << 1;
         /// 如文件不存在，可创建它
         const CREATE = 1 << 6;
+        /// 确认一定是创建文件。如文件已存在，返回 EEXIST。
+        const EXCL = 1 << 9;
+        /// 没查到，但 date.lua 要
+        const UNKNOWN = 1 << 11;
+        /// 要求把 CR-LF 都换成 LF
+        const TEXT = 1 << 14;
+        /// 和上面不同，要求输入输出都不进行这个翻译
+        const BINARY = 1 << 15;
         /// 
         const NOFOLLOW = 1 << 17;
         ///

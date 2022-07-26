@@ -46,6 +46,6 @@ lazy_static! {
     /// 第一个用户程序
     /// 任务调度器启动时会自动在队列中插入它作为第一个用户程序
     pub static ref ORIGIN_USER_PROC: Arc<TaskControlBlock> = Arc::new(
-        TaskControlBlock::from_app_name(ROOT_DIR, ORIGIN_USER_PROC_NAME, 0).unwrap()
+        TaskControlBlock::from_app_name(ROOT_DIR, 0, vec![ORIGIN_USER_PROC_NAME.into()]).unwrap()
     );
 }

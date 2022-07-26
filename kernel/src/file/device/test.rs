@@ -4,6 +4,7 @@
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use alloc::string::String;
 use lock::Mutex;
 use core::slice::Iter;
 use lazy_static::*;
@@ -32,9 +33,11 @@ pub fn load_next_testcase() -> Option<Arc<TaskControlBlock>> {
     TESTCASES_ITER.lock().next().map_or_else(|| {
         TEST_STATUS.lock().final_info();
         None
-    },|user_prog_name| {
-        TEST_STATUS.lock().load(user_prog_name);
-        Some(Arc::new(TaskControlBlock::from_app_name(ROOT_DIR, user_prog_name, NO_PARENT).unwrap()))
+    },|&user_command| {
+        let mut argv: Vec<String> = user_command.split(' ').map(|s| s.into()).collect();
+        let argv = argv.drain_filter(|s| s != "").collect();
+        TEST_STATUS.lock().load(&user_command.into());
+        Some(Arc::new(TaskControlBlock::from_app_name(ROOT_DIR, NO_PARENT, argv).unwrap()))
     })
 }
 
@@ -48,8 +51,8 @@ pub fn show_testcase_result(exit_code: i32) {
 struct TestStatus {
     cnt: usize,
     passed: usize,
-    now: Option<&'static str>,
-    failed_tests: Vec<&'static str>,
+    now: Option<String>,
+    failed_tests: Vec<String>,
 }
 
 impl TestStatus {
@@ -64,9 +67,9 @@ impl TestStatus {
     }
 
     /// 输入测试
-    pub fn load(&mut self, testcase: &&'static str) {
+    pub fn load(&mut self, testcase: &String) {
         info!(" --------------- load testcase: {} --------------- ", testcase);
-        self.now = Some(&testcase);
+        self.now = Some(testcase.into());
     }
 
     /// 更新执行结果
@@ -81,22 +84,22 @@ impl TestStatus {
         //cnt += 1;
         match exit_code {
             0 => {
-                info!(" --------------- test passed --------------- "); 
+                info!(" --------------- test passed --------------- ");
                 self.passed += 1;
+                self.now.take();
             },
             _ => {
                 info!(" --------------- TEST FAILED, exit code = {} --------------- ", exit_code);
-                self.failed_tests.push(self.now.unwrap());
+                self.failed_tests.push(self.now.take().unwrap());
             },
         }
-        self.now = None;
     }
 
     /// 最终输出测试信息
     pub fn final_info(&self) {
         info!(" --------------- all test ended, passed {} / {} --------------- ", self.passed, self.cnt);
         info!(" --------------- failed tests: --------------- ");
-        for &test in &self.failed_tests {
+        for test in &self.failed_tests {
             info!("{}", test);
         }
         info!(" --------------- end --------------- ");
@@ -111,12 +114,80 @@ lazy_static! {
 }
 
 pub const SAMPLE: &[&str] = &[
-    "argv",
-    "basename",
-    "clocale_mbfuncs",
-    "clock_gettime",
-    "crypt",
-    "dirname",
+    //"lmbench_all lat_syscall -P 1 null",
+    //"busybox kill 10",
+    "sigreturn",
+];
+
+pub const BUSYBOX_TESTCASES: &[&str] = &[
+    "busybox sh ./busybox_testcode.sh", //最终测例，它包含了下面全部
+    "busybox echo \"#### independent command test\"",
+    "busybox ash -c exit",
+    "busybox sh -c exit",
+    "busybox basename /aaa/bbb",
+    "busybox cal",
+    "busybox clear",
+    "busybox date",
+    "busybox df",
+    "busybox dirname /aaa/bbb",
+    "busybox dmesg",
+    "busybox du",
+    "busybox expr 1 + 1",
+    "busybox false",
+    "busybox true",
+    "busybox which ls",
+    "busybox uname",
+    "busybox uptime",
+    "busybox printf \"abc\n\"",
+    "busybox ps",
+    "busybox pwd",
+    "busybox free",
+    "busybox hwclock",
+    "busybox kill 10",
+    "busybox ls",
+    "busybox sleep 1",
+    "busybox echo \"#### file opration test\"",
+    "busybox touch test.txt",
+    "busybox echo \"hello world\" > test.txt",
+    "busybox cat test.txt",
+    "busybox cut -c 3 test.txt",
+    "busybox od test.txt",
+    "busybox head test.txt",
+    "busybox tail test.txt",
+    //"busybox hexdump -C test.txt", // 会要求标准输入，不方便自动测试
+    "busybox md5sum test.txt",
+    "busybox echo \"ccccccc\" >> test.txt",
+    "busybox echo \"bbbbbbb\" >> test.txt",
+    "busybox echo \"aaaaaaa\" >> test.txt",
+    "busybox echo \"2222222\" >> test.txt",
+    "busybox echo \"1111111\" >> test.txt",
+    "busybox echo \"bbbbbbb\" >> test.txt",
+    "busybox sort test.txt | ./busybox uniq",
+    "busybox stat test.txt",
+    "busybox strings test.txt",
+    "busybox wc test.txt",
+    "busybox [ -f test.txt ]",
+    "busybox more test.txt",
+    "busybox rm test.txt",
+    "busybox mkdir test_dir",
+    "busybox mv test_dir test",
+    "busybox rmdir test",
+    "busybox grep hello busybox_cmd.txt",
+    "busybox cp busybox_cmd.txt busybox_cmd.bak",
+    "busybox rm busybox_cmd.bak",
+    "busybox find -name \"busybox_cmd.txt\"",
+
+];
+pub const LUA_TESTCASES: &[&str] = &[
+    "lua date.lua",
+    "lua file_io.lua",
+    "lua max_min.lua",
+    "lua random.lua",
+    "lua remove.lua",
+    "lua round_num.lua",
+    "lua sin30.lua",
+    "lua sort.lua",
+    "lua strings.lua",
 ];
 
 pub const DYNAMIC_TESTCASES: &[&str] = &[

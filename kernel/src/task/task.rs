@@ -13,6 +13,7 @@ use crate::loaders::{ElfLoader, parse_user_app};
 use crate::memory::{MemorySet, Pid, new_memory_set_for_task};
 use crate::memory::{VirtAddr, PTEFlags};
 use crate::trap::TrapContext;
+use crate::signal::{Signals, global_register_signals};
 use crate::file::{FdManager, check_file_exists};
 use crate::timer::get_time;
 use crate::constants::{USER_STACK_OFFSET, NO_PARENT};
@@ -33,6 +34,9 @@ pub struct TaskControlBlock {
     pub kernel_stack: KernelStack,
     /// 进程 id
     pub pid: Pid,
+    /// 信号量相关信息。
+    /// 因为发送信号是通过 pid/tid 查找的，因此放在 inner 中一起调用时更容易导致死锁
+    pub signals: Arc<Mutex<Signals>>,
     /// 任务的状态信息
     pub inner: Mutex<TaskControlBlockInner>,
 }
@@ -71,7 +75,7 @@ pub struct TaskControlBlockInner {
 }
 
 impl TaskControlBlock {
-    /// 从用户程序名生成 TCB
+    /// 从用户程序名生成 TCB，其中文件名默认为 args[0]
     /// 
     /// 在目前的实现下，如果生成 TCB 失败，只有以下情况：
     /// 1. 找不到文件名所对应的文件
@@ -83,13 +87,17 @@ impl TaskControlBlock {
     /// 
     /// 目前只有初始进程(/task/mod.rs: ORIGIN_USER_PROC) 直接通过这个函数初始化，
     /// 其他进程应通过 fork / exec 生成
-    pub fn from_app_name(app_dir: &str, app_name: &str, ppid: usize) -> Option<Self> {
+    pub fn from_app_name(app_dir: &str, ppid: usize, args: Vec<String>) -> Option<Self> {
+        if args.len() < 1 { // 需要至少有一项指定文件名
+            return None
+        }
+        let app_name_string: String = args[0].clone();
+        let app_name = app_name_string.as_str();
         if !check_file_exists(app_dir, app_name) {
             return None
         }
         // 新建页表，包含内核段
         let mut vm = new_memory_set_for_task().unwrap();
-        let args = vec![String::from(app_name)];
         // 找到用户名对应的文件，将用户地址段信息插入页表和 VmArea
         parse_user_app(app_dir, app_name, &mut vm, args)
             .map(|(user_entry, user_stack)| {
@@ -98,11 +106,14 @@ impl TaskControlBlock {
             let kernel_stack = KernelStack::new().unwrap();
             //kernel_stack.print_info();
             let pid = Pid::new().unwrap();
-            // println!("pid = {}", pid.0);
+            println!("pid = {}", pid.0);
             let stack_top = kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
+            let signals = Arc::new(Mutex::new(Signals::new()));
+            global_register_signals(pid.0, signals.clone());
             TaskControlBlock {
                 kernel_stack: kernel_stack,
                 pid: pid,
+                signals: signals,
                 inner: Mutex::new(TaskControlBlockInner {
                     dir: String::from(app_dir),
                     ppid: ppid,
@@ -114,7 +125,7 @@ impl TaskControlBlock {
                     parent: None,
                     children: Vec::new(),
                     exit_code: 0,
-                    fd_manager: FdManager::new()
+                    fd_manager: FdManager::new(),
                 }),
             }
         }).ok()
@@ -147,9 +158,15 @@ impl TaskControlBlock {
         let pid = Pid::new().unwrap();
         let dir = String::from(&inner.dir[..]);
         let ppid = self.pid.0;
+        // 注意虽然 fork 之后信号模块的值不变，但两个进程已经完全分离了，对信号的修改不会联动
+        // 所以不能只复制 Arc，要复制整个模块的值
+        let new_signals = Arc::new(Mutex::new(self.signals.lock().clone()));
+        // 但是存入全局表中的 signals 是只复制指针
+        global_register_signals(pid.0, new_signals.clone());
         let new_tcb = Arc::new(TaskControlBlock {
             pid: pid,
             kernel_stack: kernel_stack,
+            signals: new_signals,
             inner: {
                 Mutex::new(TaskControlBlockInner {
                     dir: dir,
@@ -187,6 +204,8 @@ impl TaskControlBlock {
         inner.user_heap_top = USER_STACK_OFFSET;
         // 清空 MemorySet 中用户段的地址
         inner.vm.clear_user_and_save_kernel();
+        // 清空信号模块
+        self.signals.lock().clear();
         // 如果用户程序调用时没有参数，则手动加上程序名作为唯一的参数
         // 需要这个调整，是因为用户库(/user下)使用了 rCore 的版本，
         // 里面的 user_shell 调用 exec 时会加上程序名作为 args 的第一个参数
@@ -195,7 +214,7 @@ impl TaskControlBlock {
         let args = if args.len() == 0 { vec![String::from(app_name)] } else { args };
         
         for i in 0..args.len() {
-            info!("[cpu {}] args[{}] = '{}'", get_cpu_id(), i, args[i])
+            info!("[cpu {}] args[{}] = '{}'", get_cpu_id(), i, args[i]);
         }
         
         // 然后把新的信息插入页表和 VmArea
@@ -275,15 +294,16 @@ impl TaskControlBlock {
     pub fn get_user_heap_top(&self) -> usize {
         self.inner.lock().user_heap_top
     }
-    /// 重新设置堆顶地址，返回是否成功。
+    /// 重新设置堆顶地址，如成功则返回设置后的堆顶地址，否则保持不变，并返回之前的堆顶地址。
     /// 新地址需要在用户栈内，并且不能碰到目前的栈
-    pub fn set_user_heap_top(&self, new_top: usize) -> bool {
+    pub fn set_user_heap_top(&self, new_top: usize) -> usize {
         let user_sp = unsafe { (*self.kernel_stack.get_first_context()).get_sp() };
+        let mut inner = self.inner.lock();
         if new_top >= USER_STACK_OFFSET && new_top < user_sp {
-            self.inner.lock().user_heap_top = new_top;
-            true
+            inner.user_heap_top = new_top;
+            new_top
         } else {
-            false
+            inner.user_heap_top
         }
     }
     /// 如果当前进程已是运行结束，则获取其 exit_code，否则返回 None

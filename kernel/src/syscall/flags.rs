@@ -192,8 +192,8 @@ impl UtsName {
         Self {
             sysname: Self::from_str("MaturinOS"),
             nodename: Self::from_str("MaturinOS - machine[0]"),
-            release: Self::from_str("0.1"),
-            version: Self::from_str("0.1"),
+            release: Self::from_str("233"),
+            version: Self::from_str("1.0"),
             machine: Self::from_str("RISC-V 64 on SIFIVE FU740"),
             domainname: Self::from_str("https://github.com/scPointer/maturin"),
         }
@@ -251,12 +251,29 @@ impl Dirent64 {
 /// sys_writev / sys_readv 中指定的结构体类型
 #[repr(C)]
 pub struct IoVec {
-    pub base: *const u8,
+    pub base: *mut u8,
     pub len: usize,
 }
 
+/// 错误编号
 #[repr(C)]
-pub enum OpenatError {
-    ENOENT = -1, // 找不到文件或目录
+pub enum ErrorNo {
+    EPERM = -1, // 非法操作
+    ENOENT = -2, // 找不到文件或目录
+    EBADF = -9, // 错误的文件描述符
+    EBUSY = -16, // 设备或者资源被占用
+    EEXIST = -17, // 文件已存在
+    EINVAL = -22, // 非法参数
     EMFILE = -24, // fd（文件描述符）已满
+    ERANGE = -34, // 超过范围。例如用户提供的buffer不够长
 }
+
+/// sys_lseek 时对应的条件
+pub const SEEK_SET:isize = 0; // 从文件开头
+pub const SEEK_CUR:isize = 1;  // 从当前位置
+pub const SEEK_END:isize = 2;  // 从文件结尾
+
+/// sys_sigprocmask 时对应的选择
+pub const SIG_BLOCK:i32 = 0; // 和当前 mask 取并集
+pub const SIG_UNBLOCK:i32 = 1; // 从当前 mask 中去除对应位
+pub const SIG_SETMASK:i32 = 2; // 重新设置当前 mask

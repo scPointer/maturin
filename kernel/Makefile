@@ -9,6 +9,7 @@ OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy
 GDB ?= riscv64-unknown-elf-gdb
 
+DISK_DIR ?= libc
 # BOOTLOADER := ../bin/fw_jump.bin
 export PLATFORM
 
@@ -61,7 +62,7 @@ fat-fs-img:
 
 testcases-img:
 	@rm -f $(testcases_img)
-	@cd ../fs-init && cargo run --release -- -b -s ../oscomp_testcases/bin/ -t ../oscomp_testcases/bin/ -o ../
+	@cd ../fs-init && cargo run --release -- -b -s ../oscomp_testcases/$(DISK_DIR)/ -t ../oscomp_testcases/$(DISK_DIR)/ -o ../
 
 kernel:
 	@echo Building maturin kernel

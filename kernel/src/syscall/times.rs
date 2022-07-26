@@ -13,7 +13,7 @@ use crate::task::{
 };
 use crate::constants::CLOCK_FREQ;
 
-use super::{TMS, TimeSpec, UtimensatFlags, NSEC_PER_SEC};
+use super::{TMS, TimeSpec, NSEC_PER_SEC};
 
 const ticks_per_sec: f64 = CLOCK_FREQ as f64;
 const ticks_per_nsec: f64 = ticks_per_sec / NSEC_PER_SEC as f64;
@@ -35,6 +35,8 @@ pub fn sys_get_time_of_day(time_spec: *mut TimeSpec) -> isize {
 /// 该进程休眠一段时间
 pub fn sys_nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> isize {
     let end_time = unsafe { get_time_f64() + (*req).time_in_sec() };
+    let now = get_time_f64();
+    //info!("now {} end time {}", now, end_time);
     while get_time_f64() < end_time {
         suspend_current_task();
     }
@@ -64,8 +66,4 @@ pub fn sys_times(tms_ptr: *mut TMS) -> isize {
         (*tms_ptr).tms_cstime = passed_ms;
     }
     passed as isize
-}
-
-pub fn sys_utimensat(dir_fd: i32, path: *const u8, time_spec: *const TimeSpec, flags: UtimensatFlags) -> isize {
-    -1
 }

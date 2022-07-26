@@ -11,6 +11,7 @@ use lazy_static::*;
 use crate::constants::{CPU_ID_LIMIT, IS_TEST_ENV, NO_PARENT};
 use crate::error::{OSResult, OSError};
 use crate::trap::TrapContext;
+use crate::signal::global_logoff_signals;
 use crate::memory::{VirtAddr, PTEFlags, enable_kernel_page_table};
 use crate::file::show_testcase_result;
 use crate::arch::get_cpu_id;
@@ -76,7 +77,7 @@ pub fn run_tasks() -> ! {
             task.set_status(TaskStatus::Running);
 
             //let pid = task.get_pid_num();
-            // if pid == 1 { println!("[cpu {}] now running on pid = {}", cpu_id, pid);}
+            //if pid == 2 { println!("[cpu {}] now running on pid = {}", cpu_id, pid);}
             //drop(task_inner);
             unsafe { task.inner.lock().vm.activate(); }
             cpu_local.current = Some(task);
@@ -235,6 +236,8 @@ fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
     }
     tcb_inner.children.clear();
     tcb_inner.task_status = TaskStatus::Zombie;
+    // 通知全局表将 signals 删除
+    global_logoff_signals(task.pid.0);
     // 在测试环境中时，手动检查退出时的 exit_code
     if IS_TEST_ENV {
         show_testcase_result(tcb_inner.exit_code);
@@ -261,4 +264,9 @@ pub fn handle_user_page_fault(vaddr: VirtAddr, access_flags: PTEFlags)  -> OSRes
 /// 如果当前核没有任务，则返回 None
 pub fn get_current_task() -> Option<Arc<TaskControlBlock>> {
     Some(CPU_CONTEXTS[get_cpu_id()].lock().current.as_ref()?.clone())
+}
+
+/// 处理所有信号
+pub fn handle_signal() {
+    
 }

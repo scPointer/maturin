@@ -215,12 +215,16 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
             //println!("opened {}, {}", readable, writable);
             match dir.open_file(file_name) {
                 Ok(file) => {
-                    let fat_file = FatFile::new(readable, writable, real_dir, String::from(file_name), file);
-                    if flags.contains(OpenFlags::CREATE) {
-                        // 清空这个文件
-                        fat_file.inner.lock().truncate();
-                    };
-                    Some(Arc::new(fat_file))
+                    if flags.contains(OpenFlags::EXCL) { //选项要求必须要创建文件
+                        None
+                    } else {
+                        let fat_file = FatFile::new(readable, writable, real_dir, String::from(file_name), file);
+                        if flags.contains(OpenFlags::CREATE) {
+                            // 清空这个文件
+                            fat_file.inner.lock().truncate();
+                        };
+                        Some(Arc::new(fat_file))
+                    }
                 },
                 Err(Error::NotFound) => {
                     if flags.contains(OpenFlags::CREATE) {

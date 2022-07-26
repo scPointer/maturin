@@ -254,12 +254,14 @@ impl VmArea {
         pt: &mut PageTable,
     ) -> OSResult {
         debug_assert!(offset < self.end - self.start);
+        
         info!(
             "handle page fault @ offset {:#x?} with access {:?}: {:#x?}",
             offset,
             access_flags,
             self
         );
+        
         let mut pma = self.pma.lock();
         if !self.flags.contains(access_flags) {
             return Err(OSError::PageFaultHandler_AccessDenied);
@@ -278,9 +280,35 @@ impl VmArea {
                 } else {
                     (*entry).set_all(paddr, self.flags | PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY);
                     pt.flush_tlb(Some(vaddr));
-                    //info!("[Handler] Lazy alloc a page for user.");
+                    info!("[Handler] Lazy alloc a page for user.");
                     Ok(())
                 }
+            }
+        } else {
+            Err(OSError::PageTable_PageNotMapped)
+        }
+    }
+
+    /// 检查一个地址是否分配，如果未分配则强制分配它
+    pub fn manually_alloc_page(
+        &self,
+        offset: usize,
+        pt: &mut PageTable,
+    ) -> OSResult {
+        let mut pma = self.pma.lock();
+        let offset = align_down(offset);
+        let vaddr = self.start + offset;
+        let paddr = pma
+            .get_frame(offset / PAGE_SIZE, true)?
+            .ok_or(OSError::Memory_RunOutOfMemory)?;
+        // println!("paddr {:x}", paddr);
+        if let Some(entry) = pt.get_entry(vaddr) {
+            unsafe {
+                if !(*entry).is_valid() {
+                    (*entry).set_all(paddr, self.flags | PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY);
+                    pt.flush_tlb(Some(vaddr));
+                }
+                Ok(())
             }
         } else {
             Err(OSError::PageTable_PageNotMapped)

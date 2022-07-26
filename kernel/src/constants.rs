@@ -32,7 +32,9 @@ pub const KERNEL_STACK_SIZE: usize = 0x8_000; // 1 MB
 /// 内核堆的大小
 pub const KERNEL_HEAP_SIZE: usize = 0x40_0000; // 4 MB
 /// 用户栈大小
-pub const USER_STACK_SIZE: usize = 0x1_0000; // 64 KB,
+pub const USER_STACK_SIZE: usize = 0x2_0000; // 128 KB,
+/// 初始用户栈大小，用于存放 argc/argv/envs/auxv
+pub const USER_INIT_STACK_SIZE: usize = 0x4000; // 16 KB,
 /// 用户栈底位置。同时也是最开始的用户堆顶位置
 pub const USER_STACK_OFFSET: usize = 0x4000_0000 - USER_STACK_SIZE;
 /// 用户地址最大不能超过这个值
@@ -98,3 +100,8 @@ pub const LIBC_SO_FILE: &str = "libc.so";
 pub const LIBC_SO_DIR: &str = ROOT_DIR;
 /// 如果 elf 的 phdr 指示 base 是 0(如 libc-test 的 libc.so)，则需要找一个非0的位置放置
 pub const ELF_BASE_RELOCATE: usize = 0x400_0000;
+
+/// signal 中用到的 bitset 长度。
+pub const SIGSET_SIZE_IN_BYTE: usize = 8;
+/// 所有可能的信号数。有多少可能的信号，内核就要为其保存多少个 SigAction
+pub const SIGSET_SIZE_IN_BIT: usize = SIGSET_SIZE_IN_BYTE * 8; // =64
