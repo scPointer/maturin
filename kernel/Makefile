@@ -3,7 +3,7 @@ MODE ?= debug
 USERMODE ?= release
 PLATFORM ?= qemu
 SMP ?= 4
-MACHINE ?= virt 
+MACHINE ?= virt
 
 OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy
@@ -72,6 +72,10 @@ $(kernel_img): kernel
 	$(OBJCOPY) $(kernel) --strip-all -O binary $@
 
 run: build qemu
+
+fu740: $(kernel_img)
+	gzip -9 -cvf $(kernel_img) > ../os.bin.gz
+	mkimage -f maturin-fu740.its ../os-fu740.itb
 
 qemu:
 	$(qemu) $(qemu_args)

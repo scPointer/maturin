@@ -1,0 +1,39 @@
+/*
+ * U-Boot uImage source file for "maturin-FU740"
+ */
+
+/dts-v1/;
+
+/ {
+    description = "U-Boot uImage source file for maturin-FU740";
+    #address-cells = <1>;
+
+    images {
+        kernel {
+            description = "Linux kernel for maturin-FU740";
+            data = /incbin/("../os.bin.gz");
+            type = "kernel";
+            arch = "riscv";
+            os = "linux";
+            compression = "gzip";
+            load = <0x80200000>;
+            entry = <0x80200000>;
+        };
+        fdt {
+            description = "Flattened Device Tree blob for FU740";
+            data = /incbin/("./hifive-unmatched-a00.dtb");
+            type = "flat_dt";
+            arch = "riscv";
+            compression = "none";
+        };
+    };
+
+    configurations {
+        default = "conf";
+        conf {
+            description = "Boot Linux kernel with FDT blob";
+            kernel = "kernel";
+            fdt = "fdt";
+        };
+    };
+};

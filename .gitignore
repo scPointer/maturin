@@ -7,3 +7,5 @@ user/target/*
 user/Cargo.lock
 *.img
 os.bin
+os.bin.gz
+os-fu740.itb
