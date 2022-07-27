@@ -109,18 +109,26 @@ impl TestStatus {
 lazy_static! {
     static ref TESTCASES_ITER: Mutex<Iter<'static, &'static str>> = Mutex::new(SAMPLE.into_iter());
     static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(SAMPLE));
-    //static ref TEST_COUNT: Mutex<usize> = Mutex::new(0);
-    //static ref TEST_PASSED: Mutex<usize> = Mutex::new(0);
 }
 
 pub const SAMPLE: &[&str] = &[
     //"lmbench_all lat_syscall -P 1 null",
     //"busybox kill 10",
-    "sigreturn",
+    "argv",
+    "basename",
+    "clocale_mbfuncs",
+    "clock_gettime",
+    "crypt",
+    "dyn/getpwnam_r_crash.dout",
+    "dyn/fflush_exit.dout",
+    "dyn/tls_local_exec.dout",
+    "dyn/inet_ntop_v4mapped.dout",
+    "dyn/mkstemp_failure.dout",
 ];
 
+/// 来自busybox 的测例，每行是一个命令，除busybox 之外的是参数，按空格分隔
 pub const BUSYBOX_TESTCASES: &[&str] = &[
-    "busybox sh ./busybox_testcode.sh", //最终测例，它包含了下面全部
+    //"busybox sh ./busybox_testcode.sh", //最终测例，它包含了下面全部
     "busybox echo \"#### independent command test\"",
     "busybox ash -c exit",
     "busybox sh -c exit",
@@ -178,6 +186,8 @@ pub const BUSYBOX_TESTCASES: &[&str] = &[
     "busybox find -name \"busybox_cmd.txt\"",
 
 ];
+
+/// 来自 lua 的测例，每行是一个命令。lua 本身是执行程序，后面的文件名实际上是参数
 pub const LUA_TESTCASES: &[&str] = &[
     "lua date.lua",
     "lua file_io.lua",
@@ -190,7 +200,8 @@ pub const LUA_TESTCASES: &[&str] = &[
     "lua strings.lua",
 ];
 
-pub const DYNAMIC_TESTCASES: &[&str] = &[
+/// 来自 libc 的动态测例
+pub const LIBC_DYNAMIC_TESTCASES: &[&str] = &[
     "dyn/getpwnam_r_crash.dout",
     "dyn/fflush_exit.dout",
     "dyn/tls_local_exec.dout",
@@ -295,7 +306,6 @@ pub const DYNAMIC_TESTCASES: &[&str] = &[
     "dyn/memstream.dout",
     "dyn/udiv.dout",
     "dyn/malloc_0.dout",
-    "dyn/flockfile_list.dout",
     "dyn/printf_1e9_oob.dout",
     "dyn/pthread_robust_detach.dout",
     "dyn/rewind_clear_error.dout",
@@ -305,7 +315,8 @@ pub const DYNAMIC_TESTCASES: &[&str] = &[
     "dyn/iconv_open.dout",
 ];
 
-pub const TESTCASES: &[&str] = &[
+/// 来自 libc 的静态测例
+pub const LIBX_STATIC_TESTCASES: &[&str] = &[
     "argv",
     "basename",
     "clocale_mbfuncs",
@@ -320,7 +331,6 @@ pub const TESTCASES: &[&str] = &[
     "fflush_exit",
     "fgets_eof",
     "fgetwc_buffering",
-    "flockfile_list",
     "fnmatch",
     "fpclassify_invalid_ld80",
     "fscanf",
