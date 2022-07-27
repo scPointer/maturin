@@ -59,7 +59,6 @@ src/regression/dn_expand-ptr-0.out
 src/regression/fflush-exit.out
 src/regression/fgets-eof.out
 src/regression/fgetwc-buffering.out
-src/regression/flockfile-list.out
 src/regression/fpclassify-invalid-ld80.out
 src/regression/ftello-unflushed-append.out
 src/regression/getpwnam_r-crash.out

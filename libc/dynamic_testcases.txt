@@ -61,7 +61,6 @@ src/regression/dn_expand-ptr-0.dout
 src/regression/fflush-exit.dout
 src/regression/fgets-eof.dout
 src/regression/fgetwc-buffering.dout
-src/regression/flockfile-list.dout
 src/regression/fpclassify-invalid-ld80.dout
 src/regression/ftello-unflushed-append.dout
 src/regression/getpwnam_r-crash.dout
