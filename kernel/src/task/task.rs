@@ -111,7 +111,7 @@ impl TaskControlBlock {
             //kernel_stack.print_info();
             let tid = Tid::new().unwrap();
             let pid = tid.0;
-            println!("tid = {}", tid.0);
+            //println!("tid = {}", tid.0);
             let stack_top = kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
             let signals = Arc::new(Mutex::new(Signals::new()));
             global_register_signals(tid.0, signals.clone());

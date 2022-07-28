@@ -116,7 +116,11 @@ lazy_static! {
 pub const SAMPLE: &[&str] = &[
     //"lmbench_all lat_syscall -P 1 null",
     //"busybox kill 10",
-    "sigreturn",
+    //"sigreturn",
+    //"dyn/tls_init.dout",
+    "./runtest.exe -w entry-static.exe argv",
+    "./runtest.exe -w entry-dynamic.exe argv",
+    //"./runtest.exe -w entry-dynamic.exe tls_init",
 ];
 
 pub const BUSYBOX_TESTCASES: &[&str] = &[

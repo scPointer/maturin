@@ -133,13 +133,13 @@ impl MemorySet {
             self.modify_overlap_areas(start, end);
             (start, end)
         };
-        println!("origin start {:x} end {:x}", start, end);
+        //info!("origin start {:x} end {:x}", start, end);
         // 起始地址在页内的偏移量
         let off = page_offset(start);
         // 注意实际占用的页数不仅看 data.len()，还要看请求的地址跨越了几页
         let mut pma = PmAreaLazy::new(page_count(off + end - start))?;
         pma.write(off, data)?;
-        println!("before align: start {:x}, end {:x}", start, end);
+        //info!("before align: start {:x}, end {:x}", start, end);
         let start = align_down(start);
         let end = align_up(end);
         //println!("after align: start {:x}, end {:x}, pmsize {}", start, end, align_up(off + data.len()));

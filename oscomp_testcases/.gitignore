@@ -2,3 +2,4 @@
 *.S
 backup*
 lmbench
+judge/

@@ -225,7 +225,7 @@ fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 
 /// 映射一段内存
 pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: i32, offset: usize) -> isize {
-    println!("try mmap start={:x} len={:x} prot=[{:#?}] flags=[{:#?}] fd={} offset={:x}", start, len, prot, flags, fd, offset);
+    info!("try mmap start={:x} len={:x} prot=[{:#?}] flags=[{:#?}] fd={} offset={:x}", start, len, prot, flags, fd, offset);
     let prot = MMAPPROT::PROT_READ | MMAPPROT::PROT_WRITE | MMAPPROT::PROT_EXEC;
     if len > MMAP_LEN_LIMIT {
         return -1;

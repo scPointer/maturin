@@ -47,6 +47,7 @@ const SYSCALL_KILL: usize = 129;
 const SYSCALL_TKILL: usize = 130;
 const SYSCALL_SIGACTION: usize = 134;
 const SYSCALL_SIGPROCMASK: usize = 135;
+const SYSCALL_SIGTIMEDWAIT: usize = 137;
 const SYSCALL_SIGRETURN: usize = 139;
 const SYSCALL_TIMES: usize = 153;
 const SYSCALL_UNAME: usize = 160;
@@ -69,6 +70,7 @@ const SYSCALL_MMAP: usize = 222;
 const SYSCALL_MPROTECT: usize = 226;
 //const SYSCALL_WAITPID: usize = 260;
 const SYSCALL_WAIT4: usize = 260;
+const SYSCALL_PRLIMIT64: usize = 261;
 
 mod fs;
 mod process;
@@ -161,6 +163,8 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_FCNTL64 => 0,
         SYSCALL_MPROTECT => 0,
         SYSCALL_FUTEX => sys_exit(-100),
+        SYSCALL_SIGTIMEDWAIT => 0,
+        SYSCALL_PRLIMIT64 => 0,
         _ => {
             println!("Unsupported syscall_id: {}", syscall_id);
             -1

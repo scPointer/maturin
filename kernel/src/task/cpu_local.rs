@@ -302,7 +302,7 @@ pub fn handle_signals() {
                     Terminate => {
                         // 这里不需要 drop(task)，因为当前函数没有用到 task_inner，在 task.save_trap... 内部用过后已经 drop 了
                         drop(sig_inner);
-                        exit_current_task(-1);
+                        exit_current_task(0);
                     },
                     Ignore => {}
                 }
