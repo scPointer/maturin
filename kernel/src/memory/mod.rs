@@ -34,7 +34,7 @@ pub use addr::*;
 
 pub use allocator::{
     Frame,
-    Pid,
+    Tid,
     FdAllocator,
     allocator_init,
 };

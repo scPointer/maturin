@@ -47,6 +47,7 @@ const SYSCALL_KILL: usize = 129;
 const SYSCALL_TKILL: usize = 130;
 const SYSCALL_SIGACTION: usize = 134;
 const SYSCALL_SIGPROCMASK: usize = 135;
+const SYSCALL_SIGRETURN: usize = 139;
 const SYSCALL_TIMES: usize = 153;
 const SYSCALL_UNAME: usize = 160;
 //const SYSCALL_GET_TIME: usize = 169;
@@ -137,6 +138,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_TKILL => sys_tkill(args[0] as isize, args[1] as isize),
         SYSCALL_SIGACTION => sys_sigaction(args[0], args[1] as *const SigAction, args[2] as *mut SigAction),
         SYSCALL_SIGPROCMASK => sys_sigprocmask(args[0] as i32, args[1] as *const usize, args[2] as *mut usize, args[3]),
+        SYSCALL_SIGRETURN => sys_sigreturn(),
         SYSCALL_TIMES => sys_times(args[0] as *mut TMS),
         SYSCALL_UNAME => sys_uname(args[0] as *mut UtsName),
         SYSCALL_GET_TIME_OF_DAY => sys_get_time_of_day(args[0] as *mut TimeSpec),

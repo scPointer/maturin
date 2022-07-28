@@ -8,10 +8,10 @@ use core::cell::{RefCell, RefMut};
 use lock::Mutex;
 use lazy_static::*;
 
-use crate::constants::{CPU_ID_LIMIT, IS_TEST_ENV, NO_PARENT};
+use crate::constants::{CPU_ID_LIMIT, IS_TEST_ENV, NO_PARENT, USER_STACK_RED_ZONE};
 use crate::error::{OSResult, OSError};
 use crate::trap::TrapContext;
-use crate::signal::global_logoff_signals;
+use crate::signal::{SignalNo, Signals, SigActionDefault, SigActionFlags, get_signals_from_tid, global_logoff_signals};
 use crate::memory::{VirtAddr, PTEFlags, enable_kernel_page_table};
 use crate::file::show_testcase_result;
 use crate::arch::get_cpu_id;
@@ -237,7 +237,7 @@ fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
     tcb_inner.children.clear();
     tcb_inner.task_status = TaskStatus::Zombie;
     // 通知全局表将 signals 删除
-    global_logoff_signals(task.pid.0);
+    global_logoff_signals(task.tid.0);
     // 在测试环境中时，手动检查退出时的 exit_code
     if IS_TEST_ENV {
         show_testcase_result(tcb_inner.exit_code);
@@ -266,7 +266,63 @@ pub fn get_current_task() -> Option<Arc<TaskControlBlock>> {
     Some(CPU_CONTEXTS[get_cpu_id()].lock().current.as_ref()?.clone())
 }
 
-/// 处理所有信号
-pub fn handle_signal() {
-    
+/// 获取当前核正在运行任务的信号组
+/// 如果当前核没有任务，则返回 None
+pub fn get_current_signals() -> Option<Arc<Mutex<Signals>>> {
+    get_current_task().map(|task| get_signals_from_tid(task.tid.0).unwrap())
+}
+
+/// 处理当前线程的信号
+pub fn handle_signals() {
+    // 仅在 trap 时调用这个函数，所以保证当前线程和对应 signals 都是存在的
+    let task = get_current_task().unwrap();
+    let signals = get_signals_from_tid(task.tid.0).unwrap();
+    // 如果其他线程正在向这里发送信号，则当前线程在此被阻塞
+    let mut sig_inner = signals.lock();
+    if let Some(signum) = sig_inner.get_one_signal() {
+        let signal = SignalNo::from(signum as u8);
+        info!("handling signal: {:#?}", signal);
+        // 保存成功说明当前没有在处理其他信号
+        if task.save_trap_cx_if_not_handling_signals() {
+            // 如果有，则调取处理函数
+            if let Some(action) = sig_inner.get_action_ref(signum) {
+                // 保存后开始操作准备修改上下文，跳转到用户的信号处理函数
+                let mut trap_cx = unsafe { &mut *task.kernel_stack.get_first_context() };
+                trap_cx.set_ra(action.restorer);
+                // 这里假设了用户栈没有溢出
+                let sp = trap_cx.get_sp() - USER_STACK_RED_ZONE;
+                trap_cx.set_sp(sp);
+                trap_cx.set_sepc(action.handler);
+                trap_cx.set_a0(signum);
+                if action.flags.contains(SigActionFlags::SA_SIGINFO) {
+                    // 如果带 SIGINFO，则需要在用户栈上放额外的信息。目前暂时不处理
+                }
+            } else { // 否则，查找默认处理方式
+                match SigActionDefault::of_signal(signal) {
+                    Terminate => {
+                        // 这里不需要 drop(task)，因为当前函数没有用到 task_inner，在 task.save_trap... 内部用过后已经 drop 了
+                        drop(sig_inner);
+                        exit_current_task(-1);
+                    },
+                    Ignore => {}
+                }
+            }
+        }
+    }
+    //info!("signal handler finish");
+}
+
+/// 从信号处理中返回。
+/// 为了适配 syscall，返回原来的用户上下文中的 a0 的值
+pub fn signal_return() -> isize {
+    // 仅在 sys_sigreturn 中调用这个函数，所以保证当前线程和对应 signals 都是存在的
+    let task = get_current_task().unwrap();
+    let signals = get_signals_from_tid(task.tid.0).unwrap();
+    if task.load_trap_cx_if_handling_signals() {
+        // 上面已经 load 了，此处获取的值是原来的上下文
+        let trap_cx = unsafe { &mut *task.kernel_stack.get_first_context() };
+        trap_cx.get_a0() as isize
+    } else { // 如果当前没有在信号处理函数中，却调用了 sigreturn，则返回 -1
+        -1
+    }
 }

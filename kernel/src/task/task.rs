@@ -10,7 +10,7 @@ use lock::Mutex;
 use core::slice::Iter;
 
 use crate::loaders::{ElfLoader, parse_user_app};
-use crate::memory::{MemorySet, Pid, new_memory_set_for_task};
+use crate::memory::{MemorySet, Tid, new_memory_set_for_task};
 use crate::memory::{VirtAddr, PTEFlags};
 use crate::trap::TrapContext;
 use crate::signal::{Signals, global_register_signals};
@@ -32,8 +32,10 @@ pub struct TaskControlBlock {
     /// 用户程序的内核栈，内部包含申请的内存空间
     /// 因为 struct 内部保存了页帧 Frame，所以 Drop 这个结构体时也会自动释放这段内存
     pub kernel_stack: KernelStack,
-    /// 进程 id
-    pub pid: Pid,
+    /// 进程 id。创建任务时实际分配的是 tid 而不是 pid，所以没有对应的 Pid 结构保护
+    pub pid: usize,
+    /// 线程 id
+    pub tid: Tid,
     /// 信号量相关信息。
     /// 因为发送信号是通过 pid/tid 查找的，因此放在 inner 中一起调用时更容易导致死锁
     pub signals: Arc<Mutex<Signals>>,
@@ -72,6 +74,8 @@ pub struct TaskControlBlockInner {
     pub exit_code: i32,
     /// 管理进程的所有文件描述符
     pub fd_manager: FdManager,
+    /// 处理信号时，保存的之前的用户线程的上下文信息
+    trap_cx_before_signal: Option<TrapContext>,
 }
 
 impl TaskControlBlock {
@@ -105,14 +109,16 @@ impl TaskControlBlock {
             // 初始化内核栈，它包含关于进入用户程序的所有信息
             let kernel_stack = KernelStack::new().unwrap();
             //kernel_stack.print_info();
-            let pid = Pid::new().unwrap();
-            println!("pid = {}", pid.0);
+            let tid = Tid::new().unwrap();
+            let pid = tid.0;
+            println!("tid = {}", tid.0);
             let stack_top = kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
             let signals = Arc::new(Mutex::new(Signals::new()));
-            global_register_signals(pid.0, signals.clone());
+            global_register_signals(tid.0, signals.clone());
             TaskControlBlock {
                 kernel_stack: kernel_stack,
                 pid: pid,
+                tid: tid,
                 signals: signals,
                 inner: Mutex::new(TaskControlBlockInner {
                     dir: String::from(app_dir),
@@ -126,6 +132,7 @@ impl TaskControlBlock {
                     children: Vec::new(),
                     exit_code: 0,
                     fd_manager: FdManager::new(),
+                    trap_cx_before_signal: None,
                 }),
             }
         }).ok()
@@ -155,16 +162,18 @@ impl TaskControlBlock {
         }
         let stack_top = kernel_stack.push_first_context(trap_context);
         
-        let pid = Pid::new().unwrap();
+        let tid = Tid::new().unwrap();
+        let pid = tid.0;
         let dir = String::from(&inner.dir[..]);
-        let ppid = self.pid.0;
+        let ppid = self.tid.0;
         // 注意虽然 fork 之后信号模块的值不变，但两个进程已经完全分离了，对信号的修改不会联动
         // 所以不能只复制 Arc，要复制整个模块的值
         let new_signals = Arc::new(Mutex::new(self.signals.lock().clone()));
         // 但是存入全局表中的 signals 是只复制指针
-        global_register_signals(pid.0, new_signals.clone());
+        global_register_signals(tid.0, new_signals.clone());
         let new_tcb = Arc::new(TaskControlBlock {
             pid: pid,
+            tid: tid,
             kernel_stack: kernel_stack,
             signals: new_signals,
             inner: {
@@ -179,7 +188,8 @@ impl TaskControlBlock {
                     parent: Some(Arc::downgrade(self)),
                     children: Vec::new(),
                     exit_code: 0,
-                    fd_manager: inner.fd_manager.copy_all()
+                    fd_manager: inner.fd_manager.copy_all(),
+                    trap_cx_before_signal: None,
                 })
             },
         });
@@ -273,9 +283,13 @@ impl TaskControlBlock {
         let inner = self.inner.lock();
         &inner.task_cx
     }
-    /// 获取 pid 的值，不会转移或释放 Pid 的所有权
+    /// 获取 pid 的值
     pub fn get_pid_num(&self) -> usize {
-        self.pid.0
+        self.pid
+    }
+    /// 获取 tid 的值，不会转移或释放 Tid 的所有权
+    pub fn get_tid_num(&self) -> usize {
+        self.tid.0
     }
     /// 获取 ppid 的值
     pub fn get_ppid(&self) -> usize {
@@ -314,7 +328,34 @@ impl TaskControlBlock {
             _ => None
         }
     }
-    
+    /// 如果当前没有在信号处理函数中，则保存当前用户上下文信息，返回true。
+    /// 否则不保存并返回false
+    pub fn save_trap_cx_if_not_handling_signals(&self) -> bool {
+        let mut inner = self.inner.lock();
+        if inner.trap_cx_before_signal.is_some() {
+            return false;
+        }
+        inner.trap_cx_before_signal = Some(unsafe {
+            let mut cx = TrapContext::new();
+            cx = *self.kernel_stack.get_first_context();
+            cx
+        });
+        true
+    }
+    /// 恢复用户上下文信息，返回true。如没有已保存的上下文信息，则返回 false
+    pub fn load_trap_cx_if_handling_signals(&self) -> bool {
+        let mut inner = self.inner.lock();
+        if let Some(trap_cx_old) = inner.trap_cx_before_signal.take() {
+            //info!("sig returned");
+            unsafe {
+                let mut trap_cx_now = self.kernel_stack.get_first_context();
+                *trap_cx_now = trap_cx_old; 
+            }
+            true
+        } else {
+            false
+        }
+    }
 }
 
 /// 任务执行状态

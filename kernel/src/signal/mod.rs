@@ -7,7 +7,7 @@
 mod signal_no;
 pub use signal_no::SignalNo;
 mod sig_action;
-pub use sig_action::{SigAction, SigActionFlags};
+pub use sig_action::{SigAction, SigActionFlags, SigActionDefault};
 mod bitset;
 pub use bitset::Bitset;
 mod tid2signals;
@@ -22,7 +22,7 @@ use crate::constants::SIGSET_SIZE_IN_BIT;
 #[derive(Clone, Copy)]
 pub struct Signals {
     /// 所有的处理函数
-    pub actions: [Option<SigAction>; SIGSET_SIZE_IN_BIT],
+    actions: [Option<SigAction>; SIGSET_SIZE_IN_BIT],
     /// 掩码，表示哪些信号是当前线程不处理的。（目前放在进程中，实现了线程之后每个线程应该各自有一个）
     pub mask: Bitset,
     /// 当前已受到的信号
@@ -54,24 +54,38 @@ impl Signals {
             unsafe { *action_pos = action; }
         }
     }
-    /// 修改某个信号对应的 SigAction。
+    /// 获取某个信号对应的 SigAction，如果存在，则返回其引用
     /// 因为 signum 的范围是 [1,64]，所以要 -1
+    pub fn get_action_ref<'a>(&self, signum: usize) -> &Option<SigAction> {
+        &self.actions[signum - 1]
+    }
+    /// 修改某个信号对应的 SigAction。
+    /// 因为 signum 的范围是 [1,64]，所以内部要 -1
     pub fn set_action(&mut self, signum: usize, action_pos: *const SigAction) {
         unsafe { self.actions[signum - 1] = Some(*action_pos); }
     }
 
     /// 处理一个信号。如果有收到的信号，则返回信号编号。否则返回 None
     pub fn get_one_signal(&mut self) -> Option<usize> {
-        self.sig_received.find_first_one().map(|pos| {
+        self.sig_received.find_first_one(self.mask).map(|pos| {
             self.sig_received.remove_bit(pos);
             pos + 1
         })
+    }
+
+    /// 尝试添加一个 bit 作为信号。发送的信号如果在 mask 中，则仍然会发送，只是可能不触发
+    /// 因为 signum 的范围是 [1,64]，所以内部要 -1
+    /// 
+    /// 因为没有要求判断信号是否发送成功的要求，所有这里不设返回值
+    pub fn try_add_bit(&mut self, signum: usize) {
+        //info!("try add {}, mask = {:x}", signum, self.mask.0);
+        self.sig_received.add_bit(signum - 1);
     }
 }
 
 /// 发送一个信号给进程 tid
 pub fn send_signal(tid: usize, signum: usize) {
     if let Some(signals) = get_signals_from_tid(tid as usize) { // 获取目标线程(可以是自己)的 signals 数组
-        signals.lock().sig_received.add_bit(signum - 1);
+        signals.lock().try_add_bit(signum);
     }
 }

@@ -73,3 +73,85 @@ pub enum SignalNo {
     SIGRT30 = 62,
     SIGRT31 = 63,
 }
+
+
+impl From<u8> for SignalNo {
+    fn from(num: u8) -> Self {
+        match num {
+            1 => Self::SIGHUP,
+            2 => Self::SIGINT,
+            3 => Self::SIGQUIT,
+            4 => Self::SIGILL,
+            5 => Self::SIGTRAP,
+            6 => Self::SIGABRT,
+            7 => Self::SIGBUS,
+            8 => Self::SIGFPE,
+            9 => Self::SIGKILL,
+            10 => Self::SIGUSR1,
+            11 => Self::SIGSEGV,
+            12 => Self::SIGUSR2,
+            13 => Self::SIGPIPE,
+            14 => Self::SIGALRM,
+            15 => Self::SIGTERM,
+            16 => Self::SIGSTKFLT,
+            17 => Self::SIGCHLD,
+            18 => Self::SIGCONT,
+            19 => Self::SIGSTOP,
+            20 => Self::SIGTSTP,
+            21 => Self::SIGTTIN,
+            22 => Self::SIGTTOU,
+            23 => Self::SIGURG,
+            24 => Self::SIGXCPU,
+            25 => Self::SIGXFSZ,
+            26 => Self::SIGVTALRM,
+            27 => Self::SIGPROF,
+            28 => Self::SIGWINCH,
+            29 => Self::SIGIO,
+            30 => Self::SIGPWR,
+            31 => Self::SIGSYS,
+            32 => Self::SIGRTMIN,
+            33 => Self::SIGRT1,
+            34 => Self::SIGRT2,
+            35 => Self::SIGRT3,
+            36 => Self::SIGRT4,
+            37 => Self::SIGRT5,
+            38 => Self::SIGRT6,
+            39 => Self::SIGRT7,
+            40 => Self::SIGRT8,
+            41 => Self::SIGRT9,
+            42 => Self::SIGRT10,
+            43 => Self::SIGRT11,
+            44 => Self::SIGRT12,
+            45 => Self::SIGRT13,
+            46 => Self::SIGRT14,
+            47 => Self::SIGRT15,
+            48 => Self::SIGRT16,
+            49 => Self::SIGRT17,
+            50 => Self::SIGRT18,
+            51 => Self::SIGRT19,
+            52 => Self::SIGRT20,
+            53 => Self::SIGRT21,
+            54 => Self::SIGRT22,
+            55 => Self::SIGRT23,
+            56 => Self::SIGRT24,
+            57 => Self::SIGRT25,
+            58 => Self::SIGRT26,
+            59 => Self::SIGRT27,
+            60 => Self::SIGRT28,
+            61 => Self::SIGRT29,
+            62 => Self::SIGRT30,
+            63 => Self::SIGRT31,
+            _ => Self::ERR,
+        }
+    }
+}
+
+impl From<usize> for SignalNo {
+    fn from(num: usize) -> Self {
+        if num > 0 && num < 64 {
+            Self::from(num as u8)
+        } else {
+            Self::ERR
+        }
+    }
+}

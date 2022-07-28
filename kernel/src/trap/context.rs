@@ -24,6 +24,11 @@ pub struct TrapContext {
 }
 
 impl TrapContext {
+    /// 设置 ra 寄存器
+    pub fn set_ra(&mut self, ra: usize) {
+        self.x[1] = ra;
+    }
+    
     /// 设置 sp 寄存器
     pub fn set_sp(&mut self, sp: usize) {
         self.x[2] = sp;
@@ -45,10 +50,18 @@ impl TrapContext {
     pub fn set_a0(&mut self, a0: usize) {
         self.x[10] = a0;
     }
+    /// 获取 a0 的值
+    pub fn get_a0(&self) -> usize {
+        self.x[10]
+    }
     /// 设置 a1 寄存器。
     /// 对于 sys_exec，它是参数 argv
     pub fn set_a1(&mut self, a1: usize) {
         self.x[11] = a1;
+    }
+    /// 设置 sepc 寄存器，即返回地址
+    pub fn set_sepc(&mut self, sepc: usize) {
+        self.sepc = sepc;
     }
     /// 初始化用户程序的中断信息，用于第一次进入用户程序前
     pub fn app_init_context(entry: usize, sp: usize) -> Self {

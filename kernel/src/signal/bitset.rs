@@ -34,9 +34,9 @@ impl Bitset {
     pub fn set_new(&mut self, set: Bitset) {
         self.0 = set.0;
     }
-    /// 寻找最小的 1 的位置，如果有，返回其位置，如没有则返回 None。
-    pub fn find_first_one(&self) -> Option<usize> {
-        let ans = self.0.trailing_zeros() as usize;
+    /// 寻找不在mask中的最小的 1 的位置，如果有，返回其位置，如没有则返回 None。
+    pub fn find_first_one(&self, mask: Bitset) -> Option<usize> {
+        let ans = (self.0 & !mask.0).trailing_zeros() as usize;
         if ans == 64 { None } else { Some(ans) }
     }
 }

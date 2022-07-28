@@ -2,7 +2,7 @@
 //! 
 
 use bitflags::*;
-use super::Bitset;
+use super::{Bitset, SignalNo};
 
 /// SigAction::handler 的特殊取值，表示默认处理函数
 pub const SIG_DFL: usize = 0; 
@@ -48,5 +48,22 @@ bitflags! {
         const SA_NODEFER = 0x40000000;
         const SA_RESETHAND = 0x80000000;
         const SA_RESTORER = 0x04000000;
+    }
+}
+
+/// 没有处理函数时的默认行为。
+/// 参见 `https://venam.nixers.net/blog/unix/2016/10/21/unix-signals.html`
+pub enum SigActionDefault {
+    Terminate, // 结束进程。其实更标准的实现应该细分为 terminate / terminate(core dump) / stop
+    Ignore, // 忽略信号
+}
+
+impl SigActionDefault {
+    /// 获取默认行为
+    pub fn of_signal(signal: SignalNo) -> Self {
+        match signal {
+            SignalNo::SIGCHLD | SignalNo::SIGURG => Self::Ignore,
+            _ => Self::Terminate,
+        }
     }
 }

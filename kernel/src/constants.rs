@@ -50,8 +50,8 @@ pub const PHYS_MEMORY_END: usize = 0x8800_0000;
 /// 一般来说，这个程序会通过 fork / exec 启动终端和其他程序
 pub const ORIGIN_USER_PROC_NAME: &str = "start";
 
-/// 最小的 pid(进程号) 是 0，最大的 pid 是 PID_LIMIT-1
-pub const PID_LIMIT: usize = 4096;
+/// 最小的 tid(进程号) 是 0，最大的 pid 是 TID_LIMIT-1
+pub const TID_LIMIT: usize = 4096;
 /// 最大的文件描述符
 pub const FD_LIMIT: usize = 256;
 /// sys_pipe创建的管道的大小，单位为字节
@@ -105,3 +105,5 @@ pub const ELF_BASE_RELOCATE: usize = 0x400_0000;
 pub const SIGSET_SIZE_IN_BYTE: usize = 8;
 /// 所有可能的信号数。有多少可能的信号，内核就要为其保存多少个 SigAction
 pub const SIGSET_SIZE_IN_BIT: usize = SIGSET_SIZE_IN_BYTE * 8; // =64
+/// SIGINFO 要求把一些信息存在用户栈上，从用户栈开辟一块空间来保存它们
+pub const USER_STACK_RED_ZONE: usize = 0x200; // 512 B

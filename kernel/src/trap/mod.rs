@@ -22,7 +22,12 @@
 mod context;
 
 use crate::syscall::syscall;
-use crate::task::{exit_current_task, suspend_current_task, handle_user_page_fault};
+use crate::task::{
+    exit_current_task,
+    suspend_current_task,
+    handle_user_page_fault,
+    handle_signals,
+};
 use crate::memory::{
     handle_kernel_page_fault,
     phys_to_virt,
@@ -152,6 +157,7 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             );
         }
     }
+    handle_signals();
     /*
     let mut sp: usize;
     unsafe { core::arch::asm!("mv {0}, sp", out(reg) sp) };

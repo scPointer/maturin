@@ -40,6 +40,8 @@ pub use cpu_local::{
     run_tasks,
     get_current_task,
     exec_new_task,
+    handle_signals,
+    signal_return,
 };
 
 lazy_static! {

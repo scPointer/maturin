@@ -13,6 +13,7 @@ use crate::task::{
     get_current_task,
     push_task_to_scheduler,
     exec_new_task,
+    signal_return,
 };
 use crate::task::TaskStatus;
 use crate::file::SeekFrom;
@@ -393,7 +394,7 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
     let mut signals = task.signals.lock();
 
     unsafe {
-        info!("action {:#?}", *action);
+        info!("when receive signal {:#?} action {:#?}", SignalNo::from(signum), *action);
     }
 
     let old_addr = old_action as usize;
@@ -414,4 +415,14 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
         signals.set_action(signum, action);
     }
     0
+}
+
+/// 从信号处理过程中返回，即恢复信号处理前的用户程序上下文。
+/// 
+/// sigreturn 没有返回值，因此也不该写入 a0。
+/// 但为了 syscall 通用性考虑，这里的实现还是返回了原本上下文中 a0 的值，即相当于实际做了 `a0 = a0;` 的操作
+/// 
+/// 一般由 libc 库调用。
+pub fn sys_sigreturn() -> isize {
+    signal_return()
 }
