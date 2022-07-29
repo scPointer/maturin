@@ -11,7 +11,8 @@ use lazy_static::*;
 use crate::constants::{CPU_ID_LIMIT, IS_TEST_ENV, NO_PARENT, USER_STACK_RED_ZONE};
 use crate::error::{OSResult, OSError};
 use crate::trap::TrapContext;
-use crate::signal::{SignalNo, Signals, SigActionDefault, SigActionFlags, get_signals_from_tid, global_logoff_signals};
+use crate::signal::{SignalNo, Signals, SigActionDefault, SigActionFlags};
+use crate::signal::{get_signals_from_tid, global_logoff_signals, send_signal};
 use crate::memory::{VirtAddr, PTEFlags, enable_kernel_page_table};
 use crate::file::show_testcase_result;
 use crate::arch::get_cpu_id;
@@ -79,7 +80,7 @@ pub fn run_tasks() -> ! {
             //let pid = task.get_pid_num();
             //if pid == 2 { println!("[cpu {}] now running on pid = {}", cpu_id, pid);}
             //drop(task_inner);
-            unsafe { task.inner.lock().vm.activate(); }
+            unsafe { task.vm.lock().activate(); }
             cpu_local.current = Some(task);
 
             /*
@@ -192,7 +193,7 @@ pub fn exec_new_task() {
         __move_to_context(current_task_cx_ptr);
     }   
 }
-/// 处理退出的进程：
+/// 处理退出的任务：
 /// 将它的子进程全部交给初始进程 ORIGIN_USER_PROC，然后标记当前进程的状态为 Zombie。
 /// 这里会需要获取当前核正在运行的用户程序、ORIGIN_USER_PROC、所有子进程的锁。
 /// 
@@ -213,7 +214,6 @@ pub fn exec_new_task() {
 fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
     let mut tcb_inner = task.inner.lock();
     //let task_inner = task.lock();
-    
     for child in tcb_inner.children.iter() {
         loop {
             // 这里把获取子进程的锁放在外层，是因为如果当前进程和子进程都在这个函数里，
@@ -236,12 +236,17 @@ fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
     }
     tcb_inner.children.clear();
     tcb_inner.task_status = TaskStatus::Zombie;
-    // 通知全局表将 signals 删除
-    global_logoff_signals(task.tid.0);
+
     // 在测试环境中时，手动检查退出时的 exit_code
     if IS_TEST_ENV {
         show_testcase_result(tcb_inner.exit_code);
     }
+    // 退出时向父进程发送信号，其中选项可被 sys_clone 控制
+    if task.send_sigchld_when_exit || task.pid == task.tid.0 {
+        send_signal(tcb_inner.ppid, SignalNo::SIGCHLD as usize);
+    }
+    // 通知全局表将 signals 删除
+    global_logoff_signals(task.tid.0);
     /*
     // 释放用户段占用的物理页面
     // 如果这里不释放，等僵尸进程被回收时 MemorySet 被 Drop，也可以释放这些页面
@@ -254,7 +259,7 @@ pub fn handle_user_page_fault(vaddr: VirtAddr, access_flags: PTEFlags)  -> OSRes
     let cpu_id = get_cpu_id();
     let cpu_local = CPU_CONTEXTS[cpu_id].lock();
     if let Some(task) = cpu_local.current() {
-        task.inner.lock().vm.handle_page_fault(vaddr, access_flags)
+        task.vm.lock().handle_page_fault(vaddr, access_flags)
     } else {
         Err(OSError::Task_NoTrapHandler)
     }

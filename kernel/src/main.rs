@@ -1,8 +1,9 @@
 //! 程序入口为 mod arch 中的 entry.S
 //! 将cpu_id存到tp寄存器并设置好初始的内核栈与页表后，跳转到 start_kernel 启动
+
 #![no_std]
 #![no_main]
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 //#![deny(warnings)]
 #![feature(panic_info_message)]
 #![feature(default_alloc_error_handler)]

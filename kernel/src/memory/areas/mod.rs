@@ -255,12 +255,7 @@ impl VmArea {
     ) -> OSResult {
         debug_assert!(offset < self.end - self.start);
         
-        info!(
-            "handle page fault @ offset {:#x?} with access {:?}: {:#x?}",
-            offset,
-            access_flags,
-            self
-        );
+        //info!("handle page fault @ offset {:#x?} with access {:?}: {:#x?}", offset, access_flags, self);
         
         let mut pma = self.pma.lock();
         if !self.flags.contains(access_flags) {
@@ -280,7 +275,7 @@ impl VmArea {
                 } else {
                     (*entry).set_all(paddr, self.flags | PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY);
                     pt.flush_tlb(Some(vaddr));
-                    info!("[Handler] Lazy alloc a page for user.");
+                    //info!("[Handler] Lazy alloc a page for user.");
                     Ok(())
                 }
             }

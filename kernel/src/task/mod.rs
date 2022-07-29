@@ -5,7 +5,7 @@
 //! 每个核需要切换任务时都需要拿到这个锁，且从调度开始到结束**必须一直持有**这个锁
 //!
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use lazy_static::*;
 use alloc::sync::Arc;
@@ -17,9 +17,9 @@ use lock::Mutex;
 mod context;
 mod switch;
 mod kernel_stack;
+mod clone_flags;
 mod scheduler;
 mod cpu_local;
-
 
 #[allow(clippy::module_inception)]
 mod task;
@@ -31,6 +31,7 @@ use switch::{__switch, __move_to_context};
 pub use task::{TaskControlBlock, TaskControlBlockInner, TaskStatus};
 pub use context::TaskContext;
 pub use kernel_stack::KernelStack;
+pub use clone_flags::CloneFlags;
 pub use scheduler::{push_task_to_scheduler, fetch_task_from_scheduler};
 pub use scheduler::Scheduler;
 pub use cpu_local::{

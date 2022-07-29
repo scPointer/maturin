@@ -118,9 +118,9 @@ pub const SAMPLE: &[&str] = &[
     //"busybox kill 10",
     //"sigreturn",
     //"dyn/tls_init.dout",
-    "./runtest.exe -w entry-static.exe argv",
-    "./runtest.exe -w entry-dynamic.exe argv",
-    //"./runtest.exe -w entry-dynamic.exe tls_init",
+    //"./runtest.exe -w entry-static.exe argv",
+    //"./runtest.exe -w entry-dynamic.exe argv",
+    "./runtest.exe -w entry-dynamic.exe tls_init",
 ];
 
 pub const BUSYBOX_TESTCASES: &[&str] = &[

@@ -10,6 +10,8 @@ use core::cmp::Ordering;
 use core::mem::size_of;
 
 use crate::memory::PTEFlags;
+use crate::signal::SignalNo;
+use crate::task::CloneFlags;
 
 bitflags! {    
     /// 指定 sys_wait4 的选项
@@ -277,3 +279,10 @@ pub const SEEK_END:isize = 2;  // 从文件结尾
 pub const SIG_BLOCK:i32 = 0; // 和当前 mask 取并集
 pub const SIG_UNBLOCK:i32 = 1; // 从当前 mask 中去除对应位
 pub const SIG_SETMASK:i32 = 2; // 重新设置当前 mask
+
+pub fn resolve_clone_flags_and_signal(flag: usize) -> (CloneFlags, SignalNo) {
+    (
+        CloneFlags::from_bits(flag as u32 & (!0x3f)).unwrap(),
+        SignalNo::from(flag as u8 & 0x3f)
+    )
+}

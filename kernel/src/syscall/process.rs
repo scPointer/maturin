@@ -15,7 +15,7 @@ use crate::task::{
     exec_new_task,
     signal_return,
 };
-use crate::task::TaskStatus;
+use crate::task::{CloneFlags, TaskStatus};
 use crate::file::SeekFrom;
 use crate::signal::{Bitset, SigAction, SignalNo, send_signal};
 use crate::utils::{
@@ -23,13 +23,13 @@ use crate::utils::{
     str_ptr_array_to_vec_string,
 };
 use crate::constants::{
-    SIGCHLD,
     MMAP_LEN_LIMIT,
     SIGSET_SIZE_IN_BYTE,
 };
 
 use super::{WaitFlags, MMAPPROT, MMAPFlags, UtsName, ErrorNo};
 use super::{SIG_BLOCK, SIG_UNBLOCK, SIG_SETMASK};
+use super::resolve_clone_flags_and_signal;
 
 /// 进程退出，并提供 exit_code 供 wait 等 syscall 拿取
 pub fn sys_exit(exit_code: i32) -> ! {
@@ -62,7 +62,7 @@ pub fn sys_getppid() -> isize {
 /// 获取当前线程的编号。
 /// 每个进程的初始线程的编号就是它的 pid
 pub fn sys_gettid() -> isize {
-    get_current_task().unwrap().get_pid_num() as isize
+    get_current_task().unwrap().get_tid_num() as isize
 }
 
 /// 修改用户堆大小，
@@ -78,13 +78,29 @@ pub fn sys_brk(brk: usize) -> isize {
     }
 }
 
-/// 创建一个子进程
-pub fn sys_clone(flags: usize, user_stack: usize, _ptid: u32, _tls: u32, _ctid: u32) -> isize {
-    if flags != SIGCHLD {
+/// 创建一个子任务，如成功，返回其 tid
+pub fn sys_clone(flags: usize, user_stack: usize, ptid: usize, tls: usize, ctid: usize) -> isize {
+    let (clone_flags, signal) = resolve_clone_flags_and_signal(flags);
+    info!("clone: flags {:#?} signal {}", clone_flags, signal as usize);
+    let user_stack = if user_stack == 0 { None } else { Some(user_stack) };
+    let old_task = get_current_task().unwrap();
+    // 生成新任务。注意 from_clone 方法内部已经把对用户的返回值设成了0
+    // 第二个参数指定了子任务退出时是否发送 SIGCHLD
+    let new_task = old_task.from_clone(user_stack, signal == SignalNo::SIGCHLD, clone_flags, tls, ptid, ctid);
+    // 获取新进程的 pid。必须提前在此拿到 usize 形式的 pid，因为后续 new_task 插入任务队列后就不能调用它的方法了
+    let new_task_tid = new_task.get_tid_num();
+    // 将新任务加入调度器
+    push_task_to_scheduler(new_task);
+    new_task_tid as isize
+    /*
+    if signal == SignalNo::SIGCHLD { // 子进程
+        let user_stack = if user_stack == 0 { None } else { Some(user_stack) };
+        sys_fork(user_stack)
+    } else {
+        info!("flags {:#?} user_stack {:x}, ptid {:x} tls {:x} ctid {:x}", clone_flags, user_stack, ptid, tls, ctid);
         return -1
     }
-    let user_stack = if user_stack == 0 { None } else { Some(user_stack) };
-    sys_fork(user_stack)
+    */
 }
 
 /// 复制当前进程
@@ -92,23 +108,22 @@ pub fn sys_clone(flags: usize, user_stack: usize, _ptid: u32, _tls: u32, _ctid: 
 /// 如 user_stack 为 None，则沿用原进程的用户栈地址。
 /// 
 /// 目前 fork 的功能由 sys_clone 接管，所以不再是 pub 的
+/*
 fn sys_fork(user_stack: Option<usize>) -> isize {
     let old_task = get_current_task().unwrap();
     // 生成新进程。注意 from_fork 方法内部已经把对用户的返回值设成了0
-    let new_task = old_task.from_fork(user_stack);
+    let new_task = old_task.from_clone(user_stack);
     // 获取新进程的 pid。必须提前在此拿到 usize 形式的 pid，因为后续 new_task 插入任务队列后就不能调用它的方法了
     let new_task_pid = new_task.get_pid_num();
     // 将新任务加入调度器
     push_task_to_scheduler(new_task);
-    /*
     unsafe {
         let trap_context =  old_task.kernel_stack.get_first_context();
         println!("parent sepc {:x} stack {:x} new_task_pid {}", (*trap_context).sepc, (*trap_context).get_sp(), new_task_pid);
     }; 
-    */
     new_task_pid as isize
 }
-
+*/
 /// 将当前进程替换为指定用户程序。
 /// 
 /// 环境变量留了接口但目前未实现
@@ -248,7 +263,7 @@ pub fn sys_mmap(start: usize, len: usize, prot: MMAPPROT, flags: MMAPFlags, fd: 
                 return start as isize;
             }
         }
-    } else if let Ok(file) = tcb_inner.fd_manager.get_file(fd as usize) {
+    } else if let Ok(file) = task.fd_manager.lock().get_file(fd as usize) {
         //info!("get file");
         if let Some(off) = file.seek(SeekFrom::Start(offset as u64)) {
             // 读文件可能触发进程切换
@@ -359,16 +374,17 @@ pub fn sys_sigprocmask(how: i32, set: *const usize, old_set: *mut usize, sigsets
 
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
+    let mut task_vm = task.vm.lock();
     let mut signals = task.signals.lock();
 
     if old_set as usize != 0 { // old_set 非零说明要求写入到这个地址
-        if tcb_inner.vm.manually_alloc_page(old_set as usize).is_err() {
+        if task_vm.manually_alloc_page(old_set as usize).is_err() {
             return ErrorNo::EINVAL as isize; // 地址不合法
         }
         unsafe { *old_set = signals.mask.0; }
     }
     if set as usize != 0 { // set 非零时才考虑 how 并修改
-        if tcb_inner.vm.manually_alloc_page(set as usize).is_err() {
+        if task_vm.manually_alloc_page(set as usize).is_err() {
             return ErrorNo::EINVAL as isize; // 地址不合法
         }
         let set_val = Bitset::new(unsafe { *set });
@@ -391,6 +407,7 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
     }
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
+    let mut task_vm = task.vm.lock();
     let mut signals = task.signals.lock();
 
     unsafe {
@@ -399,8 +416,8 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
 
     let old_addr = old_action as usize;
     if old_addr != 0 { // old_set 非零说明要求写入到这个地址
-        if tcb_inner.vm.manually_alloc_page(old_addr).is_err()
-            || tcb_inner.vm.manually_alloc_page(old_addr + size_of::<SigAction>() - 1).is_err() {
+        if task_vm.manually_alloc_page(old_addr).is_err()
+            || task_vm.manually_alloc_page(old_addr + size_of::<SigAction>() - 1).is_err() {
             return ErrorNo::EINVAL as isize; // 地址不合法
         }
         signals.get_action(signum, old_action);
@@ -408,8 +425,8 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
 
     let addr = action as usize;
     if addr != 0 { // set 非零时才考虑 how 并修改
-        if tcb_inner.vm.manually_alloc_page(addr).is_err() 
-            || tcb_inner.vm.manually_alloc_page(addr + size_of::<SigAction>() - 1).is_err() {
+        if task_vm.manually_alloc_page(addr).is_err() 
+            || task_vm.manually_alloc_page(addr + size_of::<SigAction>() - 1).is_err() {
             return ErrorNo::EINVAL as isize; // 地址不合法
         }
         signals.set_action(signum, action);
@@ -425,4 +442,12 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
 /// 一般由 libc 库调用。
 pub fn sys_sigreturn() -> isize {
     signal_return()
+}
+
+/// 设置 clear_child_tid 属性并返回 tid。
+/// 这个属性会使得线程退出时发送:
+/// `futex(clear_child_tid, FUTEX_WAKE, 1, NULL, NULL, 0);`
+pub fn sys_set_tid_address(addr: usize) -> isize {
+    get_current_task().unwrap().set_tid_address(addr);
+    sys_gettid()
 }

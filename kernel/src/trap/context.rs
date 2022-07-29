@@ -28,7 +28,6 @@ impl TrapContext {
     pub fn set_ra(&mut self, ra: usize) {
         self.x[1] = ra;
     }
-    
     /// 设置 sp 寄存器
     pub fn set_sp(&mut self, sp: usize) {
         self.x[2] = sp;
@@ -37,14 +36,16 @@ impl TrapContext {
     pub fn get_sp(&self) -> usize {
         self.x[2]
     }
-    
     /// 设置 gp 寄存器
     /// 基于 `https://www.sifive.com/blog/all-aboard-part-3-linker-relaxation-in-riscv-toolchain`，
     /// 在 sifive 板子上的设置似乎是 gp = .sdata 的位置 + 0x800
     pub fn set_gp(&mut self, gp: usize) {
         self.x[3] = gp;
     }
-    
+    /// 设置 tp 寄存器的值
+    pub fn set_tp(&mut self, tp: usize) {
+        self.x[4] = tp;
+    }
     /// 设置 a0 寄存器。
     /// 对于 sys_exec，它是参数 argc
     pub fn set_a0(&mut self, a0: usize) {

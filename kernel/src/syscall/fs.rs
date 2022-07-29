@@ -12,7 +12,7 @@ use lock::MutexGuard;
 use crate::arch::{get_cpu_id};
 use crate::arch::stdin::getchar;
 use crate::task::{get_current_task};
-use crate::task::TaskControlBlockInner;
+use crate::task::{TaskControlBlock, TaskControlBlockInner};
 use crate::utils::raw_ptr_to_ref_str;
 use crate::file::{OpenFlags, Pipe, Kstat, SeekFrom};
 use crate::file::{
@@ -39,7 +39,8 @@ const FD_STDOUT: usize = 1;
 pub fn sys_getcwd(buf: *mut u8, len: usize) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
-    if tcb_inner.vm.manually_alloc_page(buf as usize).is_err() {
+    let mut task_vm = task.vm.lock();
+    if task_vm.manually_alloc_page(buf as usize).is_err() {
         return -1; // 地址不合法
     }
     let dir = &tcb_inner.dir;
@@ -69,14 +70,15 @@ pub fn sys_getcwd(buf: *mut u8, len: usize) -> isize {
 pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
+    let mut task_vm = task.vm.lock();
     //info!("fd {} buf {} len {}", fd, buf as usize, len);
-    if tcb_inner.vm.manually_alloc_page(buf as usize).is_err() {
+    if task_vm.manually_alloc_page(buf as usize).is_err() {
         return -1; // 地址不合法
     }
     let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
 
     // 尝试了一下用 .map 串来写，但实际效果好像不如直接 if... 好看
-    if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
+    if let Ok(file) = task.fd_manager.lock().get_file(fd) {
         // 读文件可能触发进程切换
         drop(tcb_inner);
         if let Some(read_len) = file.read(slice) {
@@ -94,7 +96,7 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     //println!("write pos {:x}", buf as usize);
     let slice = unsafe { core::slice::from_raw_parts(buf, len) };
 
-    if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
+    if let Ok(file) = task.fd_manager.lock().get_file(fd) {
         // 写文件也可能触发进程切换
         drop(tcb_inner);
         if let Some(write_len) = file.write(slice) {
@@ -150,7 +152,7 @@ pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> isize {
 pub fn sys_fstat(fd: usize, kstat: *mut Kstat) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
-    if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
+    if let Ok(file) = task.fd_manager.lock().get_file(fd) {
         if file.get_stat(kstat) {
             return 0;
         }
@@ -159,11 +161,13 @@ pub fn sys_fstat(fd: usize, kstat: *mut Kstat) -> isize {
 }
 /// 从一个表示目录的文件描述符中获取目录名。
 /// 如果这个文件描述符不是代表目录，则返回None
-fn get_dir_from_fd(tcb_inner: &MutexGuard<TaskControlBlockInner>, dir_fd: i32) -> Option<String> {
+/// 
+/// 内部会拿 inner 和 fd_manager 的锁，所以传入参数时不要先拿 task 里的锁
+fn get_dir_from_fd(task: &Arc<TaskControlBlock>, dir_fd: i32) -> Option<String> {
     if dir_fd == AT_FDCWD { // 如果要求在当前路径下打开
-        Some(String::from(tcb_inner.dir.as_str()))
+        Some(String::from(task.inner.lock().dir.as_str()))
     } else { // 否则需要去找 dir_fd 获取路径
-        if let Ok(Some(dir)) = tcb_inner.fd_manager.get_file(dir_fd as usize).map(|f| {
+        if let Ok(Some(dir)) = task.fd_manager.lock().get_file(dir_fd as usize).map(|f| {
                 f.get_dir().map(|s| {String::from(s)}) }) {
             //println!("fd_dir = {}", dir);
             Some(dir)
@@ -177,13 +181,13 @@ fn get_dir_from_fd(tcb_inner: &MutexGuard<TaskControlBlockInner>, dir_fd: i32) -
 /// 成功时返回 0，失败时返回 -1
 /// 
 /// 适用于 open/madir/link/unlink 等
-fn resolve_path_from_fd<'a>(tcb_inner: &MutexGuard<TaskControlBlockInner>, dir_fd: i32, path: *const u8) -> Option<(String, &'a str)>{
+fn resolve_path_from_fd<'a>(task: &Arc<TaskControlBlock>, dir_fd: i32, path: *const u8) -> Option<(String, &'a str)>{
     let file_path = unsafe { raw_ptr_to_ref_str(path) };
     //println!("file_path {}", file_path);
     if file_path.starts_with("/") { // 绝对路径
         Some((String::from("./"), &file_path[1..])) // 需要加上 '.'，因为 os 中约定根目录是以 '.' 开头
     } else { // 相对路径
-        if let Some(dir) = get_dir_from_fd(&tcb_inner, dir_fd) {
+        if let Some(dir) = get_dir_from_fd(task, dir_fd) {
             Some((dir, file_path))
         } else {
             return None;
@@ -194,9 +198,8 @@ fn resolve_path_from_fd<'a>(tcb_inner: &MutexGuard<TaskControlBlockInner>, dir_f
 /// 创建硬链接。成功时返回0，失败时返回-1
 pub fn sys_linkat(old_dir_fd: i32, old_path: *const u8, new_dir_fd: i32, new_path: *const u8, flags: u32) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
-    if let Some((old_path, old_file)) = resolve_path_from_fd(&tcb_inner, old_dir_fd, old_path) {
-        if let Some((new_path, new_file)) = resolve_path_from_fd(&tcb_inner, new_dir_fd, new_path) {
+    if let Some((old_path, old_file)) = resolve_path_from_fd(&task, old_dir_fd, old_path) {
+        if let Some((new_path, new_file)) = resolve_path_from_fd(&task, new_dir_fd, new_path) {
             if try_add_link(old_path, old_file, new_path, new_file) {
                 return 0;
             }
@@ -208,8 +211,7 @@ pub fn sys_linkat(old_dir_fd: i32, old_path: *const u8, new_dir_fd: i32, new_pat
 /// 删除硬链接，并在链接数为0时实际删除文件。成功时返回0，失败时返回-1
 pub fn sys_unlinkat(dir_fd: i32, path: *const u8, flags: u32) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
-    if let Some((path, file)) = resolve_path_from_fd(&tcb_inner, dir_fd,path) {
+    if let Some((path, file)) = resolve_path_from_fd(&task, dir_fd,path) {
         if try_remove_link(path, file){
             return 0;
         }
@@ -226,11 +228,10 @@ pub fn sys_mount(device: *const u8, mount_path: *const u8, fs_type: *const u8, f
         return -1;
     }
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
     // 这里把 fd 写成"当前目录"，但其实如果内部发现路径是 '/' 开头，会用绝对路径替代。
     // 这也是其他类似调用 open/close/mkdir/linkat 等的逻辑
-    if let Some((device_path, device_file)) = resolve_path_from_fd(&tcb_inner, AT_FDCWD, device) {
-        if let Some((mut mount_path, mount_file)) = resolve_path_from_fd(&tcb_inner, AT_FDCWD, mount_path) {
+    if let Some((device_path, device_file)) = resolve_path_from_fd(&task, AT_FDCWD, device) {
+        if let Some((mut mount_path, mount_file)) = resolve_path_from_fd(&task, AT_FDCWD, mount_path) {
             mount_path += mount_file;
             if !mount_path.ends_with('/') { // 挂载到的是一个目录，但用户输入目录时不一定加了 '/'
                 mount_path.push('/');
@@ -248,8 +249,7 @@ pub fn sys_mount(device: *const u8, mount_path: *const u8, fs_type: *const u8, f
 /// 目前只是语义上实现，还没有真实板子上测试过
 pub fn sys_umount(mount_path: *const u8, flags: u32) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
-    if let Some((mut mount_path, mount_file)) = resolve_path_from_fd(&tcb_inner, AT_FDCWD, mount_path) {
+    if let Some((mut mount_path, mount_file)) = resolve_path_from_fd(&task, AT_FDCWD, mount_path) {
         mount_path += mount_file;
         if !mount_path.ends_with('/') { 
             mount_path.push('/');
@@ -267,8 +267,7 @@ pub fn sys_umount(mount_path: *const u8, flags: u32) -> isize {
 /// - 如果path是绝对路径，则dirfd被忽略。
 pub fn sys_mkdir(dir_fd: i32, path: *const u8, user_mode: u32) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
-    if let Some((parent_dir, file_path)) = resolve_path_from_fd(&tcb_inner, dir_fd, path) {
+    if let Some((parent_dir, file_path)) = resolve_path_from_fd(&task, dir_fd, path) {
         if mkdir(parent_dir.as_str(), file_path) {
             return 0;
         }
@@ -307,12 +306,11 @@ pub fn sys_chdir(path: *const u8) -> isize {
 /// 打开文件，返回对应的 fd。如打开失败，则返回 -1
 pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
     // 如果 fd 已满，则不再添加
-    if tcb_inner.fd_manager.is_full() {
+    if task.fd_manager.lock().is_full() {
         return ErrorNo::EMFILE as isize;
     }
-    if let Some((parent_dir, file_path)) = resolve_path_from_fd(&tcb_inner, dir_fd, path) {
+    if let Some((parent_dir, file_path)) = resolve_path_from_fd(&task, dir_fd, path) {
         let mut file_path = String::from(file_path);
         // 特判当前目录。
         // 根据测例文档描述，一般有3种情况
@@ -332,7 +330,7 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
             //println!("opened");
             if let Some(node) = open_file(parent_dir.as_str(), file_path.as_str(), open_flags) {
                 //println!("opened");
-                if let Ok(fd) = tcb_inner.fd_manager.push(node) {
+                if let Ok(fd) = task.fd_manager.lock().push(node) {
                     info!("return fd {}", fd);
                     return fd as isize
                 } else if open_flags.contains(OpenFlags::EXCL) {
@@ -348,8 +346,8 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
 /// 关闭文件，成功时返回 0，失败时返回 -1
 pub fn sys_close(fd: usize) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
-    if let Ok(file) = tcb_inner.fd_manager.remove_file(fd) {
+    let mut task_fd_manager = task.fd_manager.lock();
+    if let Ok(file) = task_fd_manager.remove_file(fd) {
         // 其实可以对 file 做最后处理。
         // 但此处不知道 file 的具体类型，所以还是推荐实现 Trait File 的类型自己写 Drop 时处理
         0
@@ -366,8 +364,8 @@ pub fn sys_pipe(pipe: *mut u32) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
     let (pipe_read, pipe_write) = Pipe::new_pipe();
-    if let Ok(fd1) = tcb_inner.fd_manager.push(Arc::new(pipe_read)) {
-        if let Ok(fd2) = tcb_inner.fd_manager.push(Arc::new(pipe_write)) {
+    if let Ok(fd1) = task.fd_manager.lock().push(Arc::new(pipe_read)) {
+        if let Ok(fd2) = task.fd_manager.lock().push(Arc::new(pipe_write)) {
             unsafe {
                 *pipe = fd1 as u32;
                 *pipe.add(1) = fd2 as u32;
@@ -375,7 +373,7 @@ pub fn sys_pipe(pipe: *mut u32) -> isize {
             return 0
         } else {
             // 只成功插入了一个 fd。这种情况下要把 pipe_read 退出来
-            tcb_inner.fd_manager.remove_file(fd1);
+            task.fd_manager.lock().remove_file(fd1);
         }
     }
     -1
@@ -384,8 +382,8 @@ pub fn sys_pipe(pipe: *mut u32) -> isize {
 /// 复制一个 fd 中的文件到一个新 fd 中，成功时返回新的文件描述符，失败则返回 -1
 pub fn sys_dup(fd: usize) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
-    if let Ok(new_fd) = tcb_inner.fd_manager.copy_fd_anywhere(fd) {
+    let mut task_fd_manager = task.fd_manager.lock();
+    if let Ok(new_fd) = task_fd_manager.copy_fd_anywhere(fd) {
         new_fd as isize
     } else {
         ErrorNo::EMFILE as isize
@@ -396,7 +394,7 @@ pub fn sys_dup(fd: usize) -> isize {
 pub fn sys_dup3(old_fd: usize, new_fd: usize) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
-    if tcb_inner.fd_manager.copy_fd_to(old_fd, new_fd) {
+    if task.fd_manager.lock().copy_fd_to(old_fd, new_fd) {
         new_fd as isize
     } else {
         -1
@@ -406,8 +404,7 @@ pub fn sys_dup3(old_fd: usize, new_fd: usize) -> isize {
 /// 获取目录项信息
 pub fn sys_getdents64(fd: usize, buf: *mut Dirent64, len: usize) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
-    if let Some(dir) = get_dir_from_fd(&tcb_inner, fd as i32) {
+    if let Some(dir) = get_dir_from_fd(&task, fd as i32) {
         let entry_id = unsafe { (*buf).d_off as usize / DIR_ENTRY_SIZE };
         if let Some((is_dir, file_name)) = get_kth_dir_entry_info_of_path(dir.as_str(), entry_id) {
             unsafe {
@@ -435,8 +432,7 @@ pub fn sys_getdents64(fd: usize, buf: *mut Dirent64, len: usize) -> isize {
 /// 因为它要求文件访问的部分更多，因此放在 fs.rs 而非 times.rs
 pub fn sys_utimensat(dir_fd: i32, path: *const u8, time_spec: *const TimeSpec, flags: UtimensatFlags) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
-    if let Some((parent_dir, file_path)) = resolve_path_from_fd(&tcb_inner, dir_fd, path) {
+    if let Some((parent_dir, file_path)) = resolve_path_from_fd(&task, dir_fd, path) {
         if check_file_exists(parent_dir.as_str(), file_path) {
             return 0;
         }
@@ -449,7 +445,7 @@ pub fn sys_lseek(fd: usize, offset: isize, whence: isize) -> isize {
     info!("lseek fd {} offset {} whence {}", fd, offset, whence);
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
-    if let Ok(file) = tcb_inner.fd_manager.get_file(fd) {
+    if let Ok(file) = task.fd_manager.lock().get_file(fd) {
         if let Some(new_offset) = file.seek(
             match whence {
                 SEEK_SET => SeekFrom::Start(offset as u64),
