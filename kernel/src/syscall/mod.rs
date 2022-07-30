@@ -166,12 +166,12 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         
         SYSCALL_IOCTL => 0,
         SYSCALL_FCNTL64 => 0,
-        SYSCALL_MPROTECT => 0,
+        //SYSCALL_MPROTECT => 0,
         SYSCALL_SIGTIMEDWAIT => 0,
         SYSCALL_PRLIMIT64 => 0,
         SYSCALL_MEMBARRIER => 0,
         _ => {
-            println!("Unsupported syscall_id: {}", syscall_id);
+            info!("Unsupported syscall_id: {}", syscall_id);
             0
         },
     };

@@ -33,7 +33,7 @@ pub fn sys_futex(uaddr: usize, futex_op: i32, val: u32, val2: u32, uaddr2: usize
     }
 
     *FCOUNT.lock() += 1;
-    if uaddr == 0x40a7174 && tid == 3 && *FCOUNT.lock() > 50 {
+    if uaddr == 0x40a7174 && tid == 3 && *FCOUNT.lock() > 5000 {
         panic!("");
     }
     match flag.operation() {
