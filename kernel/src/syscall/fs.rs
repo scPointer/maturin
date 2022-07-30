@@ -76,11 +76,11 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
         return -1; // 地址不合法
     }
     let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
-
     // 尝试了一下用 .map 串来写，但实际效果好像不如直接 if... 好看
     if let Ok(file) = task.fd_manager.lock().get_file(fd) {
         // 读文件可能触发进程切换
         drop(tcb_inner);
+        drop(task_vm);
         if let Some(read_len) = file.read(slice) {
             //println!("[kernel] read syscall size {} wanted {}", read_len, len);
             return read_len as isize
@@ -306,8 +306,9 @@ pub fn sys_chdir(path: *const u8) -> isize {
 /// 打开文件，返回对应的 fd。如打开失败，则返回 -1
 pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isize {
     let task = get_current_task().unwrap();
+    let mut task_fd_manager = task.fd_manager.lock();
     // 如果 fd 已满，则不再添加
-    if task.fd_manager.lock().is_full() {
+    if task_fd_manager.is_full() {
         return ErrorNo::EMFILE as isize;
     }
     if let Some((parent_dir, file_path)) = resolve_path_from_fd(&task, dir_fd, path) {
@@ -330,7 +331,7 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
             //println!("opened");
             if let Some(node) = open_file(parent_dir.as_str(), file_path.as_str(), open_flags) {
                 //println!("opened");
-                if let Ok(fd) = task.fd_manager.lock().push(node) {
+                if let Ok(fd) = task_fd_manager.push(node) {
                     info!("return fd {}", fd);
                     return fd as isize
                 } else if open_flags.contains(OpenFlags::EXCL) {
@@ -363,9 +364,10 @@ pub fn sys_close(fd: usize) -> isize {
 pub fn sys_pipe(pipe: *mut u32) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
+    let mut task_fd_manager = task.fd_manager.lock();
     let (pipe_read, pipe_write) = Pipe::new_pipe();
-    if let Ok(fd1) = task.fd_manager.lock().push(Arc::new(pipe_read)) {
-        if let Ok(fd2) = task.fd_manager.lock().push(Arc::new(pipe_write)) {
+    if let Ok(fd1) = task_fd_manager.push(Arc::new(pipe_read)) {
+        if let Ok(fd2) = task_fd_manager.push(Arc::new(pipe_write)) {
             unsafe {
                 *pipe = fd1 as u32;
                 *pipe.add(1) = fd2 as u32;
@@ -373,7 +375,7 @@ pub fn sys_pipe(pipe: *mut u32) -> isize {
             return 0
         } else {
             // 只成功插入了一个 fd。这种情况下要把 pipe_read 退出来
-            task.fd_manager.lock().remove_file(fd1);
+            task_fd_manager.remove_file(fd1);
         }
     }
     -1
