@@ -81,7 +81,7 @@ pub fn sys_brk(brk: usize) -> isize {
 /// 创建一个子任务，如成功，返回其 tid
 pub fn sys_clone(flags: usize, user_stack: usize, ptid: usize, tls: usize, ctid: usize) -> isize {
     let (clone_flags, signal) = resolve_clone_flags_and_signal(flags);
-    info!("clone: flags {:#?} signal {}", clone_flags, signal as usize);
+    info!("clone: flags {:#?} signal {} ptid {:x} tls {:x} ctid {:x}", clone_flags, signal as usize, ptid, tls, ctid);
     let user_stack = if user_stack == 0 { None } else { Some(user_stack) };
     let old_task = get_current_task().unwrap();
     // 生成新任务。注意 from_clone 方法内部已经把对用户的返回值设成了0
@@ -448,6 +448,7 @@ pub fn sys_sigreturn() -> isize {
 /// 这个属性会使得线程退出时发送:
 /// `futex(clear_child_tid, FUTEX_WAKE, 1, NULL, NULL, 0);`
 pub fn sys_set_tid_address(addr: usize) -> isize {
+    info!("set tid addresss to {:x}", addr);
     get_current_task().unwrap().set_tid_address(addr);
     sys_gettid()
 }

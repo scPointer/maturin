@@ -71,15 +71,18 @@ const SYSCALL_MPROTECT: usize = 226;
 //const SYSCALL_WAITPID: usize = 260;
 const SYSCALL_WAIT4: usize = 260;
 const SYSCALL_PRLIMIT64: usize = 261;
+const SYSCALL_MEMBARRIER: usize = 283;
 
 mod fs;
 mod process;
 mod flags;
+mod futex;
 mod times;
 
 use fs::*;
 use process::*;
 use flags::*;
+use futex::*;
 use times::*;
 
 use lock::Mutex;
@@ -134,6 +137,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_EXIT => sys_exit(args[0] as i32),
         SYSCALL_EXIT_GROUP => sys_exit(args[0] as i32),
         SYSCALL_SET_TID_ADDRESS => sys_set_tid_address(args[0]),
+        SYSCALL_FUTEX => sys_futex(args[0], args[1] as i32, args[2] as u32, args[3] as u32, args[4], args[5] as u32),
         SYSCALL_NANOSLEEP => sys_nanosleep(args[0] as *const TimeSpec, args[1] as *mut TimeSpec),
         SYSCALL_CLOCK_GET_TIME => sys_get_time_of_day(args[1] as *mut TimeSpec),
         SYSCALL_YIELD => sys_yield(),
@@ -163,12 +167,12 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_IOCTL => 0,
         SYSCALL_FCNTL64 => 0,
         SYSCALL_MPROTECT => 0,
-        SYSCALL_FUTEX => sys_exit(-100),
         SYSCALL_SIGTIMEDWAIT => 0,
         SYSCALL_PRLIMIT64 => 0,
+        SYSCALL_MEMBARRIER => 0,
         _ => {
             println!("Unsupported syscall_id: {}", syscall_id);
-            -1
+            0
         },
     };
     info!("[[kernel -> return {}  =0x{:x}]]", a0, a0);

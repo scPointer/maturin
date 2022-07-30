@@ -260,14 +260,26 @@ pub struct IoVec {
 /// 错误编号
 #[repr(C)]
 pub enum ErrorNo {
-    EPERM = -1, // 非法操作
-    ENOENT = -2, // 找不到文件或目录
-    EBADF = -9, // 错误的文件描述符
-    EBUSY = -16, // 设备或者资源被占用
-    EEXIST = -17, // 文件已存在
-    EINVAL = -22, // 非法参数
-    EMFILE = -24, // fd（文件描述符）已满
-    ERANGE = -34, // 超过范围。例如用户提供的buffer不够长
+    /// 非法操作
+    EPERM = -1, 
+    /// 找不到文件或目录
+    ENOENT = -2, 
+    /// 错误的文件描述符
+    EBADF = -9, 
+    /// 资源暂时不可用。也可因为 futex_wait 时对应用户地址处的值与给定值不符
+    EAGAIN = -11,
+    /// 无效地址
+    EFAULT = -14,
+    /// 设备或者资源被占用
+    EBUSY = -16, 
+    /// 文件已存在
+    EEXIST = -17, 
+    /// 非法参数
+    EINVAL = -22, 
+    /// fd（文件描述符）已满
+    EMFILE = -24, 
+    /// 超过范围。例如用户提供的buffer不够长
+    ERANGE = -34, 
 }
 
 /// sys_lseek 时对应的条件

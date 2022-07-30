@@ -77,8 +77,8 @@ pub fn run_tasks() -> ! {
             let next_task_cx_ptr = task.get_task_cx_ptr();
             task.set_status(TaskStatus::Running);
 
-            //let pid = task.get_pid_num();
-            //if pid == 2 { println!("[cpu {}] now running on pid = {}", cpu_id, pid);}
+            let tid = task.get_tid_num();
+            println!("[cpu {}] now running on tid = {}", cpu_id, tid);
             //drop(task_inner);
             unsafe { task.vm.lock().activate(); }
             cpu_local.current = Some(task);
@@ -168,7 +168,15 @@ pub fn exit_current_task(exit_code: i32) {
     // let task_inner = task.lock();
     task.set_status(TaskStatus::Dying);
     task.set_exit_code(exit_code);
-    //println!("[cpu {}] pid {} exited with code {}", cpu_id, task.get_pid_num(), exit_code);
+    // clear_child_tid 的值不为 0，则将这个用户地址处的值写为0
+    let addr = task.inner.lock().clear_child_tid;
+    if addr != 0 {
+        // 确认这个地址在用户地址空间中。如果没有也不需要报错，因为线程马上就退出了
+        if task.vm.lock().manually_alloc_page(addr).is_ok() {
+            unsafe{ *(addr as *mut i32) = 0; }
+        }
+    }
+    //println!("[cpu {}] tid {} exited with code {}", cpu_id, task.get_tid_num(), exit_code);
     let idle_task_cx_ptr = cpu_local.get_idle_task_cx_ptr();
     //println!("idle task context ptr {:x}", idle_task_cx_ptr as usize);
     //drop(task_inner);
@@ -223,6 +231,7 @@ fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
             if let Some(mut child_inner) = child.inner.try_lock() {
                 if tcb_inner.ppid == NO_PARENT || IS_TEST_ENV {
                     child_inner.ppid = NO_PARENT;
+                    break;
                 } else if let Some(mut start_proc_tcb_inner) =  ORIGIN_USER_PROC.clone().inner.try_lock() {
                     child_inner.parent = Some(Arc::downgrade(&ORIGIN_USER_PROC));
                     child_inner.ppid = 0;
@@ -236,9 +245,8 @@ fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
     }
     tcb_inner.children.clear();
     tcb_inner.task_status = TaskStatus::Zombie;
-
     // 在测试环境中时，手动检查退出时的 exit_code
-    if IS_TEST_ENV {
+    if IS_TEST_ENV && task.pid == task.tid.0 {
         show_testcase_result(tcb_inner.exit_code);
     }
     // 退出时向父进程发送信号，其中选项可被 sys_clone 控制

@@ -119,8 +119,10 @@ pub const SAMPLE: &[&str] = &[
     //"sigreturn",
     //"dyn/tls_init.dout",
     //"./runtest.exe -w entry-static.exe argv",
-    //"./runtest.exe -w entry-dynamic.exe argv",
+    "./runtest.exe -w entry-dynamic.exe argv",
     "./runtest.exe -w entry-dynamic.exe tls_init",
+    "./runtest.exe -w entry-dynamic.exe tls_local_exec",
+    "./runtest.exe -w entry-dynamic.exe pthread_exit_cancel",
 ];
 
 pub const BUSYBOX_TESTCASES: &[&str] = &[
@@ -299,7 +301,6 @@ pub const DYNAMIC_TESTCASES: &[&str] = &[
     "dyn/memstream.dout",
     "dyn/udiv.dout",
     "dyn/malloc_0.dout",
-    "dyn/flockfile_list.dout",
     "dyn/printf_1e9_oob.dout",
     "dyn/pthread_robust_detach.dout",
     "dyn/rewind_clear_error.dout",
@@ -324,7 +325,6 @@ pub const TESTCASES: &[&str] = &[
     "fflush_exit",
     "fgets_eof",
     "fgetwc_buffering",
-    "flockfile_list",
     "fnmatch",
     "fpclassify_invalid_ld80",
     "fscanf",
