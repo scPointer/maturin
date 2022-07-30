@@ -92,7 +92,7 @@ impl File for Pipe {
             let mut cnt = 0;
             while read_len < buf.len() && Arc::strong_count(&self.data) == 2 {
                 cnt += 1;
-                if cnt > 10 {panic!("");}
+                if cnt > 1 {break;}
                 suspend_current_task();
                 read_len += self.data.lock().read(&mut buf[read_len..]);
             }
@@ -109,9 +109,12 @@ impl File for Pipe {
             let mut write_len = 0;
             // 同上，如果一次完成就不用切换进程了
             write_len += self.data.lock().write(&buf[write_len..]);
-            println!("write pipe len {}", write_len);
+            //println!("write pipe len {}", write_len);
             // 同上，参见 read 函数
+            let mut cnt = 0;
             while write_len < buf.len() && Arc::strong_count(&self.data) == 2 {
+                cnt += 1;
+                if cnt > 1 {break;}
                 suspend_current_task();
                 write_len += self.data.lock().write(&buf[write_len..]);
             }

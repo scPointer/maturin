@@ -169,7 +169,7 @@ impl<'a> ElfLoader<'a> {
                 Arc::new(Mutex::new(pma)),
                 "elf_segment",
             )?;
-            println!("{:#?}", seg);
+            //info!("{:#?}", seg);
             vm.push(seg)?;
         }
 

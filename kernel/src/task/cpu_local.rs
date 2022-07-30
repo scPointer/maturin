@@ -78,7 +78,7 @@ pub fn run_tasks() -> ! {
             task.set_status(TaskStatus::Running);
 
             let tid = task.get_tid_num();
-            println!("[cpu {}] now running on tid = {}", cpu_id, tid);
+            //println!("[cpu {}] now running on tid = {}", cpu_id, tid);
             //drop(task_inner);
             unsafe { task.vm.lock().activate(); }
             cpu_local.current = Some(task);

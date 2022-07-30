@@ -99,7 +99,7 @@ impl TaskControlBlock {
     /// 而其他情况(如 pid 分配失败、内核栈分配失败)是OS自己出了问题，应该停机。
     /// 
     /// 目前只有初始进程(/task/mod.rs: ORIGIN_USER_PROC) 直接通过这个函数初始化，
-    /// 其他进程应通过 fork / exec 生成
+    /// 其他进程应通过 clone / exec 生成
     pub fn from_app_name(app_dir: &str, ppid: usize, args: Vec<String>) -> Option<Self> {
         if args.len() < 1 { // 需要至少有一项指定文件名
             return None

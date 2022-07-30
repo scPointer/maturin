@@ -137,7 +137,7 @@ pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> isize {
     let mut written_len = 0;
     for i in 0..iov_cnt {
         let io_vec: &IoVec = unsafe { &*iov.add(i) };
-        println!("sys_writev: io_vec.base {:x}, len {:x}", io_vec.base as usize, io_vec.len);
+        info!("sys_writev: io_vec.base {:x}, len {:x}", io_vec.base as usize, io_vec.len);
         let ret = sys_write(fd, io_vec.base, io_vec.len);
         if ret == -1 {
             break
