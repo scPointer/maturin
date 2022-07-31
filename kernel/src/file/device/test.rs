@@ -109,10 +109,10 @@ impl TestStatus {
 }
 
 lazy_static! {
-    //static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(FORMAT_LIBC_STATIC.into_iter().chain(FORMAT_LIBC_DYNAMIC.into_iter())));
-    //static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(&[FORMAT_LIBC_STATIC, FORMAT_LIBC_DYNAMIC].concat()));
-    static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(SAMPLE.into_iter()));
-    static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(SAMPLE));
+    static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(FORMAT_LIBC_STATIC.into_iter().chain(FORMAT_LIBC_DYNAMIC.into_iter())));
+    static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(&[FORMAT_LIBC_STATIC, FORMAT_LIBC_DYNAMIC].concat()));
+    //static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(SAMPLE.into_iter()));
+    //static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(SAMPLE));
 }
 
 pub const SAMPLE: &[&str] = &[
@@ -135,7 +135,7 @@ pub const SAMPLE: &[&str] = &[
     //"./runtest.exe -w entry-dynamic.exe syscall_sign_extend",
     //"./runtest.exe -w entry-dynamic.exe rlimit_open_files",
     //"./runtest.exe -w entry-dynamic.exe stat",
-    "./runtest.exe -w entry-dynamic.exe statvfs", 
+    //"./runtest.exe -w entry-dynamic.exe statvfs", 
     
     //"./runtest.exe -w entry-static.exe pthread_robust_detach",
     //"./runtest.exe -w entry-static.exe pthread_cancel_sem_wait",//dead
