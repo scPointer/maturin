@@ -6,6 +6,8 @@ use alloc::vec::Vec;
 use alloc::sync::Arc;
 pub use fatfs::SeekFrom;
 
+use crate::timer::TimeSpec;
+
 mod fd_manager;
 mod os_inode;
 mod device;
@@ -45,6 +47,12 @@ pub trait File: Send + Sync {
     /// 
     /// 目前只有fat文件系统中的文件会处理这个函数
     fn get_stat(&self, stat: *mut Kstat) -> bool {
+        false
+    }
+    /// 设置时间，返回是否设置成功。
+    /// 
+    /// 注意，格式需要考虑 crate::timer 模块中 UTIME_OMIT 和 UTIME_NOW 的特殊情况
+    fn set_time(&self, atime: &TimeSpec, mtime: &TimeSpec) -> bool {
         false
     }
 }

@@ -91,6 +91,8 @@ use lock::Mutex;
 use lazy_static::*;
 use crate::constants::IS_TEST_ENV;
 use crate::signal::SigAction;
+use crate::timer::TimeSpec;
+use crate::file::{Kstat, FsStat};
 
 lazy_static! {
     static ref WRITEV_COUNT:Mutex<usize> = Mutex::new(0);
@@ -123,7 +125,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_LINKAT => sys_linkat(args[0] as i32, args[1] as *const u8, args[2] as i32, args[3] as *const u8, args[4] as u32),
         SYSCALL_UMOUNT => sys_umount(args[0] as *const u8, args[1] as u32),
         SYSCALL_MOUNT => sys_mount(args[0] as *const u8, args[1] as *const u8, args[2] as *const u8, args[3] as u32, args[4] as *const u8),
-        SYSCALL_STATFS => sys_statfs(args[0] as *const u8, args[1] as *mut crate::file::FsStat),
+        SYSCALL_STATFS => sys_statfs(args[0] as *const u8, args[1] as *mut FsStat),
         SYSCALL_MKDIR => sys_mkdir(args[0] as i32, args[1] as *const u8, args[2] as u32),
         SYSCALL_CHDIR => sys_chdir(args[0] as *const u8),
         SYSCALL_OPEN => sys_open(args[0] as i32, args[1] as *const u8, args[2] as u32, args[3] as u32),
@@ -135,8 +137,8 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
         SYSCALL_READV => sys_readv(args[0], args[1] as *mut IoVec, args[2]),
         SYSCALL_WRITEV => sys_writev(args[0], args[1] as *const IoVec, args[2]),
-        SYSCALL_FSTATAT => sys_fstatat(args[0] as i32, args[1] as *const u8, args[2] as *mut crate::file::Kstat),
-        SYSCALL_FSTAT => sys_fstat(args[0], args[1] as *mut crate::file::Kstat),
+        SYSCALL_FSTATAT => sys_fstatat(args[0] as i32, args[1] as *const u8, args[2] as *mut Kstat),
+        SYSCALL_FSTAT => sys_fstat(args[0], args[1] as *mut Kstat),
         SYSCALL_UTIMENSAT => sys_utimensat(args[0] as i32, args[1] as *const u8, args[2] as *const TimeSpec, UtimensatFlags::from_bits(args[3] as u32).unwrap()),
         SYSCALL_EXIT => sys_exit(args[0] as i32),
         SYSCALL_EXIT_GROUP => sys_exit(args[0] as i32),

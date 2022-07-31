@@ -5,8 +5,6 @@
 //#![deny(missing_docs)]
 
 use bitflags::*;
-use core::ops::{Add};
-use core::cmp::Ordering;
 use core::mem::size_of;
 
 use crate::memory::PTEFlags;
@@ -105,63 +103,6 @@ pub struct TMS {
     pub tms_cutime: usize,
     /// 子进程内核态执行时间和
     pub tms_cstime: usize,
-}
-
-/// 每秒的纳秒数
-pub const NSEC_PER_SEC: usize = 1_000_000_000;
-/// 当 nsec 为这个特殊值时，指示修改时间为现在
-pub const UTIME_NOW: usize = 0x3fffffff;
-/// 当 nsec 为这个特殊值时，指示不修改时间
-pub const UTIME_OMIT: usize = 0x3ffffffe;
-// 因为测例库说明里的 tv_nsec 实际实现是 usec，所以要把这个量当微秒实现
-// 以上的说明的初赛测例。决赛时的测例都正确按执行上面语义执行
-//pub const nsec_per_sec: usize = 1_000_000;
-
-/// sys_gettimeofday / sys_nanosleep / sys_utimensat 中指定的结构体类型
-#[repr(C)]
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct TimeSpec {
-    pub tv_sec: usize,
-    pub tv_nsec: usize,
-}
-
-impl TimeSpec {
-    /// 通过时间值创建数组。请保证 seconds 为非负数
-    pub fn new(seconds: f64) -> Self {
-        let tv_sec = seconds as usize;
-        let left = seconds - tv_sec as f64;
-        Self {
-            tv_sec: tv_sec,
-            tv_nsec: (left * NSEC_PER_SEC as f64) as usize,
-        }
-    }
-    /// 返回以秒为单位的时间
-    pub fn time_in_sec(&self) -> f64 {
-        self.tv_sec as f64 + self.tv_nsec as f64 / 1_000_000_000 as f64
-    }
-    /// 需要修改时间为现在
-    pub fn should_set_to_current_time(&self) -> bool {
-        self.tv_nsec == UTIME_NOW
-    }
-    /// 不需要修改时间
-    pub fn should_left_unchanged(&self) -> bool {
-        self.tv_nsec == UTIME_OMIT
-    }
-}
-
-impl Add for TimeSpec {
-    type Output = TimeSpec;
-    fn add(self, other: Self) -> Self {
-        let mut new_ts = Self {
-            tv_sec: self.tv_sec + other.tv_sec,
-            tv_nsec: self.tv_nsec + other.tv_nsec,
-        };
-        if new_ts.tv_nsec >= NSEC_PER_SEC {
-            new_ts.tv_sec += 1;
-            new_ts.tv_nsec -= NSEC_PER_SEC;
-        }
-        new_ts
-    }
 }
 
 bitflags! {
@@ -273,7 +214,9 @@ pub enum ErrorNo {
     /// 设备或者资源被占用
     EBUSY = -16, 
     /// 文件已存在
-    EEXIST = -17, 
+    EEXIST = -17,
+    /// 不是一个目录
+    ENOTDIR = -20,
     /// 非法参数
     EINVAL = -22, 
     /// fd（文件描述符）已满

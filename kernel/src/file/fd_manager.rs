@@ -111,7 +111,7 @@ impl FdManager {
     }
     /// 拿到一个文件的 Arc 指针(clone 语义)
     pub fn get_file(&self, fd: usize) -> OSResult<Arc<dyn File>> {
-        if fd >= self.files.len() || self.files[fd].is_none() {
+        if fd >= self.files.len() || fd < 0 || self.files[fd].is_none() {
             return Err(OSError::FdManager_FdNotFound);
         } else {
             Ok(self.files[fd].as_ref().unwrap().clone())

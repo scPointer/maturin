@@ -181,7 +181,7 @@ fn inner_open_dir(root: FsDir, dir_name: &str) -> Option<FsDir> {
         if let Ok(dir) = root.open_dir(&dir_name[2..]) {
             Some(dir)
         } else {
-            return None
+            None
         }
     }
 }
@@ -315,6 +315,7 @@ pub fn check_dir_exists(dir_name: &str) -> bool {
     if !dir_name.ends_with('/') {
         dir_name.push('/');
     }
+    // info!("dir is {}", dir_name);
     let dir_name = map_path_and_file(dir_name.as_str(), "").unwrap().0;
     // 去掉字符串开头的 '.' 或者 "./"
     inner_open_dir(root, dir_name.as_str()).is_some()

@@ -2,31 +2,24 @@
 
 //#![deny(missing_docs)]
 
+use crate::timer::TimeSpec;
 use crate::timer::{
     get_time,
     get_time_ms,
+    get_time_f64,
     MACHINE_TICKS_PER_MSEC,
 };
 use crate::task::{
     get_current_task,
     suspend_current_task,
 };
-use crate::constants::CLOCK_FREQ;
 
-use super::{TMS, TimeSpec, NSEC_PER_SEC};
-
-const ticks_per_sec: f64 = CLOCK_FREQ as f64;
-const ticks_per_nsec: f64 = ticks_per_sec / NSEC_PER_SEC as f64;
-
-/// 当前时间为多少秒(浮点数格式)
-fn get_time_f64() -> f64 {
-    get_time() as f64 / ticks_per_sec
-}
+use super::TMS;
 
 /// 获取系统时间并存放在参数提供的数组里
 pub fn sys_get_time_of_day(time_spec: *mut TimeSpec) -> isize {
     unsafe {
-        (*time_spec) = TimeSpec::new(get_time_f64());
+        (*time_spec) = TimeSpec::get_current();
         //println!("sec = {}, nsec = {}", (*time_spec).tv_sec, (*time_spec).tv_nsec);
     }
     0

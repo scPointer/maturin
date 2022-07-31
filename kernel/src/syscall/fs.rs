@@ -15,6 +15,7 @@ use crate::task::{get_current_task};
 use crate::task::{TaskControlBlock, TaskControlBlockInner};
 use crate::utils::raw_ptr_to_ref_str;
 use crate::file::{OpenFlags, Pipe, Kstat, FsStat, SeekFrom};
+use crate::timer::TimeSpec;
 use crate::file::{
     open_file, 
     mkdir, 
@@ -30,7 +31,7 @@ use crate::file::{
 use crate::constants::{ROOT_DIR, AT_FDCWD, DIR_ENTRY_SIZE};
 
 use super::{Dirent64, Dirent64_Type, ErrorNo, IoVec};
-use super::{TimeSpec, UtimensatFlags};
+use super::{UtimensatFlags};
 use super::{SEEK_SET, SEEK_CUR, SEEK_END};
 
 const FD_STDIN: usize = 0;
@@ -42,7 +43,7 @@ pub fn sys_getcwd(buf: *mut u8, len: usize) -> isize {
     let mut tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
     if task_vm.manually_alloc_page(buf as usize).is_err() {
-        return -1; // 地址不合法
+        return ErrorNo::EFAULT as isize; // 地址不合法
     }
     let dir = &tcb_inner.dir;
     // buf 可以塞下这个目录
@@ -74,7 +75,7 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
     let mut task_vm = task.vm.lock();
     //info!("fd {} buf {} len {}", fd, buf as usize, len);
     if task_vm.manually_alloc_page(buf as usize).is_err() {
-        return -1; // 地址不合法
+        return ErrorNo::EFAULT as isize; // 地址不合法
     }
     let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
     // 尝试了一下用 .map 串来写，但实际效果好像不如直接 if... 好看
@@ -461,12 +462,54 @@ pub fn sys_getdents64(fd: usize, buf: *mut Dirent64, len: usize) -> isize {
 
 /// 修改文件的访问时间和/或修改时间。
 /// 
+/// 如果 fir_fd < 0，它和 path 共同决定要找的文件；
+/// 如果 fir_fd >=0，它就是文件对应的 fd
 /// 因为它要求文件访问的部分更多，因此放在 fs.rs 而非 times.rs
 pub fn sys_utimensat(dir_fd: i32, path: *const u8, time_spec: *const TimeSpec, flags: UtimensatFlags) -> isize {
+    info!("dir_fd {}, path {:x}, ts {:x}, flags {:x}", dir_fd, path as usize, time_spec as usize, flags);
     let task = get_current_task().unwrap();
-    if let Some((parent_dir, file_path)) = resolve_path_from_fd(&task, dir_fd, path) {
-        if check_file_exists(parent_dir.as_str(), file_path) {
+    if dir_fd != AT_FDCWD && dir_fd < 0 {
+        return ErrorNo::EBADF as isize; // 错误的文件描述符
+    }
+    let mut task_vm = task.vm.lock();
+    let fd_manager = task.fd_manager.lock();
+    //info!("fd {} buf {} len {}", fd, buf as usize, len);
+    if (dir_fd == AT_FDCWD && task_vm.manually_alloc_page(path as usize).is_err()) {
+        return ErrorNo::EFAULT as isize; // 地址不合法
+    }
+
+    // 获取需要设置的新时间
+    let (new_atime, new_mtime) = if time_spec as usize == 0 {
+        (TimeSpec::get_current(), TimeSpec::get_current())
+    } else {
+        if task_vm.manually_alloc_page(time_spec as usize).is_err() {
+            return ErrorNo::EFAULT as isize; // 地址不合法
+        }
+        unsafe { (*time_spec, *time_spec.add(1)) }
+    };
+    if dir_fd > 0 {
+        if let Ok(file) = fd_manager.get_file(dir_fd as usize) {
+            file.set_time(&new_atime, &new_mtime);
             return 0;
+        }
+    } else if let Some((parent_dir, file_path)) = resolve_path_from_fd(&task, dir_fd, path) {
+        if check_file_exists(parent_dir.as_str(), file_path) {
+            if let Some(file) = open_file(parent_dir.as_str(), file_path, OpenFlags::empty()) {
+                if file.set_time(&new_atime, &new_mtime) {
+                    return 0;
+                } 
+            }
+            return ErrorNo::EINVAL as isize;
+        } else { 
+            let full_dir = if let Some(pos) = file_path.rfind('/') {
+                parent_dir + &file_path[..pos]
+            } else {
+                parent_dir
+            };
+            if !check_dir_exists(full_dir.as_str()) { // 如果连目录都不存在
+                return ErrorNo::ENOTDIR as isize;
+            }
+            
         }
     }
     ErrorNo::ENOENT as isize
