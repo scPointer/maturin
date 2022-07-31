@@ -125,7 +125,8 @@ pub const SAMPLE: &[&str] = &[
     //"./runtest.exe -w entry-dynamic.exe tls_local_exec",
     //"./runtest.exe -w entry-dynamic.exe pthread_exit_cancel",
 
-    "./runtest.exe -w entry-static.exe utime",
+    //"./runtest.exe -w entry-static.exe utime",
+    //"./runtest.exe -w entry-static.exe fgetwc_buffering",
 
     //"./runtest.exe -w entry-dynamic.exe fdopen",
     //"./runtest.exe -w entry-dynamic.exe fscanf", 

@@ -73,7 +73,7 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
-    //info!("fd {} buf {} len {}", fd, buf as usize, len);
+    info!("fd {} buf {:x} len {}", fd, buf as usize, len);
     if task_vm.manually_alloc_page(buf as usize).is_err() {
         return ErrorNo::EFAULT as isize; // 地址不合法
     }

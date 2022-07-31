@@ -84,16 +84,13 @@ impl FdManager {
     /// 复制一个 fd 到指定的新 fd 上，返回是否成功
     pub fn copy_fd_to(&mut self, old_fd: usize, new_fd: usize) -> bool {
         self.get_file(old_fd).map(|file| {
-            if self.fd_allocator.alloc_exact_if_possible(new_fd) {
-                // 因为已经分配了，所以不走 self.push
-                if self.files.len() <= new_fd {
-                    self.files.resize(new_fd + 1, None);
-                }
-                self.files[new_fd] = Some(file);
-                Ok(())
-            } else {
-                Err(())
+            self.fd_allocator.alloc_exact_if_possible(new_fd);
+            // 因为已经分配了，所以不走 self.push
+            if self.files.len() <= new_fd {
+                self.files.resize(new_fd + 1, None);
             }
+            // 这里可能会删除该处原有的fd，不过这是符合语义的
+            self.files[new_fd].replace(file);
         }).is_ok()
     }
     /// 插入一个新文件
