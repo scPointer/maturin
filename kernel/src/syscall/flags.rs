@@ -2,7 +2,7 @@
 //!
 //! 实现系统调用中出现的各种由参数指定的选项和结构体
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use bitflags::*;
 use core::ops::{Add};
@@ -282,15 +282,21 @@ pub enum ErrorNo {
     ERANGE = -34, 
 }
 
-/// sys_lseek 时对应的条件
-pub const SEEK_SET:isize = 0; // 从文件开头
-pub const SEEK_CUR:isize = 1;  // 从当前位置
-pub const SEEK_END:isize = 2;  // 从文件结尾
+// sys_lseek 时对应的条件
+/// 从文件开头
+pub const SEEK_SET:isize = 0;
+/// 从当前位置
+pub const SEEK_CUR:isize = 1;
+/// 从文件结尾
+pub const SEEK_END:isize = 2;
 
-/// sys_sigprocmask 时对应的选择
-pub const SIG_BLOCK:i32 = 0; // 和当前 mask 取并集
-pub const SIG_UNBLOCK:i32 = 1; // 从当前 mask 中去除对应位
-pub const SIG_SETMASK:i32 = 2; // 重新设置当前 mask
+// sys_sigprocmask 时对应的选择
+/// 和当前 mask 取并集
+pub const SIG_BLOCK:i32 = 0;
+/// 从当前 mask 中去除对应位
+pub const SIG_UNBLOCK:i32 = 1;
+/// 重新设置当前 mask
+pub const SIG_SETMASK:i32 = 2;
 
 pub fn resolve_clone_flags_and_signal(flag: usize) -> (CloneFlags, SignalNo) {
     (
@@ -298,3 +304,20 @@ pub fn resolve_clone_flags_and_signal(flag: usize) -> (CloneFlags, SignalNo) {
         SignalNo::from(flag as u8 & 0x3f)
     )
 }
+
+/// sys_prlimit64 使用的数组
+#[repr(C)]
+pub struct RLimit {
+    /// 软上限
+    pub rlim_cur: u64,
+    /// 硬上限
+    pub rlim_max: u64,
+}
+
+// sys_prlimit64 使用的选项
+/// 用户栈大小
+pub const RLIMIT_STACK:i32 = 3;
+/// 可以打开的 fd 数
+pub const RLIMIT_NOFILE:i32 = 7;
+/// 用户地址空间的最大大小
+pub const RLIMIT_AS:i32 = 9;

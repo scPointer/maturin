@@ -1,7 +1,7 @@
 //! 用户程序的数据及状态信息
 //! 一个 TaskControlBlock 包含了一个任务(或进程)的所有信息
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;

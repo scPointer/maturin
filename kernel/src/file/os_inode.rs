@@ -1,6 +1,6 @@
 //! 文件系统 inode 的抽象
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;

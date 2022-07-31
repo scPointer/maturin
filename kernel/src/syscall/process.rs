@@ -1,6 +1,6 @@
 //! 与进程相关的系统调用
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -25,10 +25,13 @@ use crate::utils::{
 use crate::constants::{
     MMAP_LEN_LIMIT,
     SIGSET_SIZE_IN_BYTE,
+    USER_STACK_SIZE,
+    USER_VIRT_ADDR_LIMIT,
 };
 
-use super::{WaitFlags, MMAPPROT, MMAPFlags, UtsName, ErrorNo};
+use super::{WaitFlags, MMAPPROT, MMAPFlags, UtsName, ErrorNo, RLimit};
 use super::{SIG_BLOCK, SIG_UNBLOCK, SIG_SETMASK};
+use super::{RLIMIT_STACK, RLIMIT_NOFILE, RLIMIT_AS};
 use super::resolve_clone_flags_and_signal;
 
 /// 进程退出，并提供 exit_code 供 wait 等 syscall 拿取
@@ -451,4 +454,56 @@ pub fn sys_set_tid_address(addr: usize) -> isize {
     info!("set tid addresss to {:x}", addr);
     get_current_task().unwrap().set_tid_address(addr);
     sys_gettid()
+}
+
+/// 修改一些资源的限制
+/// 
+/// pid 设为0时，表示应用于自己
+pub fn sys_prlimt64(pid: usize, resource: i32, new_limit: *const RLimit, old_limit: *mut RLimit) -> isize {
+    info!("pid {} resource {}", pid, resource);
+    if pid == 0 {
+        let task = get_current_task().unwrap();
+        let mut fd_manger = task.fd_manager.lock();
+
+        match resource {
+            RLIMIT_STACK => {
+                if old_limit as usize != 0 {
+                    unsafe {
+                        *old_limit = RLimit {
+                            rlim_cur: USER_STACK_SIZE as u64,
+                            rlim_max: USER_STACK_SIZE as u64
+                        };
+                    }
+                }
+            },
+            RLIMIT_NOFILE => {
+                if old_limit as usize != 0 {
+                    let limit = fd_manger.get_limit();
+                    unsafe {
+                        *old_limit = RLimit {
+                            rlim_cur: limit as u64,
+                            rlim_max: limit as u64
+                        };
+                    }
+                }
+                if new_limit as usize != 0 {
+                    let new_limit = unsafe { (*new_limit).rlim_cur };
+                    fd_manger.modify_limit(new_limit as usize);
+                }
+                
+            },
+            RLIMIT_AS => {
+                if old_limit as usize != 0 {
+                    unsafe {
+                        *old_limit = RLimit {
+                            rlim_cur: USER_VIRT_ADDR_LIMIT as u64,
+                            rlim_max: USER_VIRT_ADDR_LIMIT as u64
+                        };
+                    }
+                }
+            },
+            _ => {},
+        }
+    }
+    0
 }

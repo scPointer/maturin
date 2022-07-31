@@ -1,7 +1,7 @@
 //! FAT中的文件抽象。
 //! 
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use lock::Mutex;
 use alloc::sync::Arc;
@@ -17,7 +17,7 @@ use fatfs::{
 use super::{File, FsFile};
 use super::get_link_count;
 
-use crate::file::{Kstat, normal_file_mode};
+use crate::file::{Kstat, StMode, normal_file_mode};
 
 /// 把 FsFile 包装一层以适应 Trait File
 pub struct FatFile {
@@ -149,9 +149,11 @@ impl File for FatFile {
         unsafe {
             (*stat).st_dev = 1;
             (*stat).st_ino = 1;
-            (*stat).st_mode = normal_file_mode(false).bits();
             (*stat).st_nlink = nlink as u32;
-            (*stat).st_size = len;
+            (*stat).st_mode = normal_file_mode(StMode::S_IFREG).bits();
+            (*stat).st_size = len as u64;
+            (*stat).st_uid = 0;
+            (*stat).st_gid = 0;
             (*stat).st_atime_sec = 0;
             (*stat).st_atime_nsec = 0;
             (*stat).st_mtime_sec = 0;
@@ -163,6 +165,22 @@ impl File for FatFile {
     }
     /// 切换文件指针位置
     fn seek(&self, seekfrom: SeekFrom) -> Option<usize> {
-        self.inner.lock().seek(seekfrom).map(|pos| pos as usize).ok()
+        self.inner.lock().seek(seekfrom)
+            .map(|pos| {
+                if let SeekFrom::Start(origin) = seekfrom {
+                    if origin > 0 {
+                        return Some(origin as usize);
+                    }
+                }
+                Some(pos as usize)
+            }).unwrap_or_else(|_| {
+            info!("seek {:#?}", seekfrom);
+            if let SeekFrom::Start(pos) = seekfrom {
+                if pos > 0 {
+                    return Some(pos as usize);
+                }
+            }
+            None
+        })
     }
 }

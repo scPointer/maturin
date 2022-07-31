@@ -4,7 +4,7 @@
 //! 注意 trap.S 中的读写操作对应本文件中 TrapContext 的定义，但编译器不会检查汇编，所以你需要手动保证两者之间是对应的。
 //! 即修改 TrapContext 的定义时需要对应修改 trap.S
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use riscv::register::sstatus::{self, Sstatus, SPP};
 /// 异常/中断上下文

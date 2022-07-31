@@ -1,7 +1,7 @@
 //! 内核栈
 //! 内部保存了 Frame，所以栈本身占用的内存会在结构被 Drop 时释放掉
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use crate::memory::Frame;
 use crate::constants::{KERNEL_STACK_SIZE, PAGE_SIZE};

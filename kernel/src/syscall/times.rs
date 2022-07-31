@@ -1,6 +1,6 @@
 //! 与时间处理相关的系统调用
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use crate::timer::{
     get_time,

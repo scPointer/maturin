@@ -9,7 +9,7 @@
 //! 这导致一些传入地址(非字符串,字符串大家都是统一的 1Byte 类型)的大小有问题，
 //! 如 sys_pipe() 在测例环境下需要将输入作为 *mut u32 而不是 *mut usize
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 const SYSCALL_GETCWD: usize = 17;
 //const SYSCALL_DUP: usize = 24;
@@ -22,6 +22,7 @@ const SYSCALL_UNLINKAT: usize = 35;
 const SYSCALL_LINKAT: usize = 37;
 const SYSCALL_UMOUNT: usize = 39;
 const SYSCALL_MOUNT: usize = 40;
+const SYSCALL_STATFS: usize = 43;
 const SYSCALL_CHDIR: usize = 49;
 const SYSCALL_OPEN: usize = 56;
 const SYSCALL_CLOSE: usize = 57;
@@ -34,6 +35,7 @@ const SYSCALL_READV: usize = 65;
 const SYSCALL_WRITEV: usize = 66;
 const SYSCALL_SENDFILE64: usize = 71;
 const SYSCALL_READLINKAT: usize = 78;
+const SYSCALL_FSTATAT: usize = 79;
 const SYSCALL_FSTAT: usize = 80;
 const SYSCALL_UTIMENSAT: usize = 88;
 const SYSCALL_EXIT: usize = 93;
@@ -121,6 +123,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_LINKAT => sys_linkat(args[0] as i32, args[1] as *const u8, args[2] as i32, args[3] as *const u8, args[4] as u32),
         SYSCALL_UMOUNT => sys_umount(args[0] as *const u8, args[1] as u32),
         SYSCALL_MOUNT => sys_mount(args[0] as *const u8, args[1] as *const u8, args[2] as *const u8, args[3] as u32, args[4] as *const u8),
+        SYSCALL_STATFS => sys_statfs(args[0] as *const u8, args[1] as *mut crate::file::FsStat),
         SYSCALL_MKDIR => sys_mkdir(args[0] as i32, args[1] as *const u8, args[2] as u32),
         SYSCALL_CHDIR => sys_chdir(args[0] as *const u8),
         SYSCALL_OPEN => sys_open(args[0] as i32, args[1] as *const u8, args[2] as u32, args[3] as u32),
@@ -132,6 +135,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
         SYSCALL_READV => sys_readv(args[0], args[1] as *mut IoVec, args[2]),
         SYSCALL_WRITEV => sys_writev(args[0], args[1] as *const IoVec, args[2]),
+        SYSCALL_FSTATAT => sys_fstatat(args[0] as i32, args[1] as *const u8, args[2] as *mut crate::file::Kstat),
         SYSCALL_FSTAT => sys_fstat(args[0], args[1] as *mut crate::file::Kstat),
         SYSCALL_UTIMENSAT => sys_utimensat(args[0] as i32, args[1] as *const u8, args[2] as *const TimeSpec, UtimensatFlags::from_bits(args[3] as u32).unwrap()),
         SYSCALL_EXIT => sys_exit(args[0] as i32),
@@ -162,13 +166,12 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_MMAP => sys_mmap(args[0], args[1], MMAPPROT::from_bits(args[2] as u32).unwrap(), MMAPFlags::from_bits(args[3] as u32).unwrap(), args[4] as i32, args[5]),
         SYSCALL_EXECVE => sys_execve(args[0] as *const u8, args[1] as *const usize, args[2] as *const usize),
         SYSCALL_WAIT4 => sys_wait4(args[0] as isize, args[1] as *mut i32, WaitFlags::from_bits(args[2] as u32).unwrap()),
+        SYSCALL_PRLIMIT64 => sys_prlimt64(args[0], args[1] as i32, args[2] as *const RLimit, args[3] as *mut RLimit),
         //_ => panic!("Unsupported syscall_id: {}", syscall_id),
-        
         SYSCALL_IOCTL => 0,
         SYSCALL_FCNTL64 => 0,
         //SYSCALL_MPROTECT => 0,
         SYSCALL_SIGTIMEDWAIT => 0,
-        SYSCALL_PRLIMIT64 => 0,
         SYSCALL_MEMBARRIER => 0,
         _ => {
             info!("Unsupported syscall_id: {}", syscall_id);

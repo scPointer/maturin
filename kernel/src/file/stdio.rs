@@ -3,7 +3,7 @@
 //! 输出流调用的 print! 和 error_print! 宏是由 crate::arch::stdout 提供的。
 //! 保证多核调用时不互相冲突的 Mutex 锁也在 crate::arch::{stdin, stdout} 中实现，这个模块只是封装了 Trait File
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use super::File;
 use crate::arch::stdin::getchar;

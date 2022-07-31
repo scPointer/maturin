@@ -1,6 +1,6 @@
 //! 一些不知道该放进哪个模块里的通用工具
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use alloc::string::String;
 use alloc::vec::Vec;

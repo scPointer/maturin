@@ -4,7 +4,7 @@
 //! 1. 它是被 qemu 映射到内存的，这样对其的读写就由 qemu 负责更新到实际的文件
 //! 2. 它是在 fs.S 中指定，然后在初始化内核页表时被引入的，这样对其的读写不会涉及原文件。换句话说，对它的写操作只会写在内存里
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 mod device;
 mod wrapper;

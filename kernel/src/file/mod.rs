@@ -1,6 +1,6 @@
 //! 文件类抽象，包含文件系统、stdin/stdout、管道等
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use alloc::vec::Vec;
 use alloc::sync::Arc;
@@ -11,7 +11,9 @@ mod os_inode;
 mod device;
 mod stdio;
 mod pipe;
+mod vfs;
 mod kstat;
+mod fs_stat;
 
 /// 文件类抽象
 pub trait File: Send + Sync {
@@ -60,7 +62,9 @@ pub use os_inode::{
 */
 pub use kstat::{Kstat, StMode};
 pub use kstat::normal_file_mode;
-pub use device::{OpenFlags};
+pub use fs_stat::FsStat;
+pub use vfs::get_virt_file_if_possible;
+pub use device::{OpenFlags, FileDisc};
 pub use device::{
     list_files_at_root,
     open_file,
@@ -75,4 +79,6 @@ pub use device::{
     try_remove_link,
     try_add_link,
     get_kth_dir_entry_info_of_path,
+    fs_init,
+    origin_fs_stat,
 };

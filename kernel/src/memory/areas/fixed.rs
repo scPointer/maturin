@@ -1,6 +1,6 @@
 //! 把物理地址段实现为直接分配对应页帧
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use alloc::sync::Arc;
 use core::slice;

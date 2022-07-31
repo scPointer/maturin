@@ -6,21 +6,25 @@
 //! 
 //! 目前固定支持最多 256 个 fd，不过也可之后修改
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 extern crate bitmap_allocator;
 type PidAllocatorImpl = bitmap_allocator::BitAlloc256;
 use bitmap_allocator::BitAlloc;
 
-use crate::constants::FD_LIMIT;
-
 pub struct FdAllocator(PidAllocatorImpl);
 
 impl FdAllocator {
-    pub fn new() -> Self {
+    pub fn new(limit: usize) -> Self {
         let mut fd_allocator = Self(PidAllocatorImpl::DEFAULT);
-        fd_allocator.0.insert(0..FD_LIMIT);
+        fd_allocator.0.insert(0..limit);
         fd_allocator
+    }
+    pub fn expand_range(&mut self, left: usize, right: usize) {
+        self.0.insert(left..right);
+    }
+    pub fn shrink_range(&mut self, left: usize, right: usize) {
+        self.0.remove(left..right);
     }
     #[allow(unused)]
     pub fn alloc(&mut self) -> Option<usize> {

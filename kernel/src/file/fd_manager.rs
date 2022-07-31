@@ -1,11 +1,12 @@
 //! 文件描述符管理
 //! 内部保存你所有 FD 的 Arc 指针以及一个 FdAllocator
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use crate::constants::FD_LIMIT_ORIGIN;
 use crate::memory::FdAllocator;
 use crate::error::{OSResult, OSError};
 
@@ -13,18 +14,24 @@ use super::File;
 use super::{Stdin, Stdout, Stderr};
 
 /// 文件描述符管理，每个进程应该有一个
-/// 这个结构 Drop 时会
+/// 这个结构 Drop 时会自动释放文件的 Arc
 pub struct FdManager {
+    /// 内部包含的文件
     files: Vec<Option<Arc<dyn File>>>,
+    /// 描述符和分配器
     fd_allocator: FdAllocator,
+    /// 最大 fd 限制
+    limit: usize
 }
 
 impl FdManager {
     /// 新建 FdManager 并插入 Stdin / Stdout / Stderr
     pub fn new() -> Self {
+        let limit = FD_LIMIT_ORIGIN;
         let mut fd_manager = Self {
             files: Vec::new(),
-            fd_allocator: FdAllocator::new(),
+            fd_allocator: FdAllocator::new(limit),
+            limit: limit
         };
         fd_manager.push(Arc::new(Stdin)).unwrap();
         fd_manager.push(Arc::new(Stdout)).unwrap();
@@ -40,7 +47,8 @@ impl FdManager {
     pub fn copy_all(&self) -> Self {
         let mut new_manager = Self {
             files: Vec::new(),
-            fd_allocator: FdAllocator::new(),
+            fd_allocator: FdAllocator::new(self.limit),
+            limit: self.limit
         };
         new_manager.files.resize(self.files.len(), None);
         for fd in 0..self.files.len() {
@@ -127,5 +135,20 @@ impl FdManager {
         } else {
             true
         }
+    }
+    /// 获取当前 fd 的上限
+    pub fn get_limit(&self) -> usize {
+        self.limit
+    }
+    /// 修改当前 fd 的上限
+    pub fn modify_limit(&mut self, new_limit: usize) {
+        // 上限不能超过最初始的设定，因为分配器的实现是固定的
+        let new_limit = new_limit.min(FD_LIMIT_ORIGIN).max(0);
+        if new_limit < self.limit {
+            self.fd_allocator.shrink_range(new_limit, self.limit);
+        } else if new_limit > self.limit {
+            self.fd_allocator.expand_range(self.limit, new_limit);
+        }
+        self.limit = new_limit;
     }
 }

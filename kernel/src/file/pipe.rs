@@ -4,7 +4,7 @@
 //! Pipe 的读写可能会触发进程切换。
 //! 目前的实现中，Pipe本身分配在堆上
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 
 use alloc::sync::Arc;

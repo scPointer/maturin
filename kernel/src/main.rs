@@ -80,6 +80,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     
     // file::list_apps_names_at_root_dir(); // 展示所有用户程序的名字
     file::list_files_at_root(); // 展示所有用户程序的名字
+    file::fs_init(); // 初始化一些不是实际文件本身但是 OS 约定需要的"文件"
     extern {
         fn _start_secondary();
     }

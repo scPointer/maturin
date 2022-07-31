@@ -1,6 +1,6 @@
 //! 每个核当前正在运行的任务及上下文信息
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use alloc::vec::Vec;
 use alloc::sync::Arc;

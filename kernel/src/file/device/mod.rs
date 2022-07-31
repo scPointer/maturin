@@ -1,7 +1,7 @@
 //! FAT文件系统设备的抽象
 //! 包括读写文件等的支持
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use lazy_static::*;
 use lock::Mutex;
@@ -21,7 +21,7 @@ use fatfs::{
 };
 
 use super::File;
-
+use super::get_virt_file_if_possible;
 use crate::drivers::{new_memory_mapped_fs, MemoryMappedFsIoType};
 use crate::constants::ROOT_DIR;
 
@@ -38,14 +38,16 @@ mod fat_file;
 mod fat_dir;
 mod fd_dir;
 mod link;
-mod time;
+mod stat;
 mod test;
 
 pub use open_flags::OpenFlags;
 pub use fat_file::FatFile;
 pub use fat_dir::FatDir;
 pub use fd_dir::FdDir;
+pub use link::FileDisc;
 pub use link::{try_remove_link, try_add_link, umount_fat_fs, mount_fat_fs, get_link_count};
+pub use stat::get_fs_stat as origin_fs_stat;
 pub use test::{
     //load_testcases, 
     load_next_testcase,
@@ -81,6 +83,12 @@ pub fn list_files_at_root() {
             }
         }
     }
+}
+
+/// 初始化硬盘内容。
+/// 由于它需要调用 MEMORY_FS，所以不能塞进其它初始化过程里
+pub fn fs_init() {
+    mkdir(ROOT_DIR, "tmp");
 }
 
 /// 在 path 后加入 child_path 路径，返回 child_path 中最后一个 '/' 的位置+1。(如没有 '/' 则返回0)
@@ -195,7 +203,12 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
     let root = MEMORY_FS.root_dir();
     //println!("dir_name {}, file_path {}", dir_name, file_path);
     let (real_dir, file_name) = map_path_and_file(dir_name, file_path)?;
-    let file_name = file_name.as_str();
+    // 先查询在 vfs 里是否有对应定义的文件
+    let find_in_vfs = get_virt_file_if_possible(&real_dir, &file_name);
+    if find_in_vfs.is_some() {
+        return find_in_vfs;
+    }
+    let file_name = if  file_name == "." { &"" } else { file_name.as_str() };
     //println!("dir = {}, name = {}, name_len {}", real_dir, file_name, file_name.len());
     if let Some(dir) = inner_open_dir(root, real_dir.as_str()) {
         if flags.contains(OpenFlags::DIR) || file_name.len() == 0 { // 要求打开目录

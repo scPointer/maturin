@@ -12,11 +12,6 @@ ticket = ["spin/use_ticket_mutex"]
 [dependencies]
 cfg-if = "1.0.0"
 
-# Bare-metal mode on x86_64
-[target.'cfg(target_arch = "x86_64")'.dependencies]
-raw-cpuid = "10.2.0"
-x86_64 = "0.14.6"
-
 # Bare-metal mode on riscv64
 [target.'cfg(target_arch = "riscv64")'.dependencies]
 riscv = { git = "https://github.com/rust-embedded/riscv", rev = "cd31989ba1", features = ["inline-asm"] }

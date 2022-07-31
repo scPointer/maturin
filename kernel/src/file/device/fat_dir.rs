@@ -1,7 +1,7 @@
 //! FAT中的目录抽象。
 //! 主要是包装实现 Trait File
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use lock::Mutex;
 use alloc::sync::Arc;

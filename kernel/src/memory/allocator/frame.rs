@@ -1,6 +1,6 @@
 //! 页帧分配器
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 //16M bit * (4K per page) = max 64G
 //实际上u740板子的内存16G用不完bit map，但再小一点的实现只有4G空间

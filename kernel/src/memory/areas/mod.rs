@@ -1,6 +1,6 @@
 //! 地址段定义
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 mod fixed;
 mod lazy;

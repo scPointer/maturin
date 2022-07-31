@@ -1,6 +1,6 @@
 //! 与地址映射相关的函数定义
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use super::{PAGE_SIZE, PHYS_VIRT_OFFSET};
 

@@ -16,6 +16,8 @@ bitflags! {
         /// 如文件不存在，可创建它
         const CREATE = 1 << 6;
         /// 确认一定是创建文件。如文件已存在，返回 EEXIST。
+        const EXCLUSIVE = 1 << 7;
+        /// 同上，在不同的库中可能会用到这个或者上一个
         const EXCL = 1 << 9;
         /// 没查到，但 date.lua 要
         const UNKNOWN = 1 << 11;

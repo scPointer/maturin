@@ -2,7 +2,7 @@
 //! 
 //! 目前只能每次输入一个 u8，所以看起来封装会比较过度
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use lock::Mutex;
 use lazy_static::*;

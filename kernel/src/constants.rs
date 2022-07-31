@@ -1,6 +1,6 @@
 //! OS运行时用到的常量
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 #![allow(dead_code)]
 /// 是否是 sifive 平台
@@ -22,7 +22,7 @@ pub const IS_SINGLE_CORE: bool = true;
 /// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序
 pub const SPIN_LOOP_AFTER_BOOT: bool  = false;
 /// 运行时是否打印基本的信息
-pub const BASE_INFO: bool = false;
+pub const BASE_INFO: bool = true;
 /// 页表中每页的大小
 pub const PAGE_SIZE: usize = 0x1000; // 4 KB
 /// 即 log2(PAGE_SIZE)
@@ -52,8 +52,8 @@ pub const ORIGIN_USER_PROC_NAME: &str = "start";
 
 /// 最小的 tid(进程号) 是 0，最大的 pid 是 TID_LIMIT-1
 pub const TID_LIMIT: usize = 4096;
-/// 最大的文件描述符
-pub const FD_LIMIT: usize = 256;
+/// 预设的文件描述符数量限制
+pub const FD_LIMIT_ORIGIN: usize = 64;
 /// sys_pipe创建的管道的大小，单位为字节
 pub const PIPE_SIZE: usize = 4000;
 
@@ -87,6 +87,8 @@ pub const AT_FDCWD: i32 = -100;
 pub const NO_PARENT: usize = usize::MAX;
 /// 每一个目录项的大小
 pub const DIR_ENTRY_SIZE:usize = 32;
+/// 临时文件的大小限制
+pub const TMP_SIZE_LIMIT:usize = 0x8_000; // 1 MB
 
 /// 限制 mmap 的最长长度
 pub const MMAP_LEN_LIMIT: usize = 0x100_0000; // 16 MB

@@ -3,7 +3,7 @@
 //! 注意获取 current_task 的时候都使用了 unwrap()，这意味着默认只有用户程序才会调用 syscall 模块进行操作。
 //! 如果内核态异常中断需要处理， trap 只能利用其他模块，如 MemorySet::handle_kernel_page_fault 等
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use alloc::sync::Arc;
 use alloc::string::String;
@@ -14,7 +14,7 @@ use crate::arch::stdin::getchar;
 use crate::task::{get_current_task};
 use crate::task::{TaskControlBlock, TaskControlBlockInner};
 use crate::utils::raw_ptr_to_ref_str;
-use crate::file::{OpenFlags, Pipe, Kstat, SeekFrom};
+use crate::file::{OpenFlags, Pipe, Kstat, FsStat, SeekFrom};
 use crate::file::{
     open_file, 
     mkdir, 
@@ -25,6 +25,7 @@ use crate::file::{
     umount_fat_fs,
     mount_fat_fs,
     get_kth_dir_entry_info_of_path,
+    origin_fs_stat,
 };
 use crate::constants::{ROOT_DIR, AT_FDCWD, DIR_ENTRY_SIZE};
 
@@ -158,6 +159,35 @@ pub fn sys_fstat(fd: usize, kstat: *mut Kstat) -> isize {
         }
     }
     -1
+}
+/// 获取文件状态信息，但是给出的是目录 fd 和相对路径。
+pub fn sys_fstatat(dir_fd: i32, path: *const u8, kstat: *mut Kstat) -> isize {
+    let task = get_current_task().unwrap();
+    if let Some((path, file)) = resolve_path_from_fd(&task, dir_fd, path) {
+        info!("fstatat: path {} file {}", path, file);
+        // 打开文件，选项为空，不可读不可写，只用于获取信息
+        if let Some(file) = open_file(path.as_str(), file, OpenFlags::empty()) {
+            if file.get_stat(kstat) {
+                return 0;
+            }
+        } else if let Some(file) = open_file(path.as_str(), file, OpenFlags::DIR) {
+            if file.get_stat(kstat) {
+                return 0;
+            }
+        }
+    }
+    -1
+}
+
+/// 获取文件系统的信息
+pub fn sys_statfs(path: *const u8, stat: *mut FsStat) -> isize {
+    let file_path = unsafe { raw_ptr_to_ref_str(path) };
+    if file_path == "/" { // 目前只支持访问根目录文件系统的信息
+        origin_fs_stat(stat);
+        0
+    } else {
+        -1
+    }
 }
 /// 从一个表示目录的文件描述符中获取目录名。
 /// 如果这个文件描述符不是代表目录，则返回None

@@ -1,6 +1,6 @@
 //! 把物理地址段实现为 lazy 分配需要的页帧
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 use alloc::{sync::Arc, vec::Vec};
 use core::fmt::{Debug, Formatter, Result};

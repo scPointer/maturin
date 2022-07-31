@@ -17,7 +17,7 @@
 //!  -> 重写 KernelStack 栈顶的 TrapContext（不通过 trap_handler 的参数，而是直接写对应内存）
 //!  -> 和上一种情况一样，直接跳到 __restore
 
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 mod context;
 
