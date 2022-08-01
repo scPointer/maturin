@@ -93,7 +93,9 @@ pub fn fs_init() {
     mkdir(ROOT_DIR, "lib");
     mkdir("dev/", "shm");
     let dso = &"tls_get_new-dtv_dso.so"; // dtv 不会在根目录下找，而是会去 lib 等目录找，所以需要链接
+    let libc_so = &"ld-musl-riscv64-sf.so.1";
     assert!(try_add_link(ROOT_DIR.into(), dso, "./lib/".into(), dso));
+    assert!(try_add_link(ROOT_DIR.into(), "libc.so", "./lib/".into(), libc_so));
 }
 
 /// 在 path 后加入 child_path 路径，返回 child_path 中最后一个 '/' 的位置+1。(如没有 '/' 则返回0)

@@ -25,9 +25,10 @@ use crate::constants::{
     PAGE_SIZE,
     USER_STACK_OFFSET,
     USER_STACK_SIZE,
-    LIBC_SO_NAME,
-    LIBC_SO_FILE,
-    LIBC_SO_DIR,
+    ROOT_DIR,
+    //LIBC_SO_NAME,
+    //LIBC_SO_FILE,
+    //LIBC_SO_DIR,
     ELF_BASE_RELOCATE,
 };
 use crate::file::{open_file, OpenFlags};
@@ -88,21 +89,15 @@ impl<'a> ElfLoader<'a> {
                 _ => return Err(OSError::Loader_InvalidSegment),
             };
             let path = unsafe { raw_ptr_to_ref_str(data.as_ptr()) };
-            let path = if path == LIBC_SO_NAME {
-                LIBC_SO_FILE
-            } else {
-                path
-            };
             info!("path: {:?}", path);
-            let mut new_args = vec![String::from(
-                if path == LIBC_SO_NAME {
-                    LIBC_SO_FILE
-                } else {
-                    path
-                })];
+            let mut new_args = vec![String::from(path)];
             new_args.extend(args);
             info!("args {:#?}", new_args);
-            return parse_user_app(LIBC_SO_DIR, LIBC_SO_FILE, vm, new_args);
+            return if let Some(pos) = path.rfind("/") {
+                parse_user_app(&path[..=pos], &path[pos+1..], vm, new_args)
+            } else {
+                parse_user_app(ROOT_DIR, path, vm, new_args)
+            };
         }
         // 动态程序在加载时用到的地址。如果是静态程序，则这里是 0
         let mut dyn_base = 0;

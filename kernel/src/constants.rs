@@ -92,12 +92,6 @@ pub const TMP_SIZE_LIMIT:usize = 0x8_000; // 1 MB
 
 /// 限制 mmap 的最长长度
 pub const MMAP_LEN_LIMIT: usize = 0x100_0000; // 16 MB
-/// 比赛修改过的 libc-test 中，动态库在测例ELF中写的地址
-pub const LIBC_SO_NAME: &str = "/lib/ld-musl-riscv64.so.1";
-/// 比赛修改过的 libc-test 中，动态库 libc.so 的实际地址
-pub const LIBC_SO_FILE: &str = "libc.so";
-/// 比赛修改过的 libc-test 中，动态库 libc.so 所在目录
-pub const LIBC_SO_DIR: &str = ROOT_DIR;
 /// 如果 elf 的 phdr 指示 base 是 0(如 libc-test 的 libc.so)，则需要找一个非0的位置放置
 pub const ELF_BASE_RELOCATE: usize = 0x400_0000;
 

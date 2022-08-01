@@ -34,9 +34,9 @@ pub fn sys_futex(uaddr: usize, futex_op: i32, val: u32, val2: usize, uaddr2: usi
     }
 
     *FCOUNT.lock() += 1;
-    if uaddr == 0x85f60 && tid == 3 && *FCOUNT.lock() > 30 {
-        panic!("futex limit");
-    }
+    //if uaddr == 0x85f60 && tid == 3 && *FCOUNT.lock() > 300 {
+    //    panic!("futex limit");
+    //}
     match flag.operation() {
         Flags::WAIT => {
             info!("wait, suspend---");
