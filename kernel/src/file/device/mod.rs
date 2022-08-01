@@ -89,6 +89,11 @@ pub fn list_files_at_root() {
 /// 由于它需要调用 MEMORY_FS，所以不能塞进其它初始化过程里
 pub fn fs_init() {
     mkdir(ROOT_DIR, "tmp");
+    mkdir(ROOT_DIR, "dev");
+    mkdir(ROOT_DIR, "lib");
+    mkdir("dev/", "shm");
+    let dso = &"tls_get_new-dtv_dso.so"; // dtv 不会在根目录下找，而是会去 lib 等目录找，所以需要链接
+    assert!(try_add_link(ROOT_DIR.into(), dso, "./lib/".into(), dso));
 }
 
 /// 在 path 后加入 child_path 路径，返回 child_path 中最后一个 '/' 的位置+1。(如没有 '/' 则返回0)
@@ -203,6 +208,7 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
     let root = MEMORY_FS.root_dir();
     //println!("dir_name {}, file_path {}", dir_name, file_path);
     let (real_dir, file_name) = map_path_and_file(dir_name, file_path)?;
+    info!("real_dir {}, file_name {}", real_dir, file_name);
     // 先查询在 vfs 里是否有对应定义的文件
     let find_in_vfs = get_virt_file_if_possible(&real_dir, &file_name);
     if find_in_vfs.is_some() {

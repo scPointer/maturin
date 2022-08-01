@@ -56,13 +56,21 @@ impl TrapContext {
         self.x[10]
     }
     /// 设置 a1 寄存器。
-    /// 对于 sys_exec，它是参数 argv
+    /// 对于 rcore-tutorial 的 sys_exec，它是参数 argv
     pub fn set_a1(&mut self, a1: usize) {
         self.x[11] = a1;
+    }
+    /// 设置 a2 寄存器。
+    pub fn set_a2(&mut self, a2: usize) {
+        self.x[12] = a2;
     }
     /// 设置 sepc 寄存器，即返回地址
     pub fn set_sepc(&mut self, sepc: usize) {
         self.sepc = sepc;
+    }
+    /// 获取 sepc 的值
+    pub fn get_sepc(&mut self) -> usize {
+        self.sepc
     }
     /// 初始化用户程序的中断信息，用于第一次进入用户程序前
     pub fn app_init_context(entry: usize, sp: usize) -> Self {

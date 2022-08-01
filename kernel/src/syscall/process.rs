@@ -378,13 +378,13 @@ pub fn sys_sigprocmask(how: i32, set: *const usize, old_set: *mut usize, sigsets
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
-    let mut signals = task.signals.lock();
+    let mut receiver = task.signal_receivers.lock();
 
     if old_set as usize != 0 { // old_set 非零说明要求写入到这个地址
         if task_vm.manually_alloc_page(old_set as usize).is_err() {
             return ErrorNo::EINVAL as isize; // 地址不合法
         }
-        unsafe { *old_set = signals.mask.0; }
+        unsafe { *old_set = receiver.mask.0; }
     }
     if set as usize != 0 { // set 非零时才考虑 how 并修改
         if task_vm.manually_alloc_page(set as usize).is_err() {
@@ -392,9 +392,9 @@ pub fn sys_sigprocmask(how: i32, set: *const usize, old_set: *mut usize, sigsets
         }
         let set_val = Bitset::new(unsafe { *set });
         match how {
-            SIG_BLOCK => signals.mask.get_union(set_val),
-            SIG_UNBLOCK => signals.mask.get_difference(set_val),
-            SIG_SETMASK => signals.mask.set_new(set_val),
+            SIG_BLOCK => receiver.mask.get_union(set_val),
+            SIG_UNBLOCK => receiver.mask.get_difference(set_val),
+            SIG_SETMASK => receiver.mask.set_new(set_val),
             _ => { return ErrorNo::EINVAL as isize; },
         };
     }
@@ -411,7 +411,7 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
-    let mut signals = task.signals.lock();
+    let mut handler = task.signal_handlers.lock();
 
     unsafe {
         info!("when receive signal {:#?} action {:#?}", SignalNo::from(signum), *action);
@@ -423,7 +423,7 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
             || task_vm.manually_alloc_page(old_addr + size_of::<SigAction>() - 1).is_err() {
             return ErrorNo::EINVAL as isize; // 地址不合法
         }
-        signals.get_action(signum, old_action);
+        handler.get_action(signum, old_action);
     }
 
     let addr = action as usize;
@@ -432,7 +432,7 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
             || task_vm.manually_alloc_page(addr + size_of::<SigAction>() - 1).is_err() {
             return ErrorNo::EINVAL as isize; // 地址不合法
         }
-        signals.set_action(signum, action);
+        handler.set_action(signum, action);
     }
     0
 }

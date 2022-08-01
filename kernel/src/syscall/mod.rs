@@ -143,7 +143,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_EXIT => sys_exit(args[0] as i32),
         SYSCALL_EXIT_GROUP => sys_exit(args[0] as i32),
         SYSCALL_SET_TID_ADDRESS => sys_set_tid_address(args[0]),
-        SYSCALL_FUTEX => sys_futex(args[0], args[1] as i32, args[2] as u32, args[3] as u32, args[4], args[5] as u32),
+        SYSCALL_FUTEX => sys_futex(args[0], args[1] as i32, args[2] as u32, args[3], args[4], args[5] as u32),
         SYSCALL_NANOSLEEP => sys_nanosleep(args[0] as *const TimeSpec, args[1] as *mut TimeSpec),
         SYSCALL_CLOCK_GET_TIME => sys_get_time_of_day(args[1] as *mut TimeSpec),
         SYSCALL_YIELD => sys_yield(),

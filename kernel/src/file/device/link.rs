@@ -28,6 +28,7 @@ lazy_static!{
 
 /// 将用户提供的路径和文件转换成实际的路径和文件
 pub fn parse_file_name((path, file): (String, String)) -> (String, String) {
+    //info!("parse {} {}", path, file);
     let map = LINK_PATH_MAP.lock();
     match map.get(&FileDisc::new(&path, &file)) {
         Some(disc) => { (String::from(&disc.path[..]), String::from(&disc.file[..])) },
@@ -40,6 +41,7 @@ pub fn parse_file_name((path, file): (String, String)) -> (String, String) {
 /// 
 /// 这个函数不对外可见，外部需要调用 try_add_link
 fn add_link(real_path: String, real_file: String, user_path: String, user_file: String) {
+    //info!("add link {} {} {} {}", real_path, real_file, user_path, user_file);
     let mut map = LINK_PATH_MAP.lock();
     let mut count_map = LINK_COUNT_MAP.lock();
     let key = FileDisc::new(&user_path, &user_file);
@@ -51,9 +53,9 @@ fn add_link(real_path: String, real_file: String, user_path: String, user_file: 
             map.insert(key, value);
         },
         None => {
-            map.insert(key.clone(), value);
+            map.insert(key.clone(), value.clone());
             // 原来的文件自己也是一个链接，两者需要无法区分
-            map.insert(key.clone(), key);
+            map.insert(value.clone(), value.clone());
         }
     };
 }

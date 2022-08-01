@@ -2,6 +2,7 @@ MUSL_LIB?=/opt/riscv/musl-riscv-toolchain-8.2.0-1/riscv64-linux-musl/lib
 PREFIX?=riscv64-linux-musl-
 CC=$(PREFIX)gcc
 OBJCOPY=$(PREFIX)objcopy
+OBJDUMP=$(PREFIX)objdump
 
 STATIC_TESTCASES = $(shell cat static_testcases.txt)
 DYAMIC_TESTCASES = $(shell cat dynamic_testcases.txt)

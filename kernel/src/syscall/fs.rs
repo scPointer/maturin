@@ -474,7 +474,7 @@ pub fn sys_utimensat(dir_fd: i32, path: *const u8, time_spec: *const TimeSpec, f
     let mut task_vm = task.vm.lock();
     let fd_manager = task.fd_manager.lock();
     //info!("fd {} buf {} len {}", fd, buf as usize, len);
-    if (dir_fd == AT_FDCWD && task_vm.manually_alloc_page(path as usize).is_err()) {
+    if dir_fd == AT_FDCWD && task_vm.manually_alloc_page(path as usize).is_err() {
         return ErrorNo::EFAULT as isize; // 地址不合法
     }
 

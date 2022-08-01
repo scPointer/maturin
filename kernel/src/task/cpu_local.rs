@@ -5,13 +5,22 @@
 use alloc::vec::Vec;
 use alloc::sync::Arc;
 use core::cell::{RefCell, RefMut};
+use core::mem::size_of;
 use lock::Mutex;
 use lazy_static::*;
 
 use crate::constants::{CPU_ID_LIMIT, IS_TEST_ENV, NO_PARENT, USER_STACK_RED_ZONE};
 use crate::error::{OSResult, OSError};
 use crate::trap::TrapContext;
-use crate::signal::{SignalNo, Signals, SigActionDefault, SigActionFlags};
+use crate::signal::{
+    SignalNo,
+    SignalHandlers,
+    SignalReceivers,
+    SignalUserContext,
+    SigInfo,
+    SigActionDefault,
+    SigActionFlags
+};
 use crate::signal::{get_signals_from_tid, global_logoff_signals, send_signal};
 use crate::memory::{VirtAddr, PTEFlags, enable_kernel_page_table};
 use crate::file::show_testcase_result;
@@ -78,7 +87,7 @@ pub fn run_tasks() -> ! {
             task.set_status(TaskStatus::Running);
 
             let tid = task.get_tid_num();
-            //println!("[cpu {}] now running on tid = {}", cpu_id, tid);
+            info!("[cpu {}] now running on tid = {}", cpu_id, tid);
             //drop(task_inner);
             unsafe { task.vm.lock().activate(); }
             cpu_local.current = Some(task);
@@ -173,6 +182,7 @@ pub fn exit_current_task(exit_code: i32) {
     if addr != 0 {
         // 确认这个地址在用户地址空间中。如果没有也不需要报错，因为线程马上就退出了
         if task.vm.lock().manually_alloc_page(addr).is_ok() {
+            info!("exit, clear tid {:x}", addr);
             unsafe{ *(addr as *mut i32) = 0; }
         }
     }
@@ -279,41 +289,56 @@ pub fn get_current_task() -> Option<Arc<TaskControlBlock>> {
     Some(CPU_CONTEXTS[get_cpu_id()].lock().current.as_ref()?.clone())
 }
 
-/// 获取当前核正在运行任务的信号组
-/// 如果当前核没有任务，则返回 None
-pub fn get_current_signals() -> Option<Arc<Mutex<Signals>>> {
-    get_current_task().map(|task| get_signals_from_tid(task.tid.0).unwrap())
-}
-
 /// 处理当前线程的信号
 pub fn handle_signals() {
     // 仅在 trap 时调用这个函数，所以保证当前线程和对应 signals 都是存在的
     let task = get_current_task().unwrap();
-    let signals = get_signals_from_tid(task.tid.0).unwrap();
     // 如果其他线程正在向这里发送信号，则当前线程在此被阻塞
-    let mut sig_inner = signals.lock();
+    let mut sig_inner = task.signal_receivers.lock();
+    let handler = task.signal_handlers.lock();
     if let Some(signum) = sig_inner.get_one_signal() {
         let signal = SignalNo::from(signum as u8);
-        info!("handling signal: {:#?}", signal);
+        info!("tid {} handling signal: {:#?}", task.get_tid_num(), signal);
         // 保存成功说明当前没有在处理其他信号
         if task.save_trap_cx_if_not_handling_signals() {
             // 如果有，则调取处理函数
-            if let Some(action) = sig_inner.get_action_ref(signum) {
+            if let Some(action) = handler.get_action_ref(signum) {
                 // 保存后开始操作准备修改上下文，跳转到用户的信号处理函数
                 let mut trap_cx = unsafe { &mut *task.kernel_stack.get_first_context() };
                 trap_cx.set_ra(action.restorer);
                 // 这里假设了用户栈没有溢出
-                let sp = trap_cx.get_sp() - USER_STACK_RED_ZONE;
-                trap_cx.set_sp(sp);
+                info!("sp now {:x}", trap_cx.get_sp());
+                let mut sp = trap_cx.get_sp() - USER_STACK_RED_ZONE;
+                let old_pc = trap_cx.get_sepc();
                 trap_cx.set_sepc(action.handler);
                 trap_cx.set_a0(signum);
                 if action.flags.contains(SigActionFlags::SA_SIGINFO) {
-                    // 如果带 SIGINFO，则需要在用户栈上放额外的信息。目前暂时不处理
+                    // 如果带 SIGINFO，则需要在用户栈上放额外的信息
+                    sp = (sp - size_of::<SigInfo>()) & !0xf;
+                    info!("add siginfo at {:x}", sp);
+                    let mut info = SigInfo::default();
+                    info.si_signo = signum as i32;
+                    unsafe { *(sp as *mut SigInfo) = info; }
+                    trap_cx.set_a1(sp);
+                    sp = (sp - size_of::<SignalUserContext>()) & !0xf;
+                    unsafe { *(sp as *mut SignalUserContext) = SignalUserContext::init(sig_inner.mask.0 as u64, old_pc); }
+                    trap_cx.set_a2(sp);
+                    //let v = unsafe { *((sp + 0xb0) as *const usize) };
+                    //info!("read {} pc {}", v, old_pc);
+
+                    //let tp = trap_cx.x[4];
+                    //let cancel = tp - 156;
+                    //info!("val {}", unsafe { *((tp - 168) as *const u32) }); //tid
+                    //info!("val {}", unsafe { *((tp - 156) as *const u32) });
+                    //info!("val {}", unsafe { *((tp - 152) as *const u8) });
+                    //info!("val {}", unsafe { *((tp - 151) as *const u8) });
                 }
+                trap_cx.set_sp(sp);
             } else { // 否则，查找默认处理方式
                 match SigActionDefault::of_signal(signal) {
                     Terminate => {
                         // 这里不需要 drop(task)，因为当前函数没有用到 task_inner，在 task.save_trap... 内部用过后已经 drop 了
+                        drop(handler);
                         drop(sig_inner);
                         exit_current_task(0);
                     },
@@ -330,7 +355,7 @@ pub fn handle_signals() {
 pub fn signal_return() -> isize {
     // 仅在 sys_sigreturn 中调用这个函数，所以保证当前线程和对应 signals 都是存在的
     let task = get_current_task().unwrap();
-    let signals = get_signals_from_tid(task.tid.0).unwrap();
+    //let signals = get_signals_from_tid(task.tid.0).unwrap();
     if task.load_trap_cx_if_handling_signals() {
         // 上面已经 load 了，此处获取的值是原来的上下文
         let trap_cx = unsafe { &mut *task.kernel_stack.get_first_context() };

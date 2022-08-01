@@ -12,47 +12,58 @@ use flags::{FutexFlag, Flags};
 
 use lazy_static::*;
 use lock::Mutex;
-use super::ErrorNo;
-use super::sys_gettid;
 use crate::task::{
     get_current_task,
     suspend_current_task,
 };
+use crate::timer::TimeSpec;
+use super::ErrorNo;
+use super::sys_gettid;
 
 lazy_static! {
     static ref FCOUNT:Mutex<usize> = Mutex::new(0);
 }
 
-pub fn sys_futex(uaddr: usize, futex_op: i32, val: u32, val2: u32, uaddr2: usize, val3: u32) -> isize {
+pub fn sys_futex(uaddr: usize, futex_op: i32, val: u32, val2: usize, uaddr2: usize, val3: u32) -> isize {
     let flag = FutexFlag::new(futex_op);
     let tid = sys_gettid();
     info!("now tid {}", tid);
-    info!("futex: uaddr {:x}, op {} val {} val2 {} uaddr2 {:x} val3 {}", uaddr, futex_op, val, val2, uaddr2, val3);
+    info!("futex: uaddr {:x}, op {} val {} val2 {:x} uaddr2 {:x} val3 {}", uaddr, futex_op, val, val2, uaddr2, val3);
     if !flag.is_private() { // 不支持跨地址空间
         //panic!("futex not private");
     }
 
     *FCOUNT.lock() += 1;
-    if uaddr == 0x40a7174 && tid == 3 && *FCOUNT.lock() > 5000 {
-        panic!("");
+    if uaddr == 0x85f60 && tid == 3 && *FCOUNT.lock() > 30 {
+        panic!("futex limit");
     }
     match flag.operation() {
         Flags::WAIT => {
-            //info!("wait, suspend---");
+            info!("wait, suspend---");
             // 检查 uaddr 处的地址
-            if get_current_task().unwrap().vm.lock().manually_alloc_page(uaddr).is_ok() {
+            let task = get_current_task().unwrap();
+            let mut task_vm = task.vm.lock();
+            if task_vm.manually_alloc_page(uaddr).is_ok() {
                 let real_val = unsafe { (uaddr as *const u32).read_volatile() } ;
                 if real_val != val {
                     return ErrorNo::EAGAIN as isize;
                 }
+                // 如果是个表示 timeout 的地址
+                if val2 != 0 && task_vm.manually_alloc_page(val2 as usize).is_ok(){
+                    let time_spec: TimeSpec = unsafe { *(val2 as *const TimeSpec) };
+                    info!("timeoud {}s{}ns", time_spec.tv_sec, time_spec.tv_nsec);
+                    panic!("");
+                }
             } else { // 若地址无效
                 return ErrorNo::EFAULT as isize;
             }
+            drop(task_vm); // 切换任务前取消对锁的占用
+            drop(task);
             suspend_current_task();
             return 0;
         },
         Flags::WAKE => {
-            //info!("wake");
+            info!("wake");
             suspend_current_task();
             return val as isize;
         },

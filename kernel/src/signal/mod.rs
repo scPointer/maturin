@@ -8,6 +8,10 @@ mod signal_no;
 pub use signal_no::SignalNo;
 mod sig_action;
 pub use sig_action::{SigAction, SigActionFlags, SigActionDefault};
+mod sig_info;
+pub use sig_info::SigInfo;
+mod ucontext;
+pub use ucontext::SignalUserContext;
 mod bitset;
 pub use bitset::Bitset;
 mod tid2signals;
@@ -18,34 +22,26 @@ pub use tid2signals::{
 };
 use crate::constants::SIGSET_SIZE_IN_BIT;
 
-/// 一个进程对应的信号相关变量及处理
+/// 处理信号的结构，每个线程有一个，根据 clone 的参数有可能是共享的
 #[derive(Clone, Copy)]
-pub struct Signals {
+pub struct SignalHandlers {
     /// 所有的处理函数
     actions: [Option<SigAction>; SIGSET_SIZE_IN_BIT],
-    /// 掩码，表示哪些信号是当前线程不处理的。（目前放在进程中，实现了线程之后每个线程应该各自有一个）
-    pub mask: Bitset,
-    /// 当前已受到的信号
-    pub sig_received: Bitset,
 }
 
-impl Signals {
+impl SignalHandlers {
     /// 新建一个信号模块
     pub fn new() -> Self {
         Self {
             actions: [None; SIGSET_SIZE_IN_BIT],
-            mask: Bitset::new(0),
-            sig_received: Bitset::new(0),
         }
     }
     /// 清空模块。
-    /// exec时需要将信号模块恢复为默认。但因为其他核可能在往当前线程写信号，所以这里手动清空而不是重新 new 一个
+    /// exec时需要将信号模块恢复为默认。
     pub fn clear(&mut self) {
         for action in &mut self.actions {
             action.take();
         }
-        self.mask = Bitset::new(0);
-        self.sig_received = Bitset::new(0);
     }
     /// 获取某个信号对应的 SigAction。
     /// 因为 signum 的范围是 [1,64]，所以要 -1
@@ -58,13 +54,37 @@ impl Signals {
     /// 因为 signum 的范围是 [1,64]，所以要 -1
     pub fn get_action_ref<'a>(&self, signum: usize) -> &Option<SigAction> {
         &self.actions[signum - 1]
+        //if signum != 33 {&self.actions[signum - 1]} else {&None}
     }
     /// 修改某个信号对应的 SigAction。
     /// 因为 signum 的范围是 [1,64]，所以内部要 -1
     pub fn set_action(&mut self, signum: usize, action_pos: *const SigAction) {
         unsafe { self.actions[signum - 1] = Some(*action_pos); }
     }
+}
 
+/// 接受信号的结构，每个线程都独有，不会共享
+#[derive(Clone, Copy)]
+pub struct SignalReceivers {
+    /// 掩码，表示哪些信号是当前线程不处理的。（目前放在进程中，实现了线程之后每个线程应该各自有一个）
+    pub mask: Bitset,
+    /// 当前已受到的信号
+    pub sig_received: Bitset,
+}
+
+impl SignalReceivers {
+    /// 新建一个处理模块
+    pub fn new() -> Self {
+        Self {
+            mask: Bitset::new(0),
+            sig_received: Bitset::new(0),
+        }
+    }
+    /// 清空模块。
+    pub fn clear(&mut self) {
+        self.mask = Bitset::new(0);
+        self.sig_received = Bitset::new(0);
+    }
     /// 处理一个信号。如果有收到的信号，则返回信号编号。否则返回 None
     pub fn get_one_signal(&mut self) -> Option<usize> {
         self.sig_received.find_first_one(self.mask).map(|pos| {

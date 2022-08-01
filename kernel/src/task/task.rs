@@ -13,7 +13,7 @@ use crate::loaders::{ElfLoader, parse_user_app};
 use crate::memory::{MemorySet, Tid, new_memory_set_for_task};
 use crate::memory::{VirtAddr, PTEFlags};
 use crate::trap::TrapContext;
-use crate::signal::{Signals, global_register_signals};
+use crate::signal::{SignalHandlers, SignalReceivers, SignalUserContext, global_register_signals};
 use crate::file::{FdManager, check_file_exists};
 use crate::timer::get_time;
 use crate::constants::{USER_STACK_OFFSET, NO_PARENT};
@@ -40,15 +40,17 @@ pub struct TaskControlBlock {
     /// 如果创建时带 CLONE_THREAD 选项，则不发送信号，除非它是线程组(即拥有相同pid的所有线程)中最后一个退出的线程；
     /// 否则发送信号
     pub send_sigchld_when_exit: bool,
-    /// 信号量相关信息。
+    /// 信号量对应的一组处理函数。
     /// 因为发送信号是通过 pid/tid 查找的，因此放在 inner 中一起调用时更容易导致死锁
-    pub signals: Arc<Mutex<Signals>>,
+    pub signal_handlers: Arc<Mutex<SignalHandlers>>,
+    /// 接收信号的结构。每个线程中一定是独特的，而上面的 handler 可能是共享的
+    pub signal_receivers: Arc<Mutex<SignalReceivers>>,
     /// 任务的内存段(内含页表)，同时包括用户态和内核态
     pub vm: Arc<Mutex<MemorySet>>,
     /// 管理进程的所有文件描述符
     pub fd_manager: Arc<Mutex<FdManager>>,
     /// 任务的状态信息
-    pub inner: Mutex<TaskControlBlockInner>,
+    pub inner: Arc<Mutex<TaskControlBlockInner>>,
 }
 
 /// 任务控制块的可变部分
@@ -87,7 +89,10 @@ pub struct TaskControlBlockInner {
     trap_cx_before_signal: Option<TrapContext>,
 }
 
+unsafe impl Send for TaskControlBlockInner {}
+
 impl TaskControlBlock {
+    
     /// 从用户程序名生成 TCB，其中文件名默认为 args[0]
     /// 
     /// 在目前的实现下，如果生成 TCB 失败，只有以下情况：
@@ -121,18 +126,20 @@ impl TaskControlBlock {
             let tid = Tid::new().unwrap();
             let pid = tid.0;
             let stack_top = kernel_stack.push_first_context(TrapContext::app_init_context(user_entry, user_stack));
-            let signals = Arc::new(Mutex::new(Signals::new()));
-            global_register_signals(tid.0, signals.clone());
+            let signal_handlers = Arc::new(Mutex::new(SignalHandlers::new()));
+            let signal_receivers = Arc::new(Mutex::new(SignalReceivers::new()));
+            global_register_signals(tid.0, signal_receivers.clone());
             //println!("tid = {}", tid.0);
             TaskControlBlock {
                 kernel_stack: kernel_stack,
                 pid: pid,
                 tid: tid,
                 send_sigchld_when_exit: true,
-                signals: signals,
+                signal_handlers: signal_handlers,
+                signal_receivers: signal_receivers,
                 vm: Arc::new(Mutex::new(vm)),
                 fd_manager: Arc::new(Mutex::new(FdManager::new())),
-                inner: Mutex::new(TaskControlBlockInner {
+                inner: Arc::new(Mutex::new(TaskControlBlockInner {
                     dir: String::from(app_dir),
                     ppid: ppid,
                     start_tick: get_time(),
@@ -145,7 +152,7 @@ impl TaskControlBlock {
                     set_child_tid: 0,
                     clear_child_tid: 0,
                     trap_cx_before_signal: None,
-                }),
+                })),
             }
         }).ok()
         
@@ -176,18 +183,18 @@ impl TaskControlBlock {
             } else {
                 Arc::new(Mutex::new(self.fd_manager.lock().copy_all()))
             }; 
-        // 是否共享信号
-        let new_signals = if flags.contains(CloneFlags::CLONE_SIGHAND) {
-                self.signals.clone()
-            } else { // 如果不共享信号处理函数，要复制整个模块的值
-                Arc::new(Mutex::new(self.signals.lock().clone()))
+        // 是否共享信号处理函数
+        let new_signal_handlers = if flags.contains(CloneFlags::CLONE_SIGHAND) {
+                self.signal_handlers.clone()
+            } else { // 如果不共享，也要复制整个模块的值，只是不一起更新
+                Arc::new(Mutex::new(self.signal_handlers.lock().clone()))
             };
         let tid = Tid::new().unwrap();
         let pid = if flags.contains(CloneFlags::CLONE_THREAD) { self.pid } else { tid.0 };
         let ppid = if flags.contains(CloneFlags::CLONE_PARENT) { inner.ppid } else { self.tid.0 };
-        
+        let signal_receivers = Arc::new(Mutex::new(SignalReceivers::new()));
         // 存入全局表中的 signals 是只复制指针
-        global_register_signals(tid.0, new_signals.clone());
+        global_register_signals(tid.0, signal_receivers.clone());
 
         let kernel_stack = KernelStack::new().unwrap();
         // 与 new 方法不同，这里从父进程的 TrapContext 复制给子进程
@@ -237,11 +244,12 @@ impl TaskControlBlock {
             tid: tid,
             send_sigchld_when_exit: send_sigchld_when_exit,
             kernel_stack: kernel_stack,
-            signals: new_signals,
+            signal_handlers: new_signal_handlers,
+            signal_receivers: signal_receivers,
             vm: vm,
             fd_manager: fd_manager,
             inner: {
-                Mutex::new(TaskControlBlockInner {
+                Arc::new(Mutex::new(TaskControlBlockInner {
                     dir: dir,
                     ppid: ppid,
                     start_tick: get_time(),
@@ -254,7 +262,7 @@ impl TaskControlBlock {
                     set_child_tid: if flags.contains(CloneFlags::CLONE_CHILD_SETTID) { ctid } else { 0 },
                     clear_child_tid: if flags.contains(CloneFlags::CLONE_CHILD_CLEARTID) { ctid } else { 0 },
                     trap_cx_before_signal: None,
-                })
+                }))
             },
         });
         if !flags.contains(CloneFlags::CLONE_PARENT) {
@@ -263,6 +271,7 @@ impl TaskControlBlock {
         //println!("end clone");
         new_tcb
     }
+    
     /// 从 exec 系统调用修改当前TCB，**默认新的用户程序与当前程序在同路径下**：
     /// 1. 从 ELF 文件中生成新的 MemorySet 替代当前的
     /// 2. 修改内核栈栈底的第一个 TrapContext 为新的用户程序的入口
@@ -281,7 +290,8 @@ impl TaskControlBlock {
         // 清空 MemorySet 中用户段的地址
         self.vm.lock().clear_user_and_save_kernel();
         // 清空信号模块
-        self.signals.lock().clear();
+        self.signal_handlers.lock().clear();
+        self.signal_receivers.lock().clear();
         // 如果用户程序调用时没有参数，则手动加上程序名作为唯一的参数
         // 需要这个调整，是因为用户库(/user下)使用了 rCore 的版本，
         // 里面的 user_shell 调用 exec 时会加上程序名作为 args 的第一个参数
@@ -314,6 +324,7 @@ impl TaskControlBlock {
             //println!("sp = {:x}, entry = {:x}, sstatus = {:x}", trap_context.x[2], trap_context.sepc, trap_context.sstatus.bits()); 
         }).is_ok()
     }
+    
     /// 映射一段内存地址到文件或设备。
     /// 
     /// anywhere 选项指示是否可以映射到任意位置，一般与 `MAP_FIXED` 关联。
@@ -420,13 +431,20 @@ impl TaskControlBlock {
             //info!("sig returned");
             unsafe {
                 let mut trap_cx_now = self.kernel_stack.get_first_context();
-                *trap_cx_now = trap_cx_old; 
+                // 这里假定是 sigreturn 触发的，即用户的信号处理函数 return 了(cancel_handler)
+                // 也就是说信号触发时的 sp 就是现在的 sp
+                let sp = (*trap_cx_now).get_sp(); 
+                // 获取可能被修改的 pc
+                let pc = (*(sp as *const SignalUserContext)).get_pc();
+                *trap_cx_now = trap_cx_old;
+                (*trap_cx_now).set_sepc(pc);
             }
             true
         } else {
             false
         }
     }
+    
 }
 
 /// 任务执行状态
