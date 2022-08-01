@@ -33,6 +33,7 @@ use crate::constants::{ROOT_DIR, AT_FDCWD, DIR_ENTRY_SIZE};
 use super::{Dirent64, Dirent64_Type, ErrorNo, IoVec};
 use super::{UtimensatFlags};
 use super::{SEEK_SET, SEEK_CUR, SEEK_END};
+use super::{F_DUPFD, F_GETFD, F_SETFD, F_GETFL, F_SETFL};
 
 const FD_STDIN: usize = 0;
 const FD_STDOUT: usize = 1;
@@ -515,11 +516,11 @@ pub fn sys_utimensat(dir_fd: i32, path: *const u8, time_spec: *const TimeSpec, f
     ErrorNo::ENOENT as isize
 }
 
-/// 修改
+/// 修改文件指针位置
 pub fn sys_lseek(fd: usize, offset: isize, whence: isize) -> isize {
     info!("lseek fd {} offset {} whence {}", fd, offset, whence);
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
+    //let mut tcb_inner = task.inner.lock();
     if let Ok(file) = task.fd_manager.lock().get_file(fd) {
         if let Some(new_offset) = file.seek(
             match whence {
@@ -533,6 +534,32 @@ pub fn sys_lseek(fd: usize, offset: isize, whence: isize) -> isize {
         } else {
             return ErrorNo::EINVAL as isize;
         }
+    }
+    ErrorNo::EBADF as isize
+}
+
+pub fn sys_fcntl64(fd: usize, cmd: usize, arg: usize) -> isize {
+    let task = get_current_task().unwrap();
+    let mut fd_manager = task.fd_manager.lock();
+    if let Ok(file) = fd_manager.get_file(fd) {
+        return match cmd {
+            F_DUPFD => { // 复制 fd
+                if let Ok(new_fd) = fd_manager.copy_fd_anywhere(fd) {
+                    new_fd as isize
+                } else {
+                    ErrorNo::EMFILE as isize
+                }
+            },
+            F_GETFD => {
+                if file.get_status().contains(OpenFlags::CLOEXEC) {
+                    1
+                } else {
+                    0
+                }
+            },
+            F_GETFL => file.get_status().bits() as isize,
+            _ => ErrorNo::EINVAL as isize,
+        };
     }
     ErrorNo::EBADF as isize
 }

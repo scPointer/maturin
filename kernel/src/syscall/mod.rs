@@ -62,6 +62,9 @@ const SYSCALL_GETEUID: usize = 175;
 const SYSCALL_GETGID: usize = 176;
 const SYSCALL_GETEGID: usize = 177;
 const SYSCALL_GETTID: usize = 178;
+const SYSCALL_SOCKET: usize = 198;
+const SYSCALL_SENDTO: usize = 206;
+const SYSCALL_RECVFROM: usize = 207;
 const SYSCALL_BRK: usize = 214;
 const SYSCALL_MUNMAP: usize = 215;
 //const SYSCALL_FORK: usize = 220;
@@ -80,12 +83,14 @@ mod process;
 mod flags;
 mod futex;
 mod times;
+mod socket;
 
 use fs::*;
 use process::*;
 use flags::*;
 use futex::*;
 use times::*;
+use socket::*;
 
 use lock::Mutex;
 use lazy_static::*;
@@ -121,6 +126,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
         SYSCALL_DUP => sys_dup(args[0]),
         SYSCALL_DUP3 => sys_dup3(args[0], args[1]),
+        SYSCALL_FCNTL64 => sys_fcntl64(args[0], args[1], args[2]),
         SYSCALL_UNLINKAT => sys_unlinkat(args[0] as i32, args[1] as *const u8, args[2] as u32),
         SYSCALL_LINKAT => sys_linkat(args[0] as i32, args[1] as *const u8, args[2] as i32, args[3] as *const u8, args[4] as u32),
         SYSCALL_UMOUNT => sys_umount(args[0] as *const u8, args[1] as u32),
@@ -162,6 +168,9 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_GETGID => sys_getgid(),
         SYSCALL_GETEGID => sys_getegid(),
         SYSCALL_GETTID => sys_gettid(),
+        SYSCALL_SOCKET => sys_socket(args[0], args[1], args[2]),
+        SYSCALL_SENDTO => sys_sendto(args[0], args[1] as *const u8, args[2], args[3] as i32, args[4], args[5]),
+        SYSCALL_RECVFROM => sys_recvfrom(args[0], args[1] as *mut u8, args[2], args[3] as i32, args[4], args[5] as *mut u32),
         SYSCALL_BRK => sys_brk(args[0]),
         SYSCALL_MUNMAP => sys_munmap(args[0], args[1]),
         SYSCALL_CLONE => sys_clone(args[0], args[1], args[2], args[3], args[4]),
@@ -171,7 +180,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_PRLIMIT64 => sys_prlimt64(args[0], args[1] as i32, args[2] as *const RLimit, args[3] as *mut RLimit),
         //_ => panic!("Unsupported syscall_id: {}", syscall_id),
         SYSCALL_IOCTL => 0,
-        SYSCALL_FCNTL64 => 0,
+        
         //SYSCALL_MPROTECT => 0,
         SYSCALL_SIGTIMEDWAIT => 0,
         SYSCALL_MEMBARRIER => 0,

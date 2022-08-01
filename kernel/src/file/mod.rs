@@ -16,6 +16,7 @@ mod pipe;
 mod vfs;
 mod kstat;
 mod fs_stat;
+mod socket;
 
 /// 文件类抽象
 pub trait File: Send + Sync {
@@ -55,6 +56,18 @@ pub trait File: Send + Sync {
     fn set_time(&self, atime: &TimeSpec, mtime: &TimeSpec) -> bool {
         false
     }
+    /// 获取文件状态信息
+    fn get_status(&self) -> OpenFlags {
+        OpenFlags::empty()
+    }
+    /// 发送消息，当且仅当这个文件是 socket 时可用
+    fn sendto(&self, buf: &[u8], flags: i32, dest_addr: usize) -> Option<usize> {
+        None
+    }
+    /// 收取消息，当且仅当这个文件是 socket 时可用
+    fn recvfrom(&self, buf: &mut [u8], flags: i32, src_addr: usize, src_len: &mut u32) -> Option<usize> {
+        None
+    }
 }
 
 pub use stdio::{Stdin, Stdout, Stderr};
@@ -90,3 +103,4 @@ pub use device::{
     fs_init,
     origin_fs_stat,
 };
+pub use socket::Socket;

@@ -264,3 +264,15 @@ pub const RLIMIT_STACK:i32 = 3;
 pub const RLIMIT_NOFILE:i32 = 7;
 /// 用户地址空间的最大大小
 pub const RLIMIT_AS:i32 = 9;
+
+// sys_fcntl64 使用的选项
+/// 复制这个 fd，相当于 sys_dup
+pub const F_DUPFD: usize = 0;
+/// 获取 cloexec 信息
+pub const F_GETFD: usize = 1;
+/// 设置 cloexec 信息
+pub const F_SETFD: usize = 2;
+/// 获取 flags 信息
+pub const F_GETFL: usize = 3;
+/// 设置 flags 信息
+pub const F_SETFL: usize = 4;

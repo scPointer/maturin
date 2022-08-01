@@ -19,16 +19,16 @@ bitflags! {
         const EXCLUSIVE = 1 << 7;
         /// 同上，在不同的库中可能会用到这个或者上一个
         const EXCL = 1 << 9;
-        /// 没查到，但 date.lua 要
-        const UNKNOWN = 1 << 11;
+        /// 非阻塞读写?(虽然不知道为什么但 date.lua 也要)
+        const NON_BLOCK = 1 << 11;
         /// 要求把 CR-LF 都换成 LF
         const TEXT = 1 << 14;
         /// 和上面不同，要求输入输出都不进行这个翻译
         const BINARY = 1 << 15;
         /// 
         const NOFOLLOW = 1 << 17;
-        ///
-        const LARGEFILE = 1 << 19;
+        /// 在 exec 时需关闭
+        const CLOEXEC = 1 << 19;
         /// 是否是目录
         const DIR = 1 << 21;
     }

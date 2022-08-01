@@ -127,12 +127,13 @@ pub const SAMPLE: &[&str] = &[
 
     //"./runtest.exe -w entry-static.exe utime",
     //"./runtest.exe -w entry-static.exe fgetwc_buffering",
-    "./runtest.exe -w entry-static.exe pthread_cancel",
-    "./runtest.exe -w entry-static.exe pthread_cancel_points",
-    "./runtest.exe -w entry-dynamic.exe pthread_cancel_points",
-    "./runtest.exe -w entry-dynamic.exe pthread_cancel",
-   // "./runtest.exe -w entry-dynamic.exe tls_get_new_dtv",
+    //"./runtest.exe -w entry-static.exe pthread_cancel",
+    //"./runtest.exe -w entry-static.exe pthread_cancel_points",
+    //"./runtest.exe -w entry-dynamic.exe pthread_cancel_points",
+    //"./runtest.exe -w entry-dynamic.exe pthread_cancel",
+    // "./runtest.exe -w entry-dynamic.exe tls_get_new_dtv",
     //"./runtest.exe -w entry-static.exe pthread_cancel_sem_wait",
+    "./runtest.exe -w entry-static.exe socket",
 
     //"./runtest.exe -w entry-dynamic.exe fdopen",
     //"./runtest.exe -w entry-dynamic.exe fscanf", 
