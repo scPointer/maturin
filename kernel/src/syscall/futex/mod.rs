@@ -52,7 +52,7 @@ pub fn sys_futex(uaddr: usize, futex_op: i32, val: u32, val2: usize, uaddr2: usi
                 if val2 != 0 && task_vm.manually_alloc_page(val2 as usize).is_ok(){
                     let time_spec: TimeSpec = unsafe { *(val2 as *const TimeSpec) };
                     info!("timeoud {}s{}ns", time_spec.tv_sec, time_spec.tv_nsec);
-                    panic!("");
+                    //panic!("");
                 }
             } else { // 若地址无效
                 return ErrorNo::EFAULT as isize;
