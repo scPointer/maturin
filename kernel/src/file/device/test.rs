@@ -109,10 +109,10 @@ impl TestStatus {
 }
 
 lazy_static! {
-    static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(FORMAT_LIBC_STATIC.into_iter().chain(FORMAT_LIBC_DYNAMIC.into_iter())));
-    static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(&[FORMAT_LIBC_STATIC, FORMAT_LIBC_DYNAMIC].concat()));
-    //static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(SAMPLE.into_iter()));
-    //static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(SAMPLE));
+    //static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(FORMAT_LIBC_STATIC.into_iter().chain(FORMAT_LIBC_DYNAMIC.into_iter())));
+    //static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(&[FORMAT_LIBC_STATIC, FORMAT_LIBC_DYNAMIC].concat()));
+    static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(SAMPLE.into_iter()));
+    static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(SAMPLE));
 }
 
 pub const SAMPLE: &[&str] = &[
@@ -120,8 +120,8 @@ pub const SAMPLE: &[&str] = &[
     //"busybox kill 10",
     //"sigreturn",
     //"dyn/tls_init.dout",
-    //"./runtest.exe -w entry-dynamic.exe argv",
-    //"./runtest.exe -w entry-dynamic.exe tls_init",
+    "./runtest.exe -w entry-dynamic.exe argv",
+    "./runtest.exe -w entry-dynamic.exe tls_init",
     //"./runtest.exe -w entry-dynamic.exe tls_local_exec",
     //"./runtest.exe -w entry-dynamic.exe pthread_exit_cancel",
 
@@ -504,8 +504,8 @@ pub const FORMAT_LIBC_STATIC: &[&str] = &[
     "./runtest.exe -w entry-static.exe inet_pton",
     "./runtest.exe -w entry-static.exe mbc",
     "./runtest.exe -w entry-static.exe memstream",
-    //"./runtest.exe -w entry-static.exe pthread_cancel_points",
-    //"./runtest.exe -w entry-static.exe pthread_cancel",
+    "./runtest.exe -w entry-static.exe pthread_cancel_points",
+    "./runtest.exe -w entry-static.exe pthread_cancel",
     "./runtest.exe -w entry-static.exe pthread_cond",
     "./runtest.exe -w entry-static.exe pthread_tsd",
     "./runtest.exe -w entry-static.exe qsort",
@@ -540,7 +540,7 @@ pub const FORMAT_LIBC_STATIC: &[&str] = &[
     "./runtest.exe -w entry-static.exe tls_align",
     "./runtest.exe -w entry-static.exe udiv",
     "./runtest.exe -w entry-static.exe ungetc",
-    //"./runtest.exe -w entry-static.exe utime",
+    "./runtest.exe -w entry-static.exe utime",
     "./runtest.exe -w entry-static.exe wcsstr",
     "./runtest.exe -w entry-static.exe wcstol",
     "./runtest.exe -w entry-static.exe pleval",
@@ -549,7 +549,7 @@ pub const FORMAT_LIBC_STATIC: &[&str] = &[
     "./runtest.exe -w entry-static.exe dn_expand_ptr_0",
     "./runtest.exe -w entry-static.exe fflush_exit",
     "./runtest.exe -w entry-static.exe fgets_eof",
-    //"./runtest.exe -w entry-static.exe fgetwc_buffering",
+    "./runtest.exe -w entry-static.exe fgetwc_buffering",
     "./runtest.exe -w entry-static.exe fpclassify_invalid_ld80",
     "./runtest.exe -w entry-static.exe ftello_unflushed_append",
     "./runtest.exe -w entry-static.exe getpwnam_r_crash",
@@ -571,7 +571,7 @@ pub const FORMAT_LIBC_STATIC: &[&str] = &[
     "./runtest.exe -w entry-static.exe printf_fmt_g_zeros",
     "./runtest.exe -w entry-static.exe printf_fmt_n",
     "./runtest.exe -w entry-static.exe pthread_robust_detach",
-    //"./runtest.exe -w entry-static.exe pthread_cancel_sem_wait",
+    "./runtest.exe -w entry-static.exe pthread_cancel_sem_wait",
     "./runtest.exe -w entry-static.exe pthread_cond_smasher",
     "./runtest.exe -w entry-static.exe pthread_condattr_setclock",
     "./runtest.exe -w entry-static.exe pthread_exit_cancel",
@@ -617,8 +617,8 @@ pub const FORMAT_LIBC_DYNAMIC: &[&str] = &[
     "./runtest.exe -w entry-dynamic.exe inet_pton",
     "./runtest.exe -w entry-dynamic.exe mbc",
     "./runtest.exe -w entry-dynamic.exe memstream",
-    //"./runtest.exe -w entry-dynamic.exe pthread_cancel_points",
-    //"./runtest.exe -w entry-dynamic.exe pthread_cancel",
+    "./runtest.exe -w entry-dynamic.exe pthread_cancel_points",
+    "./runtest.exe -w entry-dynamic.exe pthread_cancel",
     "./runtest.exe -w entry-dynamic.exe pthread_cond",
     "./runtest.exe -w entry-dynamic.exe pthread_tsd",
     "./runtest.exe -w entry-dynamic.exe qsort",
@@ -655,7 +655,7 @@ pub const FORMAT_LIBC_DYNAMIC: &[&str] = &[
     "./runtest.exe -w entry-dynamic.exe tls_local_exec",
     "./runtest.exe -w entry-dynamic.exe udiv",
     "./runtest.exe -w entry-dynamic.exe ungetc",
-    //"./runtest.exe -w entry-dynamic.exe utime",
+    "./runtest.exe -w entry-dynamic.exe utime",
     "./runtest.exe -w entry-dynamic.exe wcsstr",
     "./runtest.exe -w entry-dynamic.exe wcstol",
     "./runtest.exe -w entry-dynamic.exe daemon_failure",
@@ -663,7 +663,7 @@ pub const FORMAT_LIBC_DYNAMIC: &[&str] = &[
     "./runtest.exe -w entry-dynamic.exe dn_expand_ptr_0",
     "./runtest.exe -w entry-dynamic.exe fflush_exit",
     "./runtest.exe -w entry-dynamic.exe fgets_eof",
-    //"./runtest.exe -w entry-dynamic.exe fgetwc_buffering",
+    "./runtest.exe -w entry-dynamic.exe fgetwc_buffering",
     "./runtest.exe -w entry-dynamic.exe fpclassify_invalid_ld80",
     "./runtest.exe -w entry-dynamic.exe ftello_unflushed_append",
     "./runtest.exe -w entry-dynamic.exe getpwnam_r_crash",
@@ -708,7 +708,7 @@ pub const FORMAT_LIBC_DYNAMIC: &[&str] = &[
     "./runtest.exe -w entry-dynamic.exe statvfs",
     "./runtest.exe -w entry-dynamic.exe strverscmp",
     "./runtest.exe -w entry-dynamic.exe syscall_sign_extend",
-    //"./runtest.exe -w entry-dynamic.exe tls_get_new_dtv",
+    "./runtest.exe -w entry-dynamic.exe tls_get_new_dtv",
     "./runtest.exe -w entry-dynamic.exe uselocale_0",
     "./runtest.exe -w entry-dynamic.exe wcsncpy_read_overflow",
     "./runtest.exe -w entry-dynamic.exe wcsstr_false_negative",

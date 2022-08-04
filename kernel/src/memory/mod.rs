@@ -8,13 +8,11 @@ use core::ops::Range;
 
 mod allocator;
 pub mod addr;
-//#[cfg(target_arch = "riscv64")]
 mod page_table;
-//#[cfg(target_arch = "riscv64")]
-//mod page_table_impl_rv64_sv39;
-//#[cfg(target_arch = "riscv64")]
 mod areas;
 mod vmm;
+#[macro_use]
+mod user;
 use crate::constants::{
     PAGE_SIZE,
     PHYS_VIRT_OFFSET,
@@ -67,6 +65,11 @@ pub use vmm::{
     enable_kernel_page_table,
     handle_kernel_page_fault,
     new_memory_set_for_task,
+};
+
+pub use user::{
+    UserPtr,
+    UserPtrUnchecked,
 };
 
 pub fn clear_bss() {

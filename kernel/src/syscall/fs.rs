@@ -13,6 +13,7 @@ use crate::arch::{get_cpu_id};
 use crate::arch::stdin::getchar;
 use crate::task::{get_current_task};
 use crate::task::{TaskControlBlock, TaskControlBlockInner};
+use crate::memory::UserPtr;
 use crate::utils::raw_ptr_to_ref_str;
 use crate::file::{OpenFlags, Pipe, Kstat, FsStat, SeekFrom};
 use crate::timer::TimeSpec;
@@ -75,10 +76,17 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
     let mut tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
     info!("fd {} buf {:x} len {}", fd, buf as usize, len);
+    let buf = buf as usize;
+    let buf = match user_ptr_from!(buf, task_vm) {
+        Ok(buf) => buf,
+        Err(num) => {return num as isize;},
+    };
+    /*
     if task_vm.manually_alloc_page(buf as usize).is_err() {
         return ErrorNo::EFAULT as isize; // 地址不合法
     }
-    let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
+    */
+    let slice = unsafe { core::slice::from_raw_parts_mut(buf.raw(), len) };
     // 尝试了一下用 .map 串来写，但实际效果好像不如直接 if... 好看
     if let Ok(file) = task.fd_manager.lock().get_file(fd) {
         // 读文件可能触发进程切换
@@ -96,12 +104,19 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
+    let mut task_vm = task.vm.lock();
     //println!("write pos {:x}", buf as usize);
-    let slice = unsafe { core::slice::from_raw_parts(buf, len) };
+    let buf = buf as usize;
+    let buf = match user_ptr_from!(buf, task_vm) {
+        Ok(buf) => buf,
+        Err(num) => {return num as isize;},
+    };
+    let slice = unsafe { core::slice::from_raw_parts(buf.raw(), len) };
 
     if let Ok(file) = task.fd_manager.lock().get_file(fd) {
         // 写文件也可能触发进程切换
         drop(tcb_inner);
+        drop(task_vm);
         if let Some(write_len) = file.write(slice) {
             return write_len as isize
         }

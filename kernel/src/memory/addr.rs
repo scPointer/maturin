@@ -2,6 +2,7 @@
 
 //#![deny(missing_docs)]
 
+use core::mem::size_of;
 use super::{PAGE_SIZE, PHYS_VIRT_OFFSET};
 
 pub type VirtAddr = usize;
@@ -25,6 +26,11 @@ pub fn align_down(addr: usize) -> usize {
 /// 下一页页首地址
 pub fn align_up(addr: usize) -> usize {
     (addr + PAGE_SIZE - 1) & !(PAGE_SIZE - 1)
+}
+
+/// 检查一个结构是否跨页
+pub fn cross_page<T>(addr: usize) -> bool {
+    (addr ^ (addr + size_of::<T>())) >= PAGE_SIZE
 }
 
 /// 是否是页首

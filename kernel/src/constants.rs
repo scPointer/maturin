@@ -22,7 +22,7 @@ pub const IS_SINGLE_CORE: bool = true;
 /// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序
 pub const SPIN_LOOP_AFTER_BOOT: bool  = false;
 /// 运行时是否打印基本的信息
-pub const BASE_INFO: bool = false;
+pub const BASE_INFO: bool = true;
 /// 页表中每页的大小
 pub const PAGE_SIZE: usize = 0x1000; // 4 KB
 /// 即 log2(PAGE_SIZE)

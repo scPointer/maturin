@@ -5,11 +5,12 @@ use alloc::collections::{btree_map::Entry, BTreeMap};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt::{Debug, Formatter, Result};
+use core::mem::size_of;
 
 use lock::Mutex;
 
-use super::{align_down, align_up, virt_to_phys, phys_to_virt, page_count, page_offset, VirtAddr};
-use super::{VmArea, PmArea, PmAreaLazy, DiffSet, PTEFlags, PageTable};
+use super::{align_down, align_up, virt_to_phys, phys_to_virt, page_count, page_offset, cross_page, addr_to_page_id};
+use super::{VirtAddr, VmArea, PmArea, PmAreaLazy, DiffSet, PTEFlags, PageTable};
 use super::{
     get_phys_memory_regions,
     create_mapping,
@@ -248,6 +249,18 @@ impl MemorySet {
         Err(OSError::PageFaultHandler_Unhandled)
     }
     
+    /// 检查一个放在某个地址上的结构是否分配空间，如果未分配则强制分配它
+    pub fn manually_alloc_type<T>(&mut self, vaddr: VirtAddr) -> OSResult {
+        if cross_page::<T>(vaddr) {
+            for page in addr_to_page_id(vaddr)..addr_to_page_id(vaddr + size_of::<T>() - 1) {
+                self.manually_alloc_page(page)?;
+            }
+            Ok(())
+        } else {
+            self.manually_alloc_page(vaddr)
+        }
+    }
+
     /// 清空用户段的地址映射
     pub fn clear_user(&mut self) {
         if !self.is_user {

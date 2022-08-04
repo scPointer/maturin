@@ -88,6 +88,7 @@ mod socket;
 use fs::*;
 use process::*;
 use flags::*;
+pub use flags::ErrorNo;
 use futex::*;
 use times::*;
 use socket::*;

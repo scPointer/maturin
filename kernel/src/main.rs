@@ -13,9 +13,9 @@
 #![feature(drain_filter)]
 #[macro_use]
 mod console;
-
 mod constants;
 mod lang;
+#[macro_use]
 mod memory;
 mod timer;
 mod error;
