@@ -7,6 +7,7 @@
 //#![deny(warnings)]
 #![feature(panic_info_message)]
 #![feature(default_alloc_error_handler)]
+#![feature(naked_functions, asm_sym, asm_const)]
 // MemorySet 处理相交的 VmArea 时需要
 #![feature(btree_drain_filter)]
 // test.rs 输入 argv 需要
@@ -70,15 +71,13 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     // file::list_apps_names_at_root_dir(); // 展示所有用户程序的名字
     file::list_files_at_root(); // 展示所有用户程序的名字
     file::fs_init(); // 初始化一些不是实际文件本身但是 OS 约定需要的"文件"
-    extern "C" {
-        fn _start_secondary();
-    }
     let cpu_id = arch::get_cpu_id();
     info!("CPU [{}] bootstrap", cpu_id);
     for other_cpu in constants::FIRST_CPU_ID..=constants::LAST_CPU_ID {
         if other_cpu != cpu_id {
-            //println!("other_cpu {}", other_cpu);
-            //arch::start_hart(other_cpu, memory::virt_to_phys(_start_secondary as usize), 0);
+            let _entry = arch::secondary_entry as usize;
+            // println!("other_cpu {}", other_cpu);
+            // arch::start_hart(other_cpu, memory::virt_to_phys(_entry), 0);
         }
     }
 
