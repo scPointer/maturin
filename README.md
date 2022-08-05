@@ -9,14 +9,12 @@
 ## Usage
 
 ```bash
-$ rustup component add rust-src llvm-tools-preview
-$ rustup target add riscv64imac-unknown-none-elf
 $ cd kernel
 $ make testcases-img
 $ make run
 ```
 
-注意`qemu`版本至少应为`6.0.0`，`5.0`版本的`qemu`自带的`opensbi`的在启动时的行为不一样。
+> **注意** `qemu`版本至少应为`6.0.0`，`5.0`版本的`qemu`自带的`opensbi`的在启动时的行为不一样。
 
 ## 测例切换与执行
 
@@ -50,9 +48,9 @@ pub const SAMPLE: &[&str] = &[
 在文件下面还有常量 `BUSYBOX_TESTCASES` `LUA_TESTCASES` `LIBC_DYNAMIC_TESTCASES` `LIBX_STATIC_TESTCASES`。可以把它们中的一部分复制到 `SAMPLE` 中，也可以用这几个常量的名字**替换** `TESTCASES_ITER` 和 `TEST_STATUS` 中的 `SAMPLE`，实现快速测试整组测例。
 
 > 需要说明的是，"每次单独测试一个测例"是比赛评测导致的，因为评测机只凭借串口输出检查测例是否通过，而且无法分辨多个测例同时输出时的情况。
-> 
+>
 > 这里的本地测试通过不一定表示实际测试也能通过。因为测例是通过 `/libc` 模块下手动生成的，这样才能不依赖于比赛给定的 `runtest.exe` 和 `run-dynamic.sh` 和 `run-static.sh` 运行测例。否则，测试将全程交给这三个文件，想修改测例只能修改磁盘镜像里的文件，比改代码更麻烦。
-> 
+>
 > 目前是由单核执行测例，因为文件系统还没有做多核的适配。所有相关选项在 `/kernel/src/constants.rs` 里
 
 
@@ -148,7 +146,7 @@ OS比赛用到的测例。目前是2021年版本的，仅作为参考
 
 操作系统本体
 
-#### main.rs 
+#### main.rs
 
 多核启动及初始化
 
