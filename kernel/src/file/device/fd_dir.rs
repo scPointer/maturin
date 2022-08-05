@@ -27,11 +27,11 @@ impl FdDir {
 
 impl File for FdDir {
     /// 路径本身不可读
-    fn read(&self, buf: &mut [u8]) -> Option<usize> {
+    fn read(&self, _buf: &mut [u8]) -> Option<usize> {
         None
     }
     /// 路径本身不可写
-    fn write(&self, buf: &[u8]) -> Option<usize> {
+    fn write(&self, _buf: &[u8]) -> Option<usize> {
         None
     }
     /// 获取路径

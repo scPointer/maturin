@@ -90,7 +90,7 @@ pub fn console_put_usize_in_hex(val: usize) {
         };
         console_putchar(c as usize);
     }
-    for i in 0..10 {
+    for _ in 0..10 {
         console_putchar(b'-' as usize);
     }
     console_putchar(b'\n' as usize);

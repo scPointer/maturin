@@ -57,7 +57,7 @@ lazy_static! {
     /// 所有 CPU 的上下文信息
     pub static ref CPU_CONTEXTS: Vec<Mutex<CpuLocal>> = {
         let mut cpu_contexts: Vec<Mutex<CpuLocal>> = Vec::new();
-        for i in 0..CPU_ID_LIMIT {
+        for _ in 0..CPU_ID_LIMIT {
             cpu_contexts.push(Mutex::new(CpuLocal::new()));
         }
         cpu_contexts
@@ -223,7 +223,7 @@ pub fn exec_new_task() {
 /// 因为进程之间的 parent/children 关系是一棵树，所以在任意时刻一定会有上述第一种情况的进程存在。
 /// 所以卡在这个函数上的进程最终一定能以某种顺序依次执行完成，也就消除了死锁。
 ///
-fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
+fn handle_zombie_task(_cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
     let mut tcb_inner = task.inner.lock();
     //let task_inner = task.lock();
     for child in tcb_inner.children.iter() {

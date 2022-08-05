@@ -33,14 +33,14 @@ impl File for Stdin {
         Some(1)
     }
     /// Stdin 不可写
-    fn write(&self, buf: &[u8]) -> Option<usize> {
+    fn write(&self, _buf: &[u8]) -> Option<usize> {
         None
     }
 }
 
 impl File for Stdout {
     /// Stdout 不可读
-    fn read(&self, buf: &mut [u8]) -> Option<usize> {
+    fn read(&self, _buf: &mut [u8]) -> Option<usize> {
         None
     }
     /// UTF-8 格式写
@@ -56,7 +56,7 @@ impl File for Stdout {
 
 impl File for Stderr {
     /// Stdout 不可读
-    fn read(&self, buf: &mut [u8]) -> Option<usize> {
+    fn read(&self, _buf: &mut [u8]) -> Option<usize> {
         None
     }
     /// UTF-8 格式写

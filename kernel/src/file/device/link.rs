@@ -39,7 +39,7 @@ fn add_link(real_path: String, real_file: String, user_path: String, user_file: 
     // 注意链接数是统计在实际文件上的
     *count_map.entry(value.clone()).or_insert(1) += 1;
     match map.get(&key) {
-        Some(disc) => {
+        Some(_disc) => {
             map.insert(key, value);
         }
         None => {

@@ -154,7 +154,6 @@ impl File for FatFile {
     fn get_stat(&self, stat: *mut Kstat) -> bool {
         let mut inner = self.inner.lock();
         let tm = self.tm.lock();
-        let pos = 1;
         let pre_pos = inner.seek(SeekFrom::Current(0)).unwrap() as u64;
         let len = inner.seek(SeekFrom::End(0)).unwrap() as usize;
         inner.seek(SeekFrom::Start(pre_pos)).unwrap();

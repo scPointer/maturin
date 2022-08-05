@@ -33,11 +33,11 @@ impl Socket {
 
 impl File for Socket {
     /// Socket 不适用普通读写
-    fn read(&self, buf: &mut [u8]) -> Option<usize> {
+    fn read(&self, _buf: &mut [u8]) -> Option<usize> {
         None
     }
     /// Socket 不适用普通读写
-    fn write(&self, buf: &[u8]) -> Option<usize> {
+    fn write(&self, _buf: &[u8]) -> Option<usize> {
         None
     }
     /// 获取文件状态信息
@@ -45,7 +45,7 @@ impl File for Socket {
         self.flags
     }
     /// 发送消息，当且仅当这个文件是 socket 时可用
-    fn sendto(&self, buf: &[u8], flags: i32, dest_addr: usize) -> Option<usize> {
+    fn sendto(&self, buf: &[u8], _flags: i32, dest_addr: usize) -> Option<usize> {
         match addr_resolution(dest_addr as *const u16) {
             AddrType::Ip(ip, port) => {
                 info!("send to ip {:x} port {}", ip, port);
@@ -62,7 +62,7 @@ impl File for Socket {
     fn recvfrom(
         &self,
         buf: &mut [u8],
-        flags: i32,
+        _flags: i32,
         src_addr: usize,
         src_len: &mut u32,
     ) -> Option<usize> {

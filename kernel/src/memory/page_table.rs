@@ -97,11 +97,9 @@ impl PageTableEntry {
 /// 获取 paddr 页面上的第 idx 个页表项
 /// 因为 "paddr 页的内容是页表" 需要调用者保证，所以是unsafe
 pub unsafe fn get_pte_at(paddr: PhysAddr, idx: usize) -> &'static mut PageTableEntry {
-    unsafe {
-        ((phys_to_virt(paddr) + core::mem::size_of::<usize>() * idx) as *mut PageTableEntry)
-            .as_mut()
-            .unwrap()
-    }
+    ((phys_to_virt(paddr) + core::mem::size_of::<usize>() * idx) as *mut PageTableEntry)
+        .as_mut()
+        .unwrap()
 }
 
 /// page table structure

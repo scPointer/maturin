@@ -127,7 +127,7 @@ fn sys_fork(user_stack: Option<usize>) -> isize {
 /// 将当前进程替换为指定用户程序。
 ///
 /// 环境变量留了接口但目前未实现
-pub fn sys_execve(path: *const u8, mut args: *const usize, mut _envs: *const usize) -> isize {
+pub fn sys_execve(path: *const u8, args: *const usize, mut _envs: *const usize) -> isize {
     sys_exec(path, args)
 }
 
@@ -135,7 +135,7 @@ pub fn sys_execve(path: *const u8, mut args: *const usize, mut _envs: *const usi
 ///
 /// 如果找到这个名字的用户程序，返回 argc(参数个数)；
 /// 如果没有找到这个名字的用户程序，则返回 -1
-fn sys_exec(path: *const u8, mut args: *const usize) -> isize {
+fn sys_exec(path: *const u8, args: *const usize) -> isize {
     // 因为这里直接用用户空间提供的虚拟地址来访问，所以一定能连续访问到字符串，不需要考虑物理地址是否连续。
     // 把路径和参数复制到内核里。因为上面的 slice 在用户空间中，在 exec 中会被 drop 掉。
     let app_name = unsafe { raw_ptr_to_string(path) };
@@ -277,7 +277,7 @@ pub fn sys_mmap(
         }
     } else if let Ok(file) = task.fd_manager.lock().get_file(fd as usize) {
         //info!("get file");
-        if let Some(off) = file.seek(SeekFrom::Start(offset as u64)) {
+        if let Some(_off) = file.seek(SeekFrom::Start(offset as u64)) {
             // 读文件可能触发进程切换
             drop(tcb_inner);
             let mut data = Vec::new();

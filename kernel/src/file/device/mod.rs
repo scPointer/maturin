@@ -97,7 +97,7 @@ pub fn fs_init() {
 /// 要求 path 必须以 './' 开头，以 '/' 结尾。
 ///
 /// 因为 child_path 中可能包含 ./ 和 ../ ，所以可能处理后的 path 比输入时更短
-fn parse_dir(mut path: &mut String, child_path: &str) -> usize {
+fn parse_dir(path: &mut String, child_path: &str) -> usize {
     let mut pos = 0;
     loop {
         //println!("path = {}, child_path = {}, pos = {}", path.as_str(), child_path, pos);
@@ -232,7 +232,7 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
                 dir.open_dir(file_name)
             };
             match dir {
-                Ok(dir) => {
+                Ok(_dir) => {
                     // 不考虑是否有 CREATE 参数，只要找到目录就可以直接返回
                     Some(Arc::new(FdDir::new(String::from(real_dir) + file_name)))
                 }

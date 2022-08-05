@@ -255,7 +255,7 @@ pub fn sys_linkat(
     old_path: *const u8,
     new_dir_fd: i32,
     new_path: *const u8,
-    flags: u32,
+    _flags: u32,
 ) -> isize {
     let task = get_current_task().unwrap();
     if let Some((old_path, old_file)) = resolve_path_from_fd(&task, old_dir_fd, old_path) {
@@ -269,7 +269,7 @@ pub fn sys_linkat(
 }
 
 /// 删除硬链接，并在链接数为0时实际删除文件。成功时返回0，失败时返回-1
-pub fn sys_unlinkat(dir_fd: i32, path: *const u8, flags: u32) -> isize {
+pub fn sys_unlinkat(dir_fd: i32, path: *const u8, _flags: u32) -> isize {
     let task = get_current_task().unwrap();
     if let Some((path, file)) = resolve_path_from_fd(&task, dir_fd, path) {
         if try_remove_link(path, file) {
@@ -286,8 +286,8 @@ pub fn sys_mount(
     device: *const u8,
     mount_path: *const u8,
     fs_type: *const u8,
-    flags: u32,
-    data: *const u8,
+    _flags: u32,
+    _data: *const u8,
 ) -> isize {
     let fs_type = unsafe { raw_ptr_to_ref_str(fs_type) };
     if fs_type != "vfat" {
@@ -317,7 +317,7 @@ pub fn sys_mount(
 /// 卸载文件系统。成功时返回0，失败时(目录不存在/未挂载等)返回-1。
 ///
 /// 目前只是语义上实现，还没有真实板子上测试过
-pub fn sys_umount(mount_path: *const u8, flags: u32) -> isize {
+pub fn sys_umount(mount_path: *const u8, _flags: u32) -> isize {
     let task = get_current_task().unwrap();
     if let Some((mut mount_path, mount_file)) = resolve_path_from_fd(&task, AT_FDCWD, mount_path) {
         mount_path += mount_file;
@@ -335,7 +335,7 @@ pub fn sys_umount(mount_path: *const u8, flags: u32) -> isize {
 ///
 /// - 如果path是相对路径，则它是相对于dirfd目录而言的。
 /// - 如果path是绝对路径，则dirfd被忽略。
-pub fn sys_mkdir(dir_fd: i32, path: *const u8, user_mode: u32) -> isize {
+pub fn sys_mkdir(dir_fd: i32, path: *const u8, _user_mode: u32) -> isize {
     let task = get_current_task().unwrap();
     if let Some((parent_dir, file_path)) = resolve_path_from_fd(&task, dir_fd, path) {
         if mkdir(parent_dir.as_str(), file_path) {
@@ -375,7 +375,7 @@ pub fn sys_chdir(path: *const u8) -> isize {
 }
 
 /// 打开文件，返回对应的 fd。如打开失败，则返回 -1
-pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isize {
+pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, _user_mode: u32) -> isize {
     let task = get_current_task().unwrap();
     let mut task_fd_manager = task.fd_manager.lock();
     // 如果 fd 已满，则不再添加
@@ -422,7 +422,7 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: u32) -> isi
 pub fn sys_close(fd: usize) -> isize {
     let task = get_current_task().unwrap();
     let mut task_fd_manager = task.fd_manager.lock();
-    if let Ok(file) = task_fd_manager.remove_file(fd) {
+    if let Ok(_file) = task_fd_manager.remove_file(fd) {
         // 其实可以对 file 做最后处理。
         // 但此处不知道 file 的具体类型，所以还是推荐实现 Trait File 的类型自己写 Drop 时处理
         0
@@ -500,7 +500,7 @@ pub fn sys_getdents64(fd: usize, buf: *mut Dirent64, len: usize) -> isize {
                 } else {
                     file_name.len()
                 };
-                let slice = unsafe { core::slice::from_raw_parts_mut(name_start, copy_len) };
+                let slice = core::slice::from_raw_parts_mut(name_start, copy_len);
                 slice.copy_from_slice(&file_name.as_bytes());
                 // 字符串结尾
                 *name_start.add(copy_len) = 0;
@@ -596,7 +596,7 @@ pub fn sys_lseek(fd: usize, offset: isize, whence: isize) -> isize {
     ErrorNo::EBADF as isize
 }
 
-pub fn sys_fcntl64(fd: usize, cmd: usize, arg: usize) -> isize {
+pub fn sys_fcntl64(fd: usize, cmd: usize, _arg: usize) -> isize {
     let task = get_current_task().unwrap();
     let mut fd_manager = task.fd_manager.lock();
     if let Ok(file) = fd_manager.get_file(fd) {

@@ -25,7 +25,7 @@ pub trait File: Send + Sync {
     fn write(&self, buf: &[u8]) -> Option<usize>;
     /// 切换当前指针，返回切换后指针到文件开头的距离
     /// 如果文件本身不支持 seek(如pipe，是FIFO"设备") 则返回 None
-    fn seek(&self, seekfrom: SeekFrom) -> Option<usize> {
+    fn seek(&self, _seekfrom: SeekFrom) -> Option<usize> {
         None
     }
     /// 获取路径。
@@ -44,13 +44,13 @@ pub trait File: Send + Sync {
     /// 获取文件状态并写入 stat。成功时返回 true。
     ///
     /// 目前只有fat文件系统中的文件会处理这个函数
-    fn get_stat(&self, stat: *mut Kstat) -> bool {
+    fn get_stat(&self, _stat: *mut Kstat) -> bool {
         false
     }
     /// 设置时间，返回是否设置成功。
     ///
     /// 注意，格式需要考虑 crate::timer 模块中 UTIME_OMIT 和 UTIME_NOW 的特殊情况
-    fn set_time(&self, atime: &TimeSpec, mtime: &TimeSpec) -> bool {
+    fn set_time(&self, _atime: &TimeSpec, _mtime: &TimeSpec) -> bool {
         false
     }
     /// 获取文件状态信息
@@ -58,16 +58,16 @@ pub trait File: Send + Sync {
         OpenFlags::empty()
     }
     /// 发送消息，当且仅当这个文件是 socket 时可用
-    fn sendto(&self, buf: &[u8], flags: i32, dest_addr: usize) -> Option<usize> {
+    fn sendto(&self, _buf: &[u8], _flags: i32, _dest_addr: usize) -> Option<usize> {
         None
     }
     /// 收取消息，当且仅当这个文件是 socket 时可用
     fn recvfrom(
         &self,
-        buf: &mut [u8],
-        flags: i32,
-        src_addr: usize,
-        src_len: &mut u32,
+        _buf: &mut [u8],
+        _flags: i32,
+        _src_addr: usize,
+        _src_len: &mut u32,
     ) -> Option<usize> {
         None
     }
