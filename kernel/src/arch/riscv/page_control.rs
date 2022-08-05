@@ -8,6 +8,7 @@ pub fn setSUMAccessOpen() {
 }
 
 #[allow(non_snake_case)]
+#[allow(dead_code)]
 pub fn setSUMAccessClose() {
     unsafe {
         sstatus::clear_sum();

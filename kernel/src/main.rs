@@ -33,7 +33,7 @@ mod utils;
 #[path = "arch/riscv/mod.rs"]
 mod arch;
 
-use core::sync::atomic::{AtomicBool, AtomicUsize};
+use core::sync::atomic::AtomicUsize;
 
 #[macro_use]
 extern crate bitflags;
@@ -50,11 +50,6 @@ mod fsio {
 }
 
 core::arch::global_asm!(include_str!("fs.S"));
-
-/// 是否已经有核在进行全局初始化
-static GLOBAL_INIT_STARTED: AtomicBool = AtomicBool::new(false);
-/// 全局初始化是否已结束
-static GLOBAL_INIT_FINISHED: AtomicBool = AtomicBool::new(false);
 
 lazy_static::lazy_static! {
     static ref BOOTED_CPU_NUM: AtomicUsize = AtomicUsize::new(0);
@@ -119,6 +114,11 @@ pub extern "C" fn start_kernel_secondary(_arg0: usize, _arg1: usize) -> ! {
 }
 
 /*
+/// 是否已经有核在进行全局初始化
+//static GLOBAL_INIT_STARTED: AtomicBool = AtomicBool::new(false);
+/// 全局初始化是否已结束
+//static GLOBAL_INIT_FINISHED: AtomicBool = AtomicBool::new(false);
+
 /// 是否还没有核进行全局初始化，如是则返回 true
 fn can_do_global_init() -> bool {
     // GLOBAL_INIT_STARTED.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed).is_ok()

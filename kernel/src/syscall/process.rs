@@ -139,7 +139,7 @@ fn sys_exec(path: *const u8, args: *const usize) -> isize {
     // 因为这里直接用用户空间提供的虚拟地址来访问，所以一定能连续访问到字符串，不需要考虑物理地址是否连续。
     // 把路径和参数复制到内核里。因为上面的 slice 在用户空间中，在 exec 中会被 drop 掉。
     let app_name = unsafe { raw_ptr_to_string(path) };
-    let mut args = unsafe { str_ptr_array_to_vec_string(args) };
+    let args = unsafe { str_ptr_array_to_vec_string(args) };
     // 而且目前认为所有用户程序在根目录下，所以直接把路径当作文件名
     if get_current_task().unwrap().exec(&app_name, args) {
         exec_new_task();
@@ -181,7 +181,7 @@ pub fn sys_wait4(pid: isize, exit_code_ptr: *mut i32, option: WaitFlags) -> isiz
 fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
     let request_pid = pid as usize;
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
+    let tcb_inner = task.inner.lock();
     // 找到这个子进程并返回它在 children 数组里的下标。
     // 如果找不到，它设为 -1; 如果找到了但没结束，它设为 -2
     let mut flag: isize = -1;
@@ -223,7 +223,7 @@ fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
     }
     */
     if flag >= 0 {
-        let child = tcb_inner.children.remove(flag as usize);
+        // let child = tcb_inner.children.remove(flag as usize);
         // 确认它没有其他引用了
         // Todo: 这里加 assert 偶尔会报错，有可能是其他核在退出这个子进程的时候还拿着锁，但没法稳定触发
         // assert_eq!(Arc::strong_count(&child), 1, "child pid = {}", flag);
@@ -264,7 +264,7 @@ pub fn sys_mmap(
     // 是否可以放在任意位置
     let anywhere = start == 0 || !flags.contains(MMAPFlags::MAP_FIXED);
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
+    let tcb_inner = task.inner.lock();
 
     //不实际映射到文件
     if flags.contains(MMAPFlags::MAP_ANONYMOUS) {
@@ -401,7 +401,6 @@ pub fn sys_sigprocmask(
     );
 
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
     let mut receiver = task.signal_receivers.lock();
 
@@ -440,7 +439,6 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
         return ErrorNo::EINVAL as isize; // 特殊信号不能被覆盖
     }
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
     let mut handler = task.signal_handlers.lock();
 

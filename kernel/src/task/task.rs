@@ -180,7 +180,7 @@ impl TaskControlBlock {
         //println!("start clone");
         let mut inner = self.inner.lock();
         // 是否共享 MemorySet
-        let mut vm = if flags.contains(CloneFlags::CLONE_VM) {
+        let vm = if flags.contains(CloneFlags::CLONE_VM) {
             self.vm.clone()
         } else {
             Arc::new(Mutex::new(self.vm.lock().copy_as_fork().unwrap()))
@@ -215,10 +215,7 @@ impl TaskControlBlock {
 
         let kernel_stack = KernelStack::new().unwrap();
         // 与 new 方法不同，这里从父进程的 TrapContext 复制给子进程
-        let mut trap_context = TrapContext::new();
-        unsafe {
-            trap_context = *self.kernel_stack.get_first_context();
-        }
+        let mut trap_context = unsafe { *self.kernel_stack.get_first_context() };
         // 手动设置返回值为0，这样两个进程返回用户时除了返回值以外，都是完全相同的
         trap_context.set_a0(0);
         // 检查是否需要设置 tls
@@ -477,9 +474,7 @@ impl TaskControlBlock {
             return false;
         }
         inner.trap_cx_before_signal = Some(unsafe {
-            let mut cx = TrapContext::new();
-            cx = *self.kernel_stack.get_first_context();
-            cx
+            *self.kernel_stack.get_first_context()
         });
         true
     }
@@ -489,7 +484,7 @@ impl TaskControlBlock {
         if let Some(trap_cx_old) = inner.trap_cx_before_signal.take() {
             //info!("sig returned");
             unsafe {
-                let mut trap_cx_now = self.kernel_stack.get_first_context();
+                let trap_cx_now = self.kernel_stack.get_first_context();
                 // 这里假定是 sigreturn 触发的，即用户的信号处理函数 return 了(cancel_handler)
                 // 也就是说信号触发时的 sp 就是现在的 sp
                 let sp = (*trap_cx_now).get_sp();

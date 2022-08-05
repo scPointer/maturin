@@ -65,11 +65,6 @@ impl<T> IoWrapper<T> {
     pub fn new(inner: T) -> Self {
         Self { inner }
     }
-
-    /// Returns inner struct
-    pub fn into_inner(self) -> T {
-        self.inner
-    }
 }
 
 impl<T> IoBase for IoWrapper<T> {

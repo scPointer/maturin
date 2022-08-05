@@ -5,8 +5,10 @@ use super::{Bitset, SignalNo};
 use bitflags::*;
 
 /// SigAction::handler 的特殊取值，表示默认处理函数
+#[allow(dead_code)]
 pub const SIG_DFL: usize = 0;
 /// SigAction::handler 的特殊取值，表示忽略这个信号
+#[allow(dead_code)]
 pub const SIG_IGN: usize = 1;
 
 /// 和信号处理函数相关的信息定义

@@ -14,7 +14,7 @@ pub struct IpAddr {
     pub addr: u32,
 }
 
-const FAMILY_UNIX: u16 = 1;
+//const FAMILY_UNIX: u16 = 1;
 const FAMILY_INTERNET: u16 = 2;
 
 pub fn addr_resolution(family_user_addr: *const u16) -> AddrType {

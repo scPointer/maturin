@@ -23,13 +23,10 @@ use crate::{
 };
 use alloc::{string::String, sync::Arc};
 
-const FD_STDIN: usize = 0;
-const FD_STDOUT: usize = 1;
-
 /// 获取当前工作路径
 pub fn sys_getcwd(buf: *mut u8, len: usize) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
+    let tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
     if task_vm.manually_alloc_page(buf as usize).is_err() {
         return ErrorNo::EFAULT as isize; // 地址不合法
@@ -63,7 +60,7 @@ pub fn sys_getcwd(buf: *mut u8, len: usize) -> isize {
 /// 从 fd 代表的文件中读一个字串，最长为 len，放入 buf 中
 pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
+    let tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
     info!("fd {} buf {:x} len {}", fd, buf as usize, len);
     let buf = buf as usize;
@@ -95,7 +92,7 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
 /// 写一个字串到 fd 代表的文件。这个串放在 buf 中，长为 len
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
+    let tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
     //println!("write pos {:x}", buf as usize);
     let buf = buf as usize;
@@ -163,7 +160,6 @@ pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> isize {
 /// 获取文件状态信息
 pub fn sys_fstat(fd: usize, kstat: *mut Kstat) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
     if let Ok(file) = task.fd_manager.lock().get_file(fd) {
         if file.get_stat(kstat) {
             return 0;
@@ -437,7 +433,6 @@ pub fn sys_close(fd: usize) -> isize {
 /// 注意，因为
 pub fn sys_pipe(pipe: *mut u32) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
     let mut task_fd_manager = task.fd_manager.lock();
     let (pipe_read, pipe_write) = Pipe::new_pipe();
     if let Ok(fd1) = task_fd_manager.push(Arc::new(pipe_read)) {
@@ -469,7 +464,6 @@ pub fn sys_dup(fd: usize) -> isize {
 /// 复制一个 fd 中的文件到指定的新 fd 中，成功时返回新的文件描述符，失败则返回 -1
 pub fn sys_dup3(old_fd: usize, new_fd: usize) -> isize {
     let task = get_current_task().unwrap();
-    let mut tcb_inner = task.inner.lock();
     if task.fd_manager.lock().copy_fd_to(old_fd, new_fd) {
         new_fd as isize
     } else {

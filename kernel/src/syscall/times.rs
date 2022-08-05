@@ -4,7 +4,7 @@
 
 use crate::task::{get_current_task, suspend_current_task};
 use crate::timer::TimeSpec;
-use crate::timer::{get_time, get_time_f64, get_time_ms, MACHINE_TICKS_PER_MSEC};
+use crate::timer::{get_time, get_time_f64, MACHINE_TICKS_PER_MSEC};
 
 use super::TMS;
 
@@ -20,7 +20,7 @@ pub fn sys_get_time_of_day(time_spec: *mut TimeSpec) -> isize {
 /// 该进程休眠一段时间
 pub fn sys_nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> isize {
     let end_time = unsafe { get_time_f64() + (*req).time_in_sec() };
-    let now = get_time_f64();
+    //let now = get_time_f64();
     //info!("now {} end time {}", now, end_time);
     while get_time_f64() < end_time {
         suspend_current_task();
@@ -32,13 +32,6 @@ pub fn sys_nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> isize {
         }
     }
     0
-}
-
-/// 获取系统时间(单位为毫秒)
-///
-/// 是基于 rCore 系统调用的约定，测试时不再使用
-fn sys_get_time() -> isize {
-    get_time_ms() as isize
 }
 
 /// 将进程的运行时间信息传入用户提供的数组。详见 TMS 类型声明

@@ -258,7 +258,7 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
                         );
                         if flags.contains(OpenFlags::CREATE) {
                             // 清空这个文件
-                            fat_file.inner.lock().truncate();
+                            fat_file.inner.lock().truncate().unwrap();
                         };
                         Some(Arc::new(fat_file))
                     }

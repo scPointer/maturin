@@ -14,6 +14,7 @@ use crate::constants::TID_LIMIT;
 static TID_ALLOCATOR: Mutex<TidAllocatorImpl> = Mutex::new(TidAllocatorImpl::DEFAULT);
 
 /// 从 TID 分配器中分配一个 usize
+#[allow(dead_code)]
 unsafe fn alloc_tid_raw() -> Option<usize> {
     TID_ALLOCATOR.lock().alloc()
 }

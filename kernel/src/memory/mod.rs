@@ -63,6 +63,7 @@ pub fn get_phys_memory_regions() -> Vec<Range<usize>> {
     vec![start..end]
 }
 
+#[allow(dead_code)]
 pub fn create_mapping(ms: &mut MemorySet) -> OSResult {
     ms.push(VmArea::from_fixed_pma(
         DEVICE_START,

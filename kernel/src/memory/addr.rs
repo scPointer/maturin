@@ -33,11 +33,6 @@ pub fn cross_page<T>(addr: usize) -> bool {
     (addr ^ (addr + size_of::<T>())) >= PAGE_SIZE
 }
 
-/// 是否是页首
-pub fn is_aligned(addr: usize) -> bool {
-    page_offset(addr) == 0
-}
-
 /// 需要多少页来存放 size Byte 的数据
 pub fn page_count(size: usize) -> usize {
     align_up(size) / PAGE_SIZE
@@ -51,11 +46,6 @@ pub fn addr_to_page_id(addr: usize) -> usize {
 /// 地址转页内偏移
 pub fn page_offset(addr: usize) -> usize {
     addr & (PAGE_SIZE - 1)
-}
-
-/// 页号转页头首址
-pub fn page_id_to_addr(id: usize) -> usize {
-    id * PAGE_SIZE
 }
 
 /// 虚拟地址所对应的Sv39的三级页表项，即第 [38:30],[29:21],[20:12] 位

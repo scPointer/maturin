@@ -195,7 +195,7 @@ pub fn exit_current_task(exit_code: i32) {
 /// 通过 exec 系统调用，直接切换到新的用户进程
 pub fn exec_new_task() {
     let cpu_id = get_cpu_id();
-    let mut cpu_local = CPU_CONTEXTS[cpu_id].lock();
+    let cpu_local = CPU_CONTEXTS[cpu_id].lock();
     let task = cpu_local.current().unwrap();
     //println!("user vm {:#x?}", task.inner.lock().vm);
     let current_task_cx_ptr = task.get_task_cx_ptr() as *mut TaskContext;
@@ -300,7 +300,7 @@ pub fn handle_signals() {
             // 如果有，则调取处理函数
             if let Some(action) = handler.get_action_ref(signum) {
                 // 保存后开始操作准备修改上下文，跳转到用户的信号处理函数
-                let mut trap_cx = unsafe { &mut *task.kernel_stack.get_first_context() };
+                let trap_cx = unsafe { &mut *task.kernel_stack.get_first_context() };
                 trap_cx.set_ra(action.restorer);
                 // 这里假设了用户栈没有溢出
                 info!("sp now {:x}", trap_cx.get_sp());

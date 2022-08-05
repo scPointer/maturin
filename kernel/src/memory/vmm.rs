@@ -134,7 +134,7 @@ impl MemorySet {
                 return Err(OSError::MemorySet_UserMmapIntersectWithKernel);
             }
             // 否则说明要求特定区间，那么需要 unmap 掉原本相交的区间
-            self.modify_overlap_areas(start, end);
+            self.modify_overlap_areas(start, end).unwrap();
             (start, end)
         };
         //info!("origin start {:x} end {:x}", start, end);
@@ -521,8 +521,11 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
     Ok(())
 }
 
+/*
 /// 加载 data 段中的文件系统。必须在测试环境且非预载文件系统的情况下调用。
 /// 即 IS_TEST_ENV && !IS_PRELOADED_FS_IMG
+/// 
+/// 仅用于fs出问题无法加载时进行测试
 fn load_fs_force() {
     extern "C" {
         fn img_start();
@@ -541,6 +544,7 @@ fn load_fs_force() {
         println!("data[0]={}", (DEVICE_START as *mut u8).read_volatile());
     }
 }
+*/
 
 lazy_static::lazy_static! {
     #[repr(align(64))]
@@ -561,6 +565,8 @@ lazy_static::lazy_static! {
 }
 
 /// 处理来自内核的异常中断
+/// 当前还没有需要处理的中断
+#[allow(dead_code)]
 pub fn handle_kernel_page_fault(vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
     println!(
         "kernel page fault @ {:#x} with access {:?}",

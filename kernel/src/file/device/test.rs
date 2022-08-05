@@ -163,6 +163,7 @@ pub const SAMPLE: &[&str] = &[
 ];
 
 /// 来自busybox 的测例，每行是一个命令，除busybox 之外的是参数，按空格分隔
+#[allow(dead_code)]
 pub const BUSYBOX_TESTCASES: &[&str] = &[
     //"busybox sh ./busybox_testcode.sh", //最终测例，它包含了下面全部
     "busybox echo \"#### independent command test\"",
@@ -223,6 +224,7 @@ pub const BUSYBOX_TESTCASES: &[&str] = &[
 ];
 
 /// 来自 lua 的测例，每行是一个命令。lua 本身是执行程序，后面的文件名实际上是参数
+#[allow(dead_code)]
 pub const LUA_TESTCASES: &[&str] = &[
     "lua date.lua",
     "lua file_io.lua",
@@ -236,6 +238,7 @@ pub const LUA_TESTCASES: &[&str] = &[
 ];
 
 /// 来自 libc 的动态测例
+#[allow(dead_code)]
 pub const LIBC_DYNAMIC_TESTCASES: &[&str] = &[
     "dyn/getpwnam_r_crash.dout",
     "dyn/fflush_exit.dout",
@@ -351,6 +354,7 @@ pub const LIBC_DYNAMIC_TESTCASES: &[&str] = &[
 ];
 
 /// 来自 libc 的静态测例
+#[allow(dead_code)]
 pub const LIBX_STATIC_TESTCASES: &[&str] = &[
     "argv",
     "basename",
@@ -463,6 +467,7 @@ pub const LIBX_STATIC_TESTCASES: &[&str] = &[
 ];
 
 /// 初赛测例
+#[allow(dead_code)]
 pub const PRELIMINARY_TESTCASES: &[&str] = &[
     "brk",
     "chdir",
@@ -498,6 +503,7 @@ pub const PRELIMINARY_TESTCASES: &[&str] = &[
     "yield",
 ];
 
+#[allow(dead_code)]
 pub const FORMAT_LIBC_STATIC: &[&str] = &[
     "./runtest.exe -w entry-static.exe argv",
     "./runtest.exe -w entry-static.exe basename",
@@ -610,6 +616,7 @@ pub const FORMAT_LIBC_STATIC: &[&str] = &[
     "./runtest.exe -w entry-static.exe wcsstr_false_negative",
 ];
 
+#[allow(dead_code)]
 pub const FORMAT_LIBC_DYNAMIC: &[&str] = &[
     "./runtest.exe -w entry-dynamic.exe argv",
     "./runtest.exe -w entry-dynamic.exe basename",

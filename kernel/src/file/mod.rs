@@ -4,7 +4,6 @@ mod device;
 mod fd_manager;
 mod fs_stat;
 mod kstat;
-mod os_inode;
 mod pipe;
 mod socket;
 mod stdio;
@@ -76,14 +75,6 @@ pub trait File: Send + Sync {
 pub use fd_manager::FdManager;
 pub use pipe::Pipe;
 pub use stdio::{Stderr, Stdin, Stdout};
-/*
-pub use os_inode::{OSInode, OpenFlags};
-pub use os_inode::{
-    list_apps_names_at_root_dir,
-    open_file,
-    check_file_exists,
-};
-*/
 pub use device::{
     check_dir_exists,
     check_file_exists,

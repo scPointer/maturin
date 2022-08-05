@@ -270,9 +270,9 @@ pub const RLIMIT_AS: i32 = 9;
 pub const F_DUPFD: usize = 0;
 /// 获取 cloexec 信息
 pub const F_GETFD: usize = 1;
-/// 设置 cloexec 信息
-pub const F_SETFD: usize = 2;
+// 设置 cloexec 信息
+//pub const F_SETFD: usize = 2;
 /// 获取 flags 信息
 pub const F_GETFL: usize = 3;
-/// 设置 flags 信息
-pub const F_SETFL: usize = 4;
+// 设置 flags 信息
+//pub const F_SETFL: usize = 4;

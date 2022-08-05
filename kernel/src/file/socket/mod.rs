@@ -11,11 +11,11 @@ use resolution::{addr_resolution, AddrType, IpAddr};
 /// 一个套接字
 pub struct Socket {
     /// socket 对应的域
-    domain: usize,
+    _domain: usize,
     /// 连接类型
-    s_type: usize,
+    _s_type: usize,
     /// 具体的连接协议
-    protocol: usize,
+    _protocol: usize,
     /// 打开时的选项
     flags: OpenFlags,
 }
@@ -23,9 +23,9 @@ pub struct Socket {
 impl Socket {
     pub fn new(domain: usize, s_type: usize, protocol: usize) -> Self {
         Self {
-            domain: domain,
-            s_type: s_type,
-            protocol: protocol,
+            _domain: domain,
+            _s_type: s_type,
+            _protocol: protocol,
             flags: OpenFlags::RDWR | OpenFlags::NON_BLOCK | OpenFlags::CLOEXEC,
         }
     }

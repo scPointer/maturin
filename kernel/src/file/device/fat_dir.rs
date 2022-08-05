@@ -6,6 +6,7 @@ use alloc::{string::String, sync::Arc};
 use lock::Mutex;
 
 /// 把 FsDir 包装一层以适应 Trait File
+#[allow(dead_code)]
 pub struct FatDir {
     /// 是否可读
     pub readable: bool,

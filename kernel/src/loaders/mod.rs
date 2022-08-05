@@ -104,7 +104,7 @@ impl<'a> ElfLoader<'a> {
         let mut dyn_base = 0;
         // 先获取起始位置。
         // 虽然比较繁琐，但因为之后对 VmArea 的处理涉及这个基地址，所以需要提前获取
-        let mut elf_base_vaddr = if let Some(header) = self
+        let elf_base_vaddr = if let Some(header) = self
             .elf
             .program_iter()
             .find(|ph| ph.get_type() == Ok(Type::Load) && ph.offset() == 0)

@@ -2,7 +2,7 @@
 //!
 //! 目前的系统调用规范参照比赛所提供的类似 Linux 系统调用实现。
 //!
-//! 有一些注释的系统调用名，那些是 rCore 的约定实现
+//! 有一些注释的系统调用名，那些是发现应用需要，但尚未实现暂时跳过的系统调用
 //!
 //! 这两种调用间比较容易混淆的区别是，比赛测例是用 C 写的，大部分数组都是 4 Byte，
 //! 而 rCore 使用 rust，usize/isize 一般是 8 Byte。
@@ -12,7 +12,6 @@
 //#![deny(missing_docs)]
 
 const SYSCALL_GETCWD: usize = 17;
-//const SYSCALL_DUP: usize = 24;
 const SYSCALL_DUP: usize = 23;
 const SYSCALL_DUP3: usize = 24;
 const SYSCALL_FCNTL64: usize = 25;
@@ -33,8 +32,8 @@ const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
 const SYSCALL_READV: usize = 65;
 const SYSCALL_WRITEV: usize = 66;
-const SYSCALL_SENDFILE64: usize = 71;
-const SYSCALL_READLINKAT: usize = 78;
+//const SYSCALL_SENDFILE64: usize = 71;
+//const SYSCALL_READLINKAT: usize = 78;
 const SYSCALL_FSTATAT: usize = 79;
 const SYSCALL_FSTAT: usize = 80;
 const SYSCALL_UTIMENSAT: usize = 88;
@@ -53,7 +52,6 @@ const SYSCALL_SIGTIMEDWAIT: usize = 137;
 const SYSCALL_SIGRETURN: usize = 139;
 const SYSCALL_TIMES: usize = 153;
 const SYSCALL_UNAME: usize = 160;
-//const SYSCALL_GET_TIME: usize = 169;
 const SYSCALL_GET_TIME_OF_DAY: usize = 169;
 const SYSCALL_GETPID: usize = 172;
 const SYSCALL_GETPPID: usize = 173;
@@ -67,13 +65,10 @@ const SYSCALL_SENDTO: usize = 206;
 const SYSCALL_RECVFROM: usize = 207;
 const SYSCALL_BRK: usize = 214;
 const SYSCALL_MUNMAP: usize = 215;
-//const SYSCALL_FORK: usize = 220;
 const SYSCALL_CLONE: usize = 220;
-//const SYSCALL_EXEC: usize = 221;
 const SYSCALL_EXECVE: usize = 221;
 const SYSCALL_MMAP: usize = 222;
-const SYSCALL_MPROTECT: usize = 226;
-//const SYSCALL_WAITPID: usize = 260;
+//const SYSCALL_MPROTECT: usize = 226;
 const SYSCALL_WAIT4: usize = 260;
 const SYSCALL_PRLIMIT64: usize = 261;
 const SYSCALL_MEMBARRIER: usize = 283;
