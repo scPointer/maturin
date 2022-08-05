@@ -156,8 +156,9 @@ pub const SAMPLE: &[&str] = &[
     //"./runtest.exe -w entry-static.exe pthread_rwlock_ebusy",
 ];
 
+/// 来自busybox 的测例，每行是一个命令，除busybox 之外的是参数，按空格分隔
 pub const BUSYBOX_TESTCASES: &[&str] = &[
-    "busybox sh ./busybox_testcode.sh", //最终测例，它包含了下面全部
+    //"busybox sh ./busybox_testcode.sh", //最终测例，它包含了下面全部
     "busybox echo \"#### independent command test\"",
     "busybox ash -c exit",
     "busybox sh -c exit",
@@ -215,6 +216,8 @@ pub const BUSYBOX_TESTCASES: &[&str] = &[
     "busybox find -name \"busybox_cmd.txt\"",
 
 ];
+
+/// 来自 lua 的测例，每行是一个命令。lua 本身是执行程序，后面的文件名实际上是参数
 pub const LUA_TESTCASES: &[&str] = &[
     "lua date.lua",
     "lua file_io.lua",
@@ -227,7 +230,8 @@ pub const LUA_TESTCASES: &[&str] = &[
     "lua strings.lua",
 ];
 
-pub const DYNAMIC_TESTCASES: &[&str] = &[
+/// 来自 libc 的动态测例
+pub const LIBC_DYNAMIC_TESTCASES: &[&str] = &[
     "dyn/getpwnam_r_crash.dout",
     "dyn/fflush_exit.dout",
     "dyn/tls_local_exec.dout",
@@ -341,7 +345,8 @@ pub const DYNAMIC_TESTCASES: &[&str] = &[
     "dyn/iconv_open.dout",
 ];
 
-pub const TESTCASES: &[&str] = &[
+/// 来自 libc 的静态测例
+pub const LIBX_STATIC_TESTCASES: &[&str] = &[
     "argv",
     "basename",
     "clocale_mbfuncs",
