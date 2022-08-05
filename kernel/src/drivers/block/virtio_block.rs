@@ -1,15 +1,7 @@
 use super::BlockDevice;
-use crate::memory::{
-    Frame, 
-    PageTable, 
-    PhysAddr, 
-    VirtAddr, 
-    virt_to_phys, 
-    phys_to_virt
-};
-use lock::Mutex;
-use alloc::vec::Vec;
+use crate::memory::{phys_to_virt, virt_to_phys, Frame, PhysAddr, VirtAddr};
 use lazy_static::*;
+use lock::Mutex;
 use virtio_drivers::{VirtIOBlk, VirtIOHeader};
 
 #[allow(unused)]

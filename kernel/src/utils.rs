@@ -6,19 +6,19 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 /// 获取一个裸指针指向的字符串长度
-/// 
+///
 /// 函数会从 start 往后不断读取内存，直到遇到 0 为止。
 /// 所以如果字符串没有以 \0 结尾，函数就有可能读到其他内存。
 pub unsafe fn get_str_len(start: *const u8) -> usize {
     let mut ptr = start as usize;
     while *(ptr as *const u8) != 0 {
         ptr += 1;
-    };
+    }
     ptr - start as usize
 }
 
 /// 从一个裸指针获取一个 &str 类型
-/// 
+///
 /// 注意这个函数没有复制字符串本身，只是换了个类型
 pub unsafe fn raw_ptr_to_ref_str(start: *const u8) -> &'static str {
     let len = get_str_len(start);
@@ -28,7 +28,7 @@ pub unsafe fn raw_ptr_to_ref_str(start: *const u8) -> &'static str {
 }
 
 /// 从一个裸指针获取一个 String 类型
-/// 
+///
 /// 注意这个函数复制了字符串本身，所以返回的数据是在内核里的。
 /// 调用者必须保证内存空间足够以及 start 这个地址指向的是个合法的字符串
 pub unsafe fn raw_ptr_to_string(start: *const u8) -> String {
@@ -36,7 +36,7 @@ pub unsafe fn raw_ptr_to_string(start: *const u8) -> String {
 }
 
 /// 从一个字符串指针数组(一般是用户程序执行时的参数)获取所有字符串，存入一个 Vec 中
-/// 
+///
 /// 注意这个函数复制了字符串本身，所以返回的数据是在内核里的。
 /// 如果按C89的描述，传入的 str_ptr 的类型是 char**
 pub unsafe fn str_ptr_array_to_vec_string(str_ptr: *const usize) -> Vec<String> {

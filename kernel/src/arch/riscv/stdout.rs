@@ -1,7 +1,5 @@
 use core::fmt::{Arguments, Result, Write};
-
 use lock::Mutex;
-use lazy_static::*;
 
 /// 绕过所有锁打印一个字符
 fn putchar_raw(c: u8) {

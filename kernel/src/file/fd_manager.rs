@@ -7,11 +7,11 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use crate::constants::FD_LIMIT_ORIGIN;
+use crate::error::{OSError, OSResult};
 use crate::memory::FdAllocator;
-use crate::error::{OSResult, OSError};
 
 use super::File;
-use super::{Stdin, Stdout, Stderr};
+use super::{Stderr, Stdin, Stdout};
 
 /// 文件描述符管理，每个进程应该有一个
 /// 这个结构 Drop 时会自动释放文件的 Arc
@@ -21,7 +21,7 @@ pub struct FdManager {
     /// 描述符和分配器
     fd_allocator: FdAllocator,
     /// 最大 fd 限制
-    limit: usize
+    limit: usize,
 }
 
 impl FdManager {
@@ -31,7 +31,7 @@ impl FdManager {
         let mut fd_manager = Self {
             files: Vec::new(),
             fd_allocator: FdAllocator::new(limit),
-            limit: limit
+            limit: limit,
         };
         fd_manager.push(Arc::new(Stdin)).unwrap();
         fd_manager.push(Arc::new(Stdout)).unwrap();
@@ -39,8 +39,8 @@ impl FdManager {
         fd_manager
     }
     /// 从另一个 FdManager 复制一份文件描述符表。
-    /// 
-    /// Todo: 
+    ///
+    /// Todo:
     /// 目前因为 FdAllocator 依赖的 bitmap_allocator 是不可复制的，
     /// 所以此处想要手动获得一个跟原来一样的 fd_allocator 比较麻烦。
     /// 最好重新实现一下 FdAllocator
@@ -48,7 +48,7 @@ impl FdManager {
         let mut new_manager = Self {
             files: Vec::new(),
             fd_allocator: FdAllocator::new(self.limit),
-            limit: self.limit
+            limit: self.limit,
         };
         new_manager.files.resize(self.files.len(), None);
         for fd in 0..self.files.len() {
@@ -56,7 +56,9 @@ impl FdManager {
             if let Some(file) = &self.files[fd] {
                 // 暴力分配 fd。
                 // 因为我们知道新创建的 new_manager 是空的，但 fd_allocator 自己不知道，所以要 unsafe
-                unsafe { new_manager.fd_allocator.alloc_exact(fd); }
+                unsafe {
+                    new_manager.fd_allocator.alloc_exact(fd);
+                }
                 new_manager.files[fd] = Some(file.clone());
             }
             /*
@@ -83,15 +85,17 @@ impl FdManager {
     }
     /// 复制一个 fd 到指定的新 fd 上，返回是否成功
     pub fn copy_fd_to(&mut self, old_fd: usize, new_fd: usize) -> bool {
-        self.get_file(old_fd).map(|file| {
-            self.fd_allocator.alloc_exact_if_possible(new_fd);
-            // 因为已经分配了，所以不走 self.push
-            if self.files.len() <= new_fd {
-                self.files.resize(new_fd + 1, None);
-            }
-            // 这里可能会删除该处原有的fd，不过这是符合语义的
-            self.files[new_fd].replace(file);
-        }).is_ok()
+        self.get_file(old_fd)
+            .map(|file| {
+                self.fd_allocator.alloc_exact_if_possible(new_fd);
+                // 因为已经分配了，所以不走 self.push
+                if self.files.len() <= new_fd {
+                    self.files.resize(new_fd + 1, None);
+                }
+                // 这里可能会删除该处原有的fd，不过这是符合语义的
+                self.files[new_fd].replace(file);
+            })
+            .is_ok()
     }
     /// 插入一个新文件
     pub fn push(&mut self, file: Arc<dyn File>) -> OSResult<usize> {

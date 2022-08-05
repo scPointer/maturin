@@ -18,12 +18,12 @@ const FAMILY_UNIX: u16 = 1;
 const FAMILY_INTERNET: u16 = 2;
 
 pub fn addr_resolution(family_user_addr: *const u16) -> AddrType {
-    let family = unsafe {*family_user_addr};
+    let family = unsafe { *family_user_addr };
     match family {
         FAMILY_INTERNET => {
             let ip_addr = unsafe { &*(family_user_addr as *const IpAddr) };
             AddrType::Ip(u32::from_be(ip_addr.addr), u16::from_be(ip_addr.port))
-        },
-        _ => AddrType::Unknown
+        }
+        _ => AddrType::Unknown,
     }
 }

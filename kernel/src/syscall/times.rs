@@ -2,17 +2,9 @@
 
 //#![deny(missing_docs)]
 
+use crate::task::{get_current_task, suspend_current_task};
 use crate::timer::TimeSpec;
-use crate::timer::{
-    get_time,
-    get_time_ms,
-    get_time_f64,
-    MACHINE_TICKS_PER_MSEC,
-};
-use crate::task::{
-    get_current_task,
-    suspend_current_task,
-};
+use crate::timer::{get_time, get_time_f64, get_time_ms, MACHINE_TICKS_PER_MSEC};
 
 use super::TMS;
 
@@ -35,13 +27,15 @@ pub fn sys_nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> isize {
     }
     // 如果用户提供了 rem 数组，则需要修改它
     if rem as usize != 0 {
-        unsafe { (*rem) = TimeSpec::new(0.0); }
+        unsafe {
+            (*rem) = TimeSpec::new(0.0);
+        }
     }
     0
 }
 
 /// 获取系统时间(单位为毫秒)
-/// 
+///
 /// 是基于 rCore 系统调用的约定，测试时不再使用
 fn sys_get_time() -> isize {
     get_time_ms() as isize

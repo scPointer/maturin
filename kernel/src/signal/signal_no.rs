@@ -1,7 +1,7 @@
 //! 信号的编号
 
 /// 信号编号。
-/// 
+///
 /// 从 32 开始的部分为 SIGRT，其中 RT 表示 real time。
 /// 但目前实现时没有通过 ipi 等手段即时处理，而是像其他信号一样等到 trap 再处理
 #[allow(missing_docs)]
@@ -73,7 +73,6 @@ pub enum SignalNo {
     SIGRT30 = 62,
     SIGRT31 = 63,
 }
-
 
 impl From<u8> for SignalNo {
     fn from(num: u8) -> Self {

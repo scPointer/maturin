@@ -1,5 +1,5 @@
 //! 中断上下文信息
-//! 
+//!
 //! 在 trap.S 中，会读取/保存中断前的所有上下文信息，表示为 TrapContext 结构
 //! 注意 trap.S 中的读写操作对应本文件中 TrapContext 的定义，但编译器不会检查汇编，所以你需要手动保证两者之间是对应的。
 //! 即修改 TrapContext 的定义时需要对应修改 trap.S
@@ -80,14 +80,14 @@ impl TrapContext {
         let mut cx = Self {
             x: [0; 32],
             sstatus,
-            sepc: entry, // sepc 设为用户程序入口
+            sepc: entry,        // sepc 设为用户程序入口
             cpu_id: usize::MAX, // 这个信息会在 restore 进入用户时被保存，所以此处无需处理
         };
         cx.set_sp(sp); // 设置用户栈地址
 
         cx.set_gp(0x17908); // 这个 magic number 参见 set_gp() 描述
         cx.set_a0(sp);
-        
+
         cx // return initial Trap Context of app
     }
     /// 初始化用户程序的中断信息，并设置用户程序执行时的参数
@@ -106,5 +106,4 @@ impl TrapContext {
             cpu_id: usize::MAX,
         }
     }
-    
 }

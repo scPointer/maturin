@@ -3,10 +3,10 @@
 
 //#![deny(missing_docs)]
 
-use crate::memory::Frame;
 use crate::constants::{KERNEL_STACK_SIZE, PAGE_SIZE};
+use crate::error::{OSError, OSResult};
+use crate::memory::Frame;
 use crate::trap::TrapContext;
-use crate::error::{OSResult, OSError};
 
 /// 内核栈，会通过帧分配器申请一段内存
 /// 在内核态时，这段内存是在 physical memory 上的，因此可以直接访问
@@ -20,7 +20,7 @@ impl KernelStack {
     /// 创建内核栈并申请内存
     pub fn new() -> OSResult<Self> {
         // if let Some(frame) = Frame::new_contiguous(KERNEL_STACK_SIZE / PAGE_SIZE, 9) {
-            if let Some(frame) = Frame::new_contiguous(KERNEL_STACK_SIZE / PAGE_SIZE, 0) {
+        if let Some(frame) = Frame::new_contiguous(KERNEL_STACK_SIZE / PAGE_SIZE, 0) {
             Ok(KernelStack { frame: frame })
         } else {
             Err(OSError::Task_RunOutOfMemory)
@@ -45,6 +45,10 @@ impl KernelStack {
     }
     /// 打印栈所占用的内存地址
     pub fn print_info(&self) {
-        println!("kernel stack at: [{:x}, {:x}]", self.get_sp() - KERNEL_STACK_SIZE, self.get_sp());
+        println!(
+            "kernel stack at: [{:x}, {:x}]",
+            self.get_sp() - KERNEL_STACK_SIZE,
+            self.get_sp()
+        );
     }
 }

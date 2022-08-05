@@ -72,7 +72,7 @@ pub fn list_apps_names_at_root_dir() {
     println!("**************/");
 }
 
-bitflags! {    
+bitflags! {
     /// 指定文件打开时的权限
     pub struct OpenFlags: u32 {
         /// 只读
@@ -126,7 +126,7 @@ pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
 }
 
 /// 检查(根目录下的)文件是否存在
-/// 
+///
 /// Todo: 这个函数调用 Inode::find, 生成了找到的文件的 Inode 但没有用到，所以实际上有不必要的开销
 pub fn check_file_exists(name: &str) -> bool {
     ROOT_INODE.find(name).is_some()

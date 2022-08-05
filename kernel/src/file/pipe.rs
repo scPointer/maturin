@@ -1,21 +1,14 @@
 //! 管道实现
-//! 
+//!
 //! 相当于两个文件，其中一个只读，一个只可写，但指向同一片内存。
 //! Pipe 的读写可能会触发进程切换。
 //! 目前的实现中，Pipe本身分配在堆上
 
-//#![deny(missing_docs)]
-
-
-use alloc::sync::Arc;
-use lock::Mutex;
-use core::cmp::min;
-
-use crate::memory::Frame;
-use crate::constants::PIPE_SIZE;
-use crate::task::suspend_current_task;
-
 use super::File;
+use crate::{constants::PIPE_SIZE, task::suspend_current_task};
+use alloc::sync::Arc;
+use core::cmp::min;
+use lock::Mutex;
 
 /// 管道内部的 buffer，是个循环队列
 struct PipeBuffer {
@@ -32,7 +25,7 @@ impl PipeBuffer {
             data: [0; PIPE_SIZE],
             head: 0,
             end: 0,
-            len: 0
+            len: 0,
         }
     }
     /// 读尽可能多的内容，注意这个函数不是 trait File 的
@@ -42,7 +35,11 @@ impl PipeBuffer {
         self.len -= max_len;
         for i in 0..max_len {
             buf[i] = self.data[self.head];
-            self.head = if self.head + 1 < PIPE_SIZE {self.head + 1} else {0};
+            self.head = if self.head + 1 < PIPE_SIZE {
+                self.head + 1
+            } else {
+                0
+            };
         }
         max_len
     }
@@ -52,7 +49,11 @@ impl PipeBuffer {
         self.len += max_len;
         for i in 0..max_len {
             self.data[self.end] = buf[i];
-            self.end = if self.end + 1 < PIPE_SIZE {self.end + 1} else {0};
+            self.end = if self.end + 1 < PIPE_SIZE {
+                self.end + 1
+            } else {
+                0
+            };
         }
         max_len
     }
@@ -72,8 +73,14 @@ impl Pipe {
     pub fn new_pipe() -> (Self, Self) {
         let buf = Arc::new(Mutex::new(PipeBuffer::new()));
         (
-            Self {is_read: true, data: buf.clone()},
-            Self {is_read: false, data: buf},
+            Self {
+                is_read: true,
+                data: buf.clone(),
+            },
+            Self {
+                is_read: false,
+                data: buf,
+            },
         )
     }
 }
@@ -92,14 +99,16 @@ impl File for Pipe {
             let mut cnt = 0;
             while read_len < buf.len() && Arc::strong_count(&self.data) == 2 {
                 cnt += 1;
-                if cnt > 1 {break;}
+                if cnt > 1 {
+                    break;
+                }
                 suspend_current_task();
                 read_len += self.data.lock().read(&mut buf[read_len..]);
             }
             Some(read_len)
         } else {
             None
-        } 
+        }
     }
     /// 写入管道
     fn write(&self, buf: &[u8]) -> Option<usize> {
@@ -114,7 +123,9 @@ impl File for Pipe {
             let mut cnt = 0;
             while write_len < buf.len() && Arc::strong_count(&self.data) == 2 {
                 cnt += 1;
-                if cnt > 1 {break;}
+                if cnt > 1 {
+                    break;
+                }
                 suspend_current_task();
                 write_len += self.data.lock().write(&buf[write_len..]);
             }

@@ -3,15 +3,15 @@
 //! 所有中断和异常的入口在 trap.S 中的 __alltraps，它会在保存上下文信息后跳转到本文件中的 trap_handler 函数
 //!
 //! 在这个模块中，程序的执行流不一定正常。主要有三种可能：
-//! 
+//!
 //! 1. 用户程序中断：进入 __alltraps
 //!  -> 调用 trap_handler
 //!  -> trap_handler 返回到 __restore
-//! 
+//!
 //! 2. 第一次进入用户程序：生成一个 KernelStack，在栈顶构造一个 TrapContext
 //!  -> 设置 sp 为这个栈的栈顶
 //!  -> 直接跳转到 __restore，假装它是 trap_handler 返回的
-//! 
+//!
 //! 3. sys_exec 生成的用户程序：进入 __alltraps
 //!  -> 调用 trap_handler
 //!  -> 重写 KernelStack 栈顶的 TrapContext（不通过 trap_handler 的参数，而是直接写对应内存）
@@ -21,26 +21,18 @@
 
 mod context;
 
-use crate::syscall::syscall;
-use crate::task::{
-    exit_current_task,
-    suspend_current_task,
-    handle_user_page_fault,
-    handle_signals,
+use crate::{
+    arch::get_cpu_id,
+    memory::PTEFlags,
+    syscall::syscall,
+    task::{exit_current_task, handle_signals, handle_user_page_fault, suspend_current_task},
+    timer::set_next_trigger,
 };
-use crate::memory::{
-    handle_kernel_page_fault,
-    phys_to_virt,
-    PTEFlags
-};
-use crate::timer::set_next_trigger;
-use crate::arch::{get_cpu_id, console_put_usize_in_hex};
 use core::arch::global_asm;
 use riscv::register::{
     mtvec::TrapMode,
-    sstatus,
     scause::{self, Exception, Interrupt, Trap},
-    sie, stval, stvec,
+    sie, sstatus, stval, stvec,
 };
 
 pub use context::TrapContext;
@@ -66,25 +58,25 @@ pub fn enable_timer_interrupt() {
 
 #[no_mangle]
 /// 内核和用户Trap的共同入口
-/// 
+///
 /// 参数 cx 是触发中断的程序的上下文信息，它在 trap.S 里被压在内核栈中。
 /// 注意，因为我们的实现没有一个专门的 "trap栈"，所以你可以认为进入该函数时 cx 就在 sp 的"脚底下"。
 /// 所以修改 cx 时一旦越界就可能改掉该函数的 ra/sp，要小心。
-pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {  
+pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     match sstatus::read().spp() {
         sstatus::SPP::Supervisor => kernel_trap_handler(cx),
-        sstatus::SPP::User => user_trap_handler(cx)
+        sstatus::SPP::User => user_trap_handler(cx),
     }
 }
 
 #[no_mangle]
 /// 处理来自用户程序的异常/中断
-pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext { 
+pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     /*
     let mut sp: usize;
     unsafe { core::arch::asm!("mv {0}, sp", out(reg) sp) };
     println!("in sp {:x}", sp);
-    println!("user sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits()); 
+    println!("user sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits());
     */
 
     let scause = scause::read(); // get trap cause
@@ -93,10 +85,13 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         Trap::Exception(Exception::UserEnvCall) => {
             //let mut pc: usize;
             //unsafe { core::arch::asm!("auipc {0}, 0", out(reg) pc) };
-            //console_put_usize_in_hex(pc); 
+            //console_put_usize_in_hex(pc);
             //println!("syscall");
             cx.sepc += 4;
-            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14],cx.x[15]]) as usize;
+            cx.x[10] = syscall(
+                cx.x[17],
+                [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]],
+            ) as usize;
         }
         Trap::Exception(Exception::StoreFault) => {
             info!("[kernel] StoreFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
@@ -108,7 +103,7 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         }
         Trap::Exception(Exception::InstructionPageFault) => {
             info!("[cpu {}] InstructionPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
-            
+
             if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::EXECUTE) {
                 info!("{:#?}", e);
                 exit_current_task(-1);
@@ -120,7 +115,7 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             let mut pc: usize;
             unsafe { core::arch::asm!("auipc {0}, 0", out(reg) pc) };
             // 内部直接模拟16个位，直接用 SBI_CONSOLE_PUTCHAR 一个个打印
-            console_put_usize_in_hex(pc); 
+            console_put_usize_in_hex(pc);
             */
             //println!("pc = {:x}", pc);
 
@@ -141,11 +136,15 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             }
             //PageFault(stval, PTEFlags::USER | PTEFlags::WRITE)
         }
-        
+
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             // println!("[cpu {}] timer interrupt", get_cpu_id());
-            println!("[cpu {}] timer interrupt, sepc = {:#x}", get_cpu_id(), cx.sepc);
-            
+            println!(
+                "[cpu {}] timer interrupt, sepc = {:#x}",
+                get_cpu_id(),
+                cx.sepc
+            );
+
             // 之后需要判断如果是在内核态，则不切换任务
             set_next_trigger();
             suspend_current_task();
@@ -164,14 +163,14 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     let mut sp: usize;
     unsafe { core::arch::asm!("mv {0}, sp", out(reg) sp) };
     println!("out sp {:x}", sp);
-    println!("user sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits()); 
+    println!("user sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits());
     */
     cx
 }
 
 #[no_mangle]
 /// 处理来自内核的异常/中断
-pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext { 
+pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     let scause = scause::read(); // get trap cause
     let stval = stval::read(); // get extra value
 
@@ -186,14 +185,20 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
             cx.sepc += 4;
-            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14],cx.x[15]]) as usize;
+            cx.x[10] = syscall(
+                cx.x[17],
+                [cx.x[10], cx.x[11], cx.x[12], cx.x[13], cx.x[14], cx.x[15]],
+            ) as usize;
         }
         Trap::Exception(Exception::StoreFault) => {
             error_println!("[kernel] StoreFault in kernel, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
             //exit_current_and_run_next();
         }
         Trap::Exception(Exception::IllegalInstruction) => {
-            error_println!("[cpu {}] IllegalInstruction in kernel, kernel killed it.", get_cpu_id());
+            error_println!(
+                "[cpu {}] IllegalInstruction in kernel, kernel killed it.",
+                get_cpu_id()
+            );
             //exit_current_and_run_next();
         }
         Trap::Exception(Exception::InstructionPageFault) => {
@@ -207,7 +212,12 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             //PageFault(stval, PTEFlags::USER | PTEFlags::EXECUTE)
         }
         Trap::Exception(Exception::LoadPageFault) => {
-            error_println!("[cpu {}] LoadPageFault in kernel, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
+            error_println!(
+                "[cpu {}] LoadPageFault in kernel, bad addr = {:#x}, bad instruction = {:#x}.",
+                get_cpu_id(),
+                stval,
+                cx.sepc
+            );
             /*
             if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::READ) {
                 println!("{:#?}", e);
@@ -217,8 +227,13 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             //PageFault(stval, PTEFlags::USER | PTEFlags::READ)
         }
         Trap::Exception(Exception::StorePageFault) => {
-            error_println!("[cpu {}] StorePageFault in kernel, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
-            
+            error_println!(
+                "[cpu {}] StorePageFault in kernel, bad addr = {:#x}, bad instruction = {:#x}.",
+                get_cpu_id(),
+                stval,
+                cx.sepc
+            );
+
             /*
             if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::WRITE) {
                 println!("{:#?}", e);
@@ -227,9 +242,13 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             */
             //PageFault(stval, PTEFlags::USER | PTEFlags::WRITE)
         }
-        
+
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
-            println!("[cpu {}] timer interrupt(KERNEL), sepc = {:#x}", get_cpu_id(), cx.sepc);
+            println!(
+                "[cpu {}] timer interrupt(KERNEL), sepc = {:#x}",
+                get_cpu_id(),
+                cx.sepc
+            );
             // 之后需要判断如果是在内核态，则不切换任务
             set_next_trigger();
             //suspend_current_and_run_next();

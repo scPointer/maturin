@@ -1,24 +1,8 @@
-
-
+use super::{TaskControlBlock, ORIGIN_USER_PROC};
+use crate::{arch::get_cpu_id, constants::IS_TEST_ENV, file::load_next_testcase};
+use alloc::{collections::VecDeque, sync::Arc};
 use lazy_static::*;
-use alloc::sync::Arc;
-use alloc::vec::Vec;
-use alloc::collections::VecDeque;
-use core::sync::atomic::{Ordering, AtomicUsize};
 use lock::Mutex;
-
-
-//use crate::constants::{CPU_NUM, EMPTY_TASK, ORIGIN_USER_PROC_NAME};
-use crate::constants::IS_TEST_ENV;
-use crate::error::{OSResult, OSError};
-use crate::memory::{VirtAddr, PTEFlags};
-use crate::file::load_next_testcase;
-use crate::arch::get_cpu_id;
-
-use super::__switch;
-use super::{TaskControlBlock, TaskStatus, TaskContext};
-use super::ORIGIN_USER_PROC;
-
 
 lazy_static! {
     /// 任务调度器。它是全局的，每次只能有一个核访问它
@@ -78,9 +62,7 @@ pub fn fetch_task_from_scheduler() -> Option<Arc<TaskControlBlock>> {
                 return Some(new_tcb);
             }
             info!("[cpu {}] is idle now", get_cpu_id());
-            loop {
-
-            }
+            loop {}
         }
         //println!("[cpu {}] get task", get_cpu_id());
         task

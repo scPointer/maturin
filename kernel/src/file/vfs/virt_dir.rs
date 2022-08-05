@@ -1,11 +1,8 @@
 //! 虚拟文件系统的目录。不需要考虑把数据塞进页里
-//! 
+//!
 
-use alloc::string::String;
-use alloc::sync::Arc;
-use alloc::vec::Vec;
-use lock::Mutex;
 use super::File;
+use alloc::{string::String, sync::Arc, vec::Vec};
 
 /// 目录项
 pub struct DirEntry {
@@ -31,17 +28,19 @@ pub struct VirtDir {
 impl VirtDir {
     /// 创建目录
     pub fn new() -> Self {
-        Self {
-            entry: Vec::new(),
-        }
+        Self { entry: Vec::new() }
     }
     /// 检查文件是否存在，如存在则返回一个 Arc 引用
     pub fn get_file(&self, name: &String) -> Option<Arc<dyn File>> {
-        self.entry.iter().find(|&e| e.name == *name).map(|e| e.file.clone())
+        self.entry
+            .iter()
+            .find(|&e| e.name == *name)
+            .map(|e| e.file.clone())
     }
     /// 创建文件，返回是否成功
     pub fn create_file(&mut self, name: &String, file: Arc<dyn File>) -> bool {
-        if self.get_file(name).is_some() { // 文件已存在
+        if self.get_file(name).is_some() {
+            // 文件已存在
             false
         } else {
             self.entry.push(DirEntry::new(name.clone(), file));

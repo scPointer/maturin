@@ -1,9 +1,9 @@
 //! 系统调用实现
 //!
 //! 目前的系统调用规范参照比赛所提供的类似 Linux 系统调用实现。
-//! 
+//!
 //! 有一些注释的系统调用名，那些是 rCore 的约定实现
-//! 
+//!
 //! 这两种调用间比较容易混淆的区别是，比赛测例是用 C 写的，大部分数组都是 4 Byte，
 //! 而 rCore 使用 rust，usize/isize 一般是 8 Byte。
 //! 这导致一些传入地址(非字符串,字符串大家都是统一的 1Byte 类型)的大小有问题，
@@ -78,30 +78,30 @@ const SYSCALL_WAIT4: usize = 260;
 const SYSCALL_PRLIMIT64: usize = 261;
 const SYSCALL_MEMBARRIER: usize = 283;
 
-mod fs;
-mod process;
 mod flags;
+mod fs;
 mod futex;
-mod times;
+mod process;
 mod socket;
+mod times;
 
-use fs::*;
-use process::*;
-use flags::*;
 pub use flags::ErrorNo;
+use flags::*;
+use fs::*;
 use futex::*;
-use times::*;
+use process::*;
 use socket::*;
+use times::*;
 
-use lock::Mutex;
-use lazy_static::*;
 use crate::constants::IS_TEST_ENV;
+use crate::file::{FsStat, Kstat};
 use crate::signal::SigAction;
 use crate::timer::TimeSpec;
-use crate::file::{Kstat, FsStat};
+use lazy_static::*;
+use lock::Mutex;
 
 lazy_static! {
-    static ref WRITEV_COUNT:Mutex<usize> = Mutex::new(0);
+    static ref WRITEV_COUNT: Mutex<usize> = Mutex::new(0);
 }
 
 /// 处理系统调用
@@ -129,35 +129,73 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_DUP3 => sys_dup3(args[0], args[1]),
         SYSCALL_FCNTL64 => sys_fcntl64(args[0], args[1], args[2]),
         SYSCALL_UNLINKAT => sys_unlinkat(args[0] as i32, args[1] as *const u8, args[2] as u32),
-        SYSCALL_LINKAT => sys_linkat(args[0] as i32, args[1] as *const u8, args[2] as i32, args[3] as *const u8, args[4] as u32),
+        SYSCALL_LINKAT => sys_linkat(
+            args[0] as i32,
+            args[1] as *const u8,
+            args[2] as i32,
+            args[3] as *const u8,
+            args[4] as u32,
+        ),
         SYSCALL_UMOUNT => sys_umount(args[0] as *const u8, args[1] as u32),
-        SYSCALL_MOUNT => sys_mount(args[0] as *const u8, args[1] as *const u8, args[2] as *const u8, args[3] as u32, args[4] as *const u8),
+        SYSCALL_MOUNT => sys_mount(
+            args[0] as *const u8,
+            args[1] as *const u8,
+            args[2] as *const u8,
+            args[3] as u32,
+            args[4] as *const u8,
+        ),
         SYSCALL_STATFS => sys_statfs(args[0] as *const u8, args[1] as *mut FsStat),
         SYSCALL_MKDIR => sys_mkdir(args[0] as i32, args[1] as *const u8, args[2] as u32),
         SYSCALL_CHDIR => sys_chdir(args[0] as *const u8),
-        SYSCALL_OPEN => sys_open(args[0] as i32, args[1] as *const u8, args[2] as u32, args[3] as u32),
+        SYSCALL_OPEN => sys_open(
+            args[0] as i32,
+            args[1] as *const u8,
+            args[2] as u32,
+            args[3] as u32,
+        ),
         SYSCALL_CLOSE => sys_close(args[0]),
         SYSCALL_PIPE => sys_pipe(args[0] as *mut u32),
         SYSCALL_GETDENTS64 => sys_getdents64(args[0], args[1] as *mut Dirent64, args[2]),
-        SYSCALL_LSEEK =>sys_lseek(args[0], args[1] as isize, args[2] as isize),
+        SYSCALL_LSEEK => sys_lseek(args[0], args[1] as isize, args[2] as isize),
         SYSCALL_READ => sys_read(args[0], args[1] as *mut u8, args[2]),
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
         SYSCALL_READV => sys_readv(args[0], args[1] as *mut IoVec, args[2]),
         SYSCALL_WRITEV => sys_writev(args[0], args[1] as *const IoVec, args[2]),
         SYSCALL_FSTATAT => sys_fstatat(args[0] as i32, args[1] as *const u8, args[2] as *mut Kstat),
         SYSCALL_FSTAT => sys_fstat(args[0], args[1] as *mut Kstat),
-        SYSCALL_UTIMENSAT => sys_utimensat(args[0] as i32, args[1] as *const u8, args[2] as *const TimeSpec, UtimensatFlags::from_bits(args[3] as u32).unwrap()),
+        SYSCALL_UTIMENSAT => sys_utimensat(
+            args[0] as i32,
+            args[1] as *const u8,
+            args[2] as *const TimeSpec,
+            UtimensatFlags::from_bits(args[3] as u32).unwrap(),
+        ),
         SYSCALL_EXIT => sys_exit(args[0] as i32),
         SYSCALL_EXIT_GROUP => sys_exit(args[0] as i32),
         SYSCALL_SET_TID_ADDRESS => sys_set_tid_address(args[0]),
-        SYSCALL_FUTEX => sys_futex(args[0], args[1] as i32, args[2] as u32, args[3], args[4], args[5] as u32),
+        SYSCALL_FUTEX => sys_futex(
+            args[0],
+            args[1] as i32,
+            args[2] as u32,
+            args[3],
+            args[4],
+            args[5] as u32,
+        ),
         SYSCALL_NANOSLEEP => sys_nanosleep(args[0] as *const TimeSpec, args[1] as *mut TimeSpec),
         SYSCALL_CLOCK_GET_TIME => sys_get_time_of_day(args[1] as *mut TimeSpec),
         SYSCALL_YIELD => sys_yield(),
         SYSCALL_KILL => sys_kill(args[0] as isize, args[1] as isize),
         SYSCALL_TKILL => sys_tkill(args[0] as isize, args[1] as isize),
-        SYSCALL_SIGACTION => sys_sigaction(args[0], args[1] as *const SigAction, args[2] as *mut SigAction),
-        SYSCALL_SIGPROCMASK => sys_sigprocmask(args[0] as i32, args[1] as *const usize, args[2] as *mut usize, args[3]),
+        SYSCALL_SIGACTION => sys_sigaction(
+            args[0],
+            args[1] as *const SigAction,
+            args[2] as *mut SigAction,
+        ),
+        SYSCALL_SIGPROCMASK => sys_sigprocmask(
+            args[0] as i32,
+            args[1] as *const usize,
+            args[2] as *mut usize,
+            args[3],
+        ),
         SYSCALL_SIGRETURN => sys_sigreturn(),
         SYSCALL_TIMES => sys_times(args[0] as *mut TMS),
         SYSCALL_UNAME => sys_uname(args[0] as *mut UtsName),
@@ -170,25 +208,59 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SYSCALL_GETEGID => sys_getegid(),
         SYSCALL_GETTID => sys_gettid(),
         SYSCALL_SOCKET => sys_socket(args[0], args[1], args[2]),
-        SYSCALL_SENDTO => sys_sendto(args[0], args[1] as *const u8, args[2], args[3] as i32, args[4], args[5]),
-        SYSCALL_RECVFROM => sys_recvfrom(args[0], args[1] as *mut u8, args[2], args[3] as i32, args[4], args[5] as *mut u32),
+        SYSCALL_SENDTO => sys_sendto(
+            args[0],
+            args[1] as *const u8,
+            args[2],
+            args[3] as i32,
+            args[4],
+            args[5],
+        ),
+        SYSCALL_RECVFROM => sys_recvfrom(
+            args[0],
+            args[1] as *mut u8,
+            args[2],
+            args[3] as i32,
+            args[4],
+            args[5] as *mut u32,
+        ),
         SYSCALL_BRK => sys_brk(args[0]),
         SYSCALL_MUNMAP => sys_munmap(args[0], args[1]),
         SYSCALL_CLONE => sys_clone(args[0], args[1], args[2], args[3], args[4]),
-        SYSCALL_MMAP => sys_mmap(args[0], args[1], MMAPPROT::from_bits(args[2] as u32).unwrap(), MMAPFlags::from_bits(args[3] as u32).unwrap(), args[4] as i32, args[5]),
-        SYSCALL_EXECVE => sys_execve(args[0] as *const u8, args[1] as *const usize, args[2] as *const usize),
-        SYSCALL_WAIT4 => sys_wait4(args[0] as isize, args[1] as *mut i32, WaitFlags::from_bits(args[2] as u32).unwrap()),
-        SYSCALL_PRLIMIT64 => sys_prlimt64(args[0], args[1] as i32, args[2] as *const RLimit, args[3] as *mut RLimit),
+        SYSCALL_MMAP => sys_mmap(
+            args[0],
+            args[1],
+            MMAPPROT::from_bits(args[2] as u32).unwrap(),
+            MMAPFlags::from_bits(args[3] as u32).unwrap(),
+            args[4] as i32,
+            args[5],
+        ),
+        SYSCALL_EXECVE => sys_execve(
+            args[0] as *const u8,
+            args[1] as *const usize,
+            args[2] as *const usize,
+        ),
+        SYSCALL_WAIT4 => sys_wait4(
+            args[0] as isize,
+            args[1] as *mut i32,
+            WaitFlags::from_bits(args[2] as u32).unwrap(),
+        ),
+        SYSCALL_PRLIMIT64 => sys_prlimt64(
+            args[0],
+            args[1] as i32,
+            args[2] as *const RLimit,
+            args[3] as *mut RLimit,
+        ),
         //_ => panic!("Unsupported syscall_id: {}", syscall_id),
         SYSCALL_IOCTL => 0,
-        
+
         //SYSCALL_MPROTECT => 0,
         SYSCALL_SIGTIMEDWAIT => 0,
         SYSCALL_MEMBARRIER => 0,
         _ => {
             info!("Unsupported syscall_id: {}", syscall_id);
             0
-        },
+        }
     };
     info!("[[kernel -> return {}  =0x{:x}]]", a0, a0);
     a0

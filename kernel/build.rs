@@ -1,6 +1,8 @@
-use std::fs::{read_dir, File};
-use std::io::{Result, Write};
-use std::path::Path;
+use std::{
+    fs::File,
+    io::{Result, Write},
+    path::Path,
+};
 
 fn main() {
     println!("cargo:rerun-if-changed=../fat.img");
@@ -28,7 +30,7 @@ fn insert_fs_img() -> Result<()> {
 img_start:
     .incbin "{}"
 img_end:"#,
-    IMG_PATH,
+        IMG_PATH,
     )?;
     Ok(())
 }

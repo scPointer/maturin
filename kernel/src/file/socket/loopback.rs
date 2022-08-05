@@ -1,17 +1,15 @@
 //! 本地回环网络
-//! 
+//!
 
+use alloc::{collections::BTreeMap, vec::Vec};
+use core::cmp::min;
 use lazy_static::*;
 use lock::Mutex;
-use core::cmp::min;
-use alloc::sync::Arc;
-use alloc::vec::Vec;
-use alloc::collections::{btree_map::Entry, BTreeMap};
 
 /// 本地的网络地址，即 127.0.0.1
-pub const LOCAL_LOOPBACK_ADDR:u32 = 0x7f000001;
+pub const LOCAL_LOOPBACK_ADDR: u32 = 0x7f000001;
 
-lazy_static!{
+lazy_static! {
     /// 端口映射
     static ref PORT_MAP: Mutex<BTreeMap<u16, PortData>> = Mutex::new(BTreeMap::new());
 }
@@ -47,10 +45,9 @@ impl PortData {
 pub fn read_from_port(port: u16, buf: &mut [u8]) -> Option<usize> {
     let map = PORT_MAP.lock();
     match map.get(&port) {
-        Some(data) => {
-            data.read(buf)
-        },
-        None => { // 端口还没有数据
+        Some(data) => data.read(buf),
+        None => {
+            // 端口还没有数据
             None
         }
     }
@@ -59,10 +56,9 @@ pub fn read_from_port(port: u16, buf: &mut [u8]) -> Option<usize> {
 pub fn write_to_port(port: u16, buf: &[u8]) -> Option<usize> {
     let mut map = PORT_MAP.lock();
     match map.get(&port) {
-        Some(data) => {
-            data.write(buf)
-        },
-        None => { // 新建端口数据
+        Some(data) => data.write(buf),
+        None => {
+            // 新建端口数据
             let port_data = PortData::new();
             let write_len = port_data.write(buf);
             map.insert(port, port_data);

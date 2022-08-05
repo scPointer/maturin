@@ -1,7 +1,7 @@
 //! 空文件，用于 dev/null
 
 use super::{File, Kstat};
-use crate::file::{StMode, normal_file_mode};
+use crate::file::{normal_file_mode, StMode};
 
 pub struct NullFile;
 

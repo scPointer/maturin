@@ -1,32 +1,26 @@
 //! 虚拟地址段映射管理
 
-//#![deny(missing_docs)]
-use alloc::collections::{btree_map::Entry, BTreeMap};
-use alloc::sync::Arc;
-use alloc::vec::Vec;
-use core::fmt::{Debug, Formatter, Result};
-use core::mem::size_of;
-
-use lock::Mutex;
-
-use super::{align_down, align_up, virt_to_phys, phys_to_virt, page_count, page_offset, cross_page, addr_to_page_id};
-use super::{VirtAddr, VmArea, PmArea, PmAreaLazy, DiffSet, PTEFlags, PageTable};
 use super::{
-    get_phys_memory_regions,
-    create_mapping,
+    addr_to_page_id, align_down, align_up, cross_page, get_phys_memory_regions, page_count,
+    page_offset, virt_to_phys, DiffSet, PTEFlags, PageTable, PmArea, PmAreaLazy, VirtAddr, VmArea,
 };
-
-use crate::constants::{
-    CPU_ID_LIMIT, 
-    PAGE_SIZE, 
-    USER_VIRT_ADDR_LIMIT,
-    MMIO_REGIONS,
-    IS_TEST_ENV,
-    IS_PRELOADED_FS_IMG,
-    DEVICE_START,
-    DEVICE_END,
+use crate::{
+    constants::{
+        CPU_ID_LIMIT, DEVICE_END, DEVICE_START, IS_PRELOADED_FS_IMG, IS_TEST_ENV, MMIO_REGIONS,
+        PAGE_SIZE, USER_VIRT_ADDR_LIMIT,
+    },
+    error::{OSError, OSResult},
 };
-use crate::error::{OSError, OSResult};
+use alloc::{
+    collections::{btree_map::Entry, BTreeMap},
+    sync::Arc,
+    vec::Vec,
+};
+use core::{
+    fmt::{Debug, Formatter, Result},
+    mem::size_of,
+};
+use lock::Mutex;
 
 /// 内存段和相关的页表
 pub struct MemorySet {
@@ -64,7 +58,7 @@ impl MemorySet {
         }
         */
     }
-    
+
     /// 寻找一个起始地址不小于 addr_hint，长为 len 的内存段。找不到时报错
     pub fn find_free_area(&self, hint: VirtAddr, len: usize) -> OSResult<VirtAddr> {
         // 最好不要有一段内存区间从 0 开始
@@ -97,30 +91,39 @@ impl MemorySet {
 
     /// 调整所有和已知(一般是即将要插入的)区间相交的区间，空出 [start, end) 段。
     fn modify_overlap_areas(&mut self, start: VirtAddr, end: VirtAddr) -> OSResult {
-        let areas_to_be_modified: Vec<VmArea> = self.areas.drain_filter(|_, area| {
-            area.is_overlap_with(start, end)
-        }).map(|(_, v)| v).collect();
+        let areas_to_be_modified: Vec<VmArea> = self
+            .areas
+            .drain_filter(|_, area| area.is_overlap_with(start, end))
+            .map(|(_, v)| v)
+            .collect();
         for mut area in areas_to_be_modified {
             match area.shrink_or_split_if_overlap(&mut self.pt, start, end)? {
                 DiffSet::Shrinked => {
                     info!("try shrink to {:x}, {:x}", area.start, area.end);
                     self.areas.insert(area.start, area);
-                },
+                }
                 DiffSet::Splitted(left, right) => {
                     self.areas.insert(left.start, left);
                     self.areas.insert(right.start, right);
-                },
+                }
                 _ => {} // 被删除或者未相交时，就不需要再管了
             }
         }
         Ok(())
     }
     /// 尝试插入一段数据。如插入成功，返回插入后的起始地址
-    /// 
+    ///
     /// 如果指定参数 anywhere，则任意找一段地址 mmap; 否则必须在 [start, end) 尝试插入。
-    /// 
+    ///
     /// 输入时默认已保证 start + data.len() == end
-    pub fn push_with_data(&mut self, start: VirtAddr, end: VirtAddr, flags: PTEFlags, data: &[u8], anywhere: bool) -> OSResult<usize> {
+    pub fn push_with_data(
+        &mut self,
+        start: VirtAddr,
+        end: VirtAddr,
+        flags: PTEFlags,
+        data: &[u8],
+        anywhere: bool,
+    ) -> OSResult<usize> {
         let (start, end) = if anywhere {
             let len = end - start;
             // 此处 start 作为 hint
@@ -144,20 +147,14 @@ impl MemorySet {
         let start = align_down(start);
         let end = align_up(end);
         //println!("after align: start {:x}, end {:x}, pmsize {}", start, end, align_up(off + data.len()));
-        let area = VmArea::new(
-            start,
-            end,
-            flags,
-            Arc::new(Mutex::new(pma)),
-            "from mmap",
-        ).unwrap();
+        let area = VmArea::new(start, end, flags, Arc::new(Mutex::new(pma)), "from mmap").unwrap();
         //println!("start {}, end {}", start, end);
         self.push(area)?;
         // 其实可以只刷新 mmap 的页，但因为这里不清楚具体会 mmap 多大内存，所以按页刷不一定划算
         self.flush_tlb();
         Ok(start)
     }
-    
+
     /// 插入一段内存段，并将其映射到页表里
     pub fn push(&mut self, vma: VmArea) -> OSResult {
         if !self.test_free_area(vma.start, vma.end) {
@@ -184,14 +181,14 @@ impl MemorySet {
             flags,
             name,
         )?)?;
-        
+
         self.push(VmArea::from_identical_pma(
             start_vaddr,
             end_vaddr,
             flags,
             name,
         )?)?;
-        
+
         Ok(())
     }
     */
@@ -248,7 +245,7 @@ impl MemorySet {
         }
         Err(OSError::PageFaultHandler_Unhandled)
     }
-    
+
     /// 检查一个放在某个地址上的结构是否分配空间，如果未分配则强制分配它
     pub fn manually_alloc_type<T>(&mut self, vaddr: VirtAddr) -> OSResult {
         if cross_page::<T>(vaddr) {
@@ -297,7 +294,7 @@ impl MemorySet {
     pub fn flush_tlb(&self) {
         self.pt.flush_tlb(None);
     }
-    
+
     /// 切换到这个 MemorySet 内的页表
     pub unsafe fn activate(&self) {
         self.pt.set_current()
@@ -367,7 +364,7 @@ impl MemorySet {
     }
 
     /// 从已有 MemorySet 按照 fork 的要求复制一个新的 MemorySet 。具体来说：
-    /// 
+    ///
     /// 1. 对内核的地址段，所有虚拟地址与物理地址的映射相同
     /// 2. 对用户的地址段，所有虚拟地址和其中的数据相同，但对应的物理地址与 self 中的不同
     pub fn copy_as_fork(&self) -> OSResult<MemorySet> {
@@ -411,8 +408,11 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         fn idle_stack();
         fn idle_stack_top();
     }
-    info!("data end {:x}, stack start {:x}", edata as usize, idle_stack as usize);
-    
+    info!(
+        "data end {:x}, stack start {:x}",
+        edata as usize, idle_stack as usize
+    );
+
     use super::PHYS_VIRT_OFFSET;
     ms.push(VmArea::from_fixed_pma(
         virt_to_phys(stext as usize),
@@ -442,7 +442,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         PTEFlags::READ | PTEFlags::WRITE,
         "kbss",
     )?)?;
-    
+
     // 插入内核栈映射
     let kernel_stack = idle_stack as usize;
     let kernel_stack_top = idle_stack_top as usize;
@@ -460,7 +460,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
             "kstack",
         )?)?;
     }
-    
+
     // 插入物理内存映射
     for region in get_phys_memory_regions() {
         info!("init region {:x}, {:x}", region.start, region.end);
@@ -492,7 +492,10 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
                 fn img_start();
                 fn img_end();
             }
-            info!("img start {:x}, img_end {:x}", img_start as usize, img_end as usize);
+            info!(
+                "img start {:x}, img_end {:x}",
+                img_start as usize, img_end as usize
+            );
             let pstart = virt_to_phys(img_start as usize);
             let pend = virt_to_phys(img_end as usize);
             let offset = DEVICE_START - pstart;
@@ -525,13 +528,18 @@ fn load_fs_force() {
         fn img_start();
         fn img_end();
     }
-    println!("img start {:x}, img_end {:x}", img_start as usize, img_end as usize);
+    println!(
+        "img start {:x}, img_end {:x}",
+        img_start as usize, img_end as usize
+    );
     let data_len = img_end as usize - img_start as usize;
     // println!("get data");
     let src = unsafe { core::slice::from_raw_parts(img_start as *const u8, data_len) };
-    let dst = unsafe { core::slice::from_raw_parts_mut(DEVICE_START as *mut u8, data_len)};
+    let dst = unsafe { core::slice::from_raw_parts_mut(DEVICE_START as *mut u8, data_len) };
     dst.copy_from_slice(src);
-    unsafe { println!("data[0]={}", (DEVICE_START as *mut u8).read_volatile()); }
+    unsafe {
+        println!("data[0]={}", (DEVICE_START as *mut u8).read_volatile());
+    }
 }
 
 lazy_static::lazy_static! {
@@ -558,7 +566,9 @@ pub fn handle_kernel_page_fault(vaddr: VirtAddr, access_flags: PTEFlags) -> OSRe
         "kernel page fault @ {:#x} with access {:?}",
         vaddr, access_flags
     );
-    KERNEL_MEMORY_SET.lock().handle_page_fault(vaddr, access_flags)
+    KERNEL_MEMORY_SET
+        .lock()
+        .handle_page_fault(vaddr, access_flags)
 }
 
 /// 切换到 KERNEL_MEMORY_SET 中的页表。

@@ -11,7 +11,7 @@ use crate::memory::PTEFlags;
 use crate::signal::SignalNo;
 use crate::task::CloneFlags;
 
-bitflags! {    
+bitflags! {
     /// 指定 sys_wait4 的选项
     pub struct WaitFlags: u32 {
         /// 不挂起当前进程，直接返回
@@ -23,7 +23,7 @@ bitflags! {
     }
 }
 
-bitflags! {    
+bitflags! {
     /// 指定 mmap 的选项
     pub struct MMAPPROT: u32 {
         /// 不挂起当前进程，直接返回
@@ -91,7 +91,6 @@ bitflags! {
 #define MAP_FIXED_NOREPLACE 0x100000
 */
 
-
 /// sys_times 中指定的结构体类型
 #[repr(C)]
 pub struct TMS {
@@ -141,7 +140,7 @@ impl UtsName {
             domainname: Self::from_str("https://github.com/scPointer/maturin"),
         }
     }
-    
+
     fn from_str(info: &str) -> [u8; 65] {
         let mut data: [u8; 65] = [0; 65];
         data[..info.len()].copy_from_slice(info.as_bytes());
@@ -187,7 +186,7 @@ impl Dirent64 {
     }
     /// 文件名字存的位置相对于结构体指针是多少
     pub fn d_name_offset(&self) -> usize {
-        size_of::<u64>() + size_of::<i64>() +  size_of::<u16>() +  size_of::<u8>()
+        size_of::<u64>() + size_of::<i64>() + size_of::<u16>() + size_of::<u8>()
     }
 }
 
@@ -202,49 +201,49 @@ pub struct IoVec {
 #[repr(C)]
 pub enum ErrorNo {
     /// 非法操作
-    EPERM = -1, 
+    EPERM = -1,
     /// 找不到文件或目录
-    ENOENT = -2, 
+    ENOENT = -2,
     /// 错误的文件描述符
-    EBADF = -9, 
+    EBADF = -9,
     /// 资源暂时不可用。也可因为 futex_wait 时对应用户地址处的值与给定值不符
     EAGAIN = -11,
     /// 无效地址
     EFAULT = -14,
     /// 设备或者资源被占用
-    EBUSY = -16, 
+    EBUSY = -16,
     /// 文件已存在
     EEXIST = -17,
     /// 不是一个目录
     ENOTDIR = -20,
     /// 非法参数
-    EINVAL = -22, 
+    EINVAL = -22,
     /// fd（文件描述符）已满
-    EMFILE = -24, 
+    EMFILE = -24,
     /// 超过范围。例如用户提供的buffer不够长
-    ERANGE = -34, 
+    ERANGE = -34,
 }
 
 // sys_lseek 时对应的条件
 /// 从文件开头
-pub const SEEK_SET:isize = 0;
+pub const SEEK_SET: isize = 0;
 /// 从当前位置
-pub const SEEK_CUR:isize = 1;
+pub const SEEK_CUR: isize = 1;
 /// 从文件结尾
-pub const SEEK_END:isize = 2;
+pub const SEEK_END: isize = 2;
 
 // sys_sigprocmask 时对应的选择
 /// 和当前 mask 取并集
-pub const SIG_BLOCK:i32 = 0;
+pub const SIG_BLOCK: i32 = 0;
 /// 从当前 mask 中去除对应位
-pub const SIG_UNBLOCK:i32 = 1;
+pub const SIG_UNBLOCK: i32 = 1;
 /// 重新设置当前 mask
-pub const SIG_SETMASK:i32 = 2;
+pub const SIG_SETMASK: i32 = 2;
 
 pub fn resolve_clone_flags_and_signal(flag: usize) -> (CloneFlags, SignalNo) {
     (
         CloneFlags::from_bits(flag as u32 & (!0x3f)).unwrap(),
-        SignalNo::from(flag as u8 & 0x3f)
+        SignalNo::from(flag as u8 & 0x3f),
     )
 }
 
@@ -259,11 +258,11 @@ pub struct RLimit {
 
 // sys_prlimit64 使用的选项
 /// 用户栈大小
-pub const RLIMIT_STACK:i32 = 3;
+pub const RLIMIT_STACK: i32 = 3;
 /// 可以打开的 fd 数
-pub const RLIMIT_NOFILE:i32 = 7;
+pub const RLIMIT_NOFILE: i32 = 7;
 /// 用户地址空间的最大大小
-pub const RLIMIT_AS:i32 = 9;
+pub const RLIMIT_AS: i32 = 9;
 
 // sys_fcntl64 使用的选项
 /// 复制这个 fd，相当于 sys_dup

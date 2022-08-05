@@ -1,13 +1,5 @@
-use super::device::MemoryMappedDevice;
 use super::device::fsio;
-use fatfs::{
-    IoBase,
-    IoError,
-    Read,
-    Write,
-    Seek,
-    SeekFrom,
-};
+use fatfs::{IoBase, IoError, Read, Seek, SeekFrom, Write};
 
 /*
 impl From<SeekFrom> for fsio::SeekFrom {
@@ -109,13 +101,13 @@ impl<T: fsio::Write> Write for IoWrapper<T> {
 
 impl<T: fsio::Seek> Seek for IoWrapper<T> {
     fn seek(&mut self, pos: SeekFrom) -> Result<u64, Self::Error> {
-        self.inner.seek(
-            match pos {
+        self.inner
+            .seek(match pos {
                 SeekFrom::Start(n) => fsio::SeekFrom::Start(n),
                 SeekFrom::End(n) => fsio::SeekFrom::End(n),
                 SeekFrom::Current(n) => fsio::SeekFrom::Current(n),
-            }
-        ).map_err(|e| TransferError(e))
+            })
+            .map_err(|e| TransferError(e))
     }
 }
 

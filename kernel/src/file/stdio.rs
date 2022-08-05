@@ -1,5 +1,5 @@
 //! 标准输入输出流的 File 封装
-//! 
+//!
 //! 输出流调用的 print! 和 error_print! 宏是由 crate::arch::stdout 提供的。
 //! 保证多核调用时不互相冲突的 Mutex 锁也在 crate::arch::{stdin, stdout} 中实现，这个模块只是封装了 Trait File
 
@@ -19,7 +19,7 @@ impl File for Stdin {
     /// 目前 Stdin 只支持读一个字符
     fn read(&self, buf: &mut [u8]) -> Option<usize> {
         if buf.len() == 0 {
-            return Some(0)
+            return Some(0);
         }
         buf[0] = loop {
             // 目前调用 sys_read 会导致当前进程阻塞在用户输入上

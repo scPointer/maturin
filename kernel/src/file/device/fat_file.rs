@@ -1,25 +1,16 @@
 //! FAT中的文件抽象。
-//! 
+//!
 
 //#![deny(missing_docs)]
 
-use lock::Mutex;
-use core::pin::Pin;
-use alloc::sync::Arc;
-use alloc::vec::Vec;
-use alloc::string::String;
-use fatfs::{
-    Read,
-    Write,
-    Seek,
-    SeekFrom,
+use super::{get_link_count, File, FsFile};
+use crate::{
+    file::{normal_file_mode, Kstat, StMode},
+    timer::TimeSpec,
 };
-
-use super::{File, FsFile};
-use super::get_link_count;
-
-use crate::file::{Kstat, StMode, normal_file_mode};
-use crate::timer::{TimeSpec, UTIME_OMIT, UTIME_NOW};
+use alloc::{string::String, sync::Arc, vec::Vec};
+use fatfs::{Read, Seek, SeekFrom, Write};
+use lock::Mutex;
 
 /// 把 FsFile 包装一层以适应 Trait File
 pub struct FatFile {
@@ -28,7 +19,7 @@ pub struct FatFile {
     /// 是否可写
     pub writable: bool,
     /// 所在文件夹的路径
-    /// 
+    ///
     /// 注意这里用 String 保存，而不是 &'static str之类的，
     /// 因为给出文件路径的可能是用户程序或者某个局部变量，如果不复制成 String，之后要用到的时候可能早已找不到了
     pub dir: String,
@@ -59,11 +50,11 @@ impl FatFile {
             dir: dir,
             name: name,
             inner: Arc::new(Mutex::new(fs_file)),
-            tm: Mutex::new( FatFileTime {
+            tm: Mutex::new(FatFileTime {
                 atime: TimeSpec::default(), // 目前创建时不从文件系统里拿时间，而是认为在系统启动时创建，
                 mtime: TimeSpec::default(), // 因为 FAT 里的时间结构非常粗略，而且精度很低，
                 ctime: TimeSpec::default(), // 不好适应实际操作中用到的秒/纳秒量级
-            })
+            }),
         }
     }
 }
@@ -72,7 +63,7 @@ impl File for FatFile {
     /// 读取文件
     fn read(&self, buf: &mut [u8]) -> Option<usize> {
         if !self.readable {
-            return None
+            return None;
         }
         let mut inner = self.inner.lock();
         let len = buf.len();
@@ -87,20 +78,22 @@ impl File for FatFile {
                     }
                 }
                 Err(_) => {
-                    if pos == 0 { // 如果什么都没读到，则报错
-                        return None
-                    } else { //否则说明还是读了一些的
-                        return Some(pos)
+                    if pos == 0 {
+                        // 如果什么都没读到，则报错
+                        return None;
+                    } else {
+                        //否则说明还是读了一些的
+                        return Some(pos);
                     }
                 }
             }
-        };
+        }
         Some(pos)
     }
     /// 写入文件
     fn write(&self, buf: &[u8]) -> Option<usize> {
         if !self.writable {
-            return None
+            return None;
         }
         let mut inner = self.inner.lock();
         let len = buf.len();
@@ -116,13 +109,13 @@ impl File for FatFile {
                 }
                 Err(_) => {
                     if pos == 0 {
-                        return None
+                        return None;
                     } else {
-                        return Some(pos)
+                        return Some(pos);
                     }
                 }
             }
-        };
+        }
         Some(pos)
     }
     /// 读取所有数据
@@ -148,11 +141,11 @@ impl File for FatFile {
             i += 1;
         }
         print!("i = {} , tmp[i] = {}", i, tmp[i]);
-        
+
         //for i in 0x1000..0x1010 {
         //    print!("{} ", tmp[i]);
         //}
-        
+
         println!("");
         */
         tmp
@@ -185,7 +178,9 @@ impl File for FatFile {
     }
     /// 切换文件指针位置
     fn seek(&self, seekfrom: SeekFrom) -> Option<usize> {
-        self.inner.lock().seek(seekfrom)
+        self.inner
+            .lock()
+            .seek(seekfrom)
             .map(|pos| {
                 if let SeekFrom::Start(origin) = seekfrom {
                     if origin > 0 {
@@ -193,15 +188,16 @@ impl File for FatFile {
                     }
                 }
                 Some(pos as usize)
-            }).unwrap_or_else(|_| {
-            info!("seek {:#?}", seekfrom);
-            if let SeekFrom::Start(pos) = seekfrom {
-                if pos > 0 {
-                    return Some(pos as usize);
+            })
+            .unwrap_or_else(|_| {
+                info!("seek {:#?}", seekfrom);
+                if let SeekFrom::Start(pos) = seekfrom {
+                    if pos > 0 {
+                        return Some(pos as usize);
+                    }
                 }
-            }
-            None
-        })
+                None
+            })
     }
     /// 设置时间，返回是否设置成功。
     fn set_time(&self, atime: &TimeSpec, mtime: &TimeSpec) -> bool {

@@ -1,8 +1,6 @@
 //! 触发信号时的额外用户信息。当 SigAction 指定需要信息时，需要将其返回给用户
-//! 
+//!
 //! 这个文件的内容修改自 zCore (`https://github.com/rcore-os/zCore/`)
-
-use super::Bitset;
 
 #[repr(C)]
 #[derive(Clone, Debug)]
@@ -65,7 +63,7 @@ impl Default for MachineContext {
             reserved_: [0; 16],
             pc: 0,
             reserved: [0; 17],
-            fpstate: [0; 66]
+            fpstate: [0; 66],
         }
     }
 }
@@ -76,7 +74,7 @@ impl MachineContext {
             reserved_: [0; 16],
             pc: pc,
             reserved: [0; 17],
-            fpstate: [0; 66]
+            fpstate: [0; 66],
         }
     }
 }

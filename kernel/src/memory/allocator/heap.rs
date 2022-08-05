@@ -1,5 +1,5 @@
 //! 堆分配器
-//! 
+//!
 //! 使用 buddy_system_allocator::LockedHeap ，堆大小在 constants 中定义
 
 //#![deny(missing_docs)]
@@ -20,6 +20,5 @@ pub fn init() {
         HEAP_ALLOCATOR
             .lock()
             .init(HEAP.as_ptr() as usize, HEAP_BLOCK * MACHINE_ALIGN);
-    }
-    ;
+    };
 }

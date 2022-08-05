@@ -1,35 +1,24 @@
 //! 每个核当前正在运行的任务及上下文信息
 
-//#![deny(missing_docs)]
-
-use alloc::vec::Vec;
-use alloc::sync::Arc;
-use core::cell::{RefCell, RefMut};
-use core::mem::size_of;
-use lock::Mutex;
-use lazy_static::*;
-
-use crate::constants::{CPU_ID_LIMIT, IS_TEST_ENV, NO_PARENT, USER_STACK_RED_ZONE};
-use crate::error::{OSResult, OSError};
-use crate::trap::TrapContext;
-use crate::signal::{
-    SignalNo,
-    SignalHandlers,
-    SignalReceivers,
-    SignalUserContext,
-    SigInfo,
-    SigActionDefault,
-    SigActionFlags
+use super::{
+    TaskContext, TaskControlBlock, TaskStatus, __move_to_context, __switch,
+    fetch_task_from_scheduler, push_task_to_scheduler, ORIGIN_USER_PROC,
 };
-use crate::signal::{get_signals_from_tid, global_logoff_signals, send_signal};
-use crate::memory::{VirtAddr, PTEFlags, enable_kernel_page_table};
-use crate::file::show_testcase_result;
-use crate::arch::get_cpu_id;
-
-use super::{__switch, __move_to_context};
-use super::{fetch_task_from_scheduler, push_task_to_scheduler};
-use super::{ORIGIN_USER_PROC};
-use super::{TaskContext, TaskControlBlock, TaskStatus};
+use crate::{
+    arch::get_cpu_id,
+    constants::{CPU_ID_LIMIT, IS_TEST_ENV, NO_PARENT, USER_STACK_RED_ZONE},
+    error::{OSError, OSResult},
+    file::show_testcase_result,
+    memory::{enable_kernel_page_table, PTEFlags, VirtAddr},
+    signal::{
+        global_logoff_signals, send_signal, SigActionDefault, SigActionFlags, SigInfo, SignalNo,
+        SignalUserContext,
+    },
+};
+use alloc::{sync::Arc, vec::Vec};
+use core::mem::size_of;
+use lazy_static::*;
+use lock::Mutex;
 
 /// 每个核当前正在运行的任务及上下文信息。
 /// 注意，如果一个核没有运行在任何任务上，那么它会回到 idle_task_cx 的上下文，而这里的栈就是启动时的栈。
@@ -89,15 +78,17 @@ pub fn run_tasks() -> ! {
             let tid = task.get_tid_num();
             info!("[cpu {}] now running on tid = {}", cpu_id, tid);
             //drop(task_inner);
-            unsafe { task.vm.lock().activate(); }
+            unsafe {
+                task.vm.lock().activate();
+            }
             cpu_local.current = Some(task);
 
             /*
             unsafe {
-                println!("[cpu {}] idle task ctx ptr {:x}, next {:x}, ra = {:x} pid = {}", 
-                    cpu_id, 
-                    idle_task_cx_ptr as usize, 
-                    next_task_cx_ptr as usize, 
+                println!("[cpu {}] idle task ctx ptr {:x}, next {:x}, ra = {:x} pid = {}",
+                    cpu_id,
+                    idle_task_cx_ptr as usize,
+                    next_task_cx_ptr as usize,
                     (*next_task_cx_ptr).get_ra(),
                     cpu_local.current.as_ref().unwrap().get_pid_num());
                 let t0 = (0xffff_ffff_8020_1234 as *const usize).read_volatile();
@@ -106,7 +97,7 @@ pub fn run_tasks() -> ! {
                 //println!("{:#x?}", cpu_local.current.as_ref().unwrap().inner.lock().vm);
             }
             */
-            
+
             // 切换前要手动 drop 掉引用
             drop(cpu_local);
             // 切换到用户程序执行
@@ -128,7 +119,8 @@ pub fn run_tasks() -> ! {
                         push_task_to_scheduler(task);
                     }
                     TaskStatus::Dying => {
-                        if !IS_TEST_ENV && task.get_pid_num() == 0 { // 这是初始进程，且不在测试环境
+                        if !IS_TEST_ENV && task.get_pid_num() == 0 {
+                            // 这是初始进程，且不在测试环境
                             panic!("origin user proc exited, All applications completed.");
                         } else {
                             handle_zombie_task(&mut cpu_local, task);
@@ -183,7 +175,9 @@ pub fn exit_current_task(exit_code: i32) {
         // 确认这个地址在用户地址空间中。如果没有也不需要报错，因为线程马上就退出了
         if task.vm.lock().manually_alloc_page(addr).is_ok() {
             info!("exit, clear tid {:x}", addr);
-            unsafe{ *(addr as *mut i32) = 0; }
+            unsafe {
+                *(addr as *mut i32) = 0;
+            }
         }
     }
     //println!("[cpu {}] tid {} exited with code {}", cpu_id, task.get_tid_num(), exit_code);
@@ -209,26 +203,26 @@ pub fn exec_new_task() {
     drop(cpu_local);
     unsafe {
         __move_to_context(current_task_cx_ptr);
-    }   
+    }
 }
 /// 处理退出的任务：
 /// 将它的子进程全部交给初始进程 ORIGIN_USER_PROC，然后标记当前进程的状态为 Zombie。
 /// 这里会需要获取当前核正在运行的用户程序、ORIGIN_USER_PROC、所有子进程的锁。
-/// 
+///
 /// 这里每修改一个子进程的 parent 指针，都要重新用 try_lock 拿子进程的锁和 ORIGIN_USER_PROC 的锁。
-/// 
+///
 /// 如果不用 try_lock ，则可能出现如下的死锁情况：
 /// 1. 当前进程和子进程都在这个函数里
 /// 2. 当前进程拿到了 ORIGIN_USER_PROC 的锁，而子进程在函数开头等待 ORIGIN_USER_PROC 的锁
 /// 3. 当前进程尝试修改子进程的 parent，但无法修改。因为子进程一直拿着自己的锁，它只是在等 ORIGIN_USER_PROC
-/// 
+///
 /// 使用 try_lock 之后，如果出现多个父子进程竞争锁的情况，那么：
 /// 1. 如果拿到 ORIGIN_USER_PROC 的锁的进程的子进程都没有在竞争这个锁，那么它一定可以顺利拿到自己的所有子进程的锁，并正常执行完成。
 /// 2. 否则，它会因为无法拿到自己的某个子进程的锁而暂时放弃 ORIGIN_USER_PROC 的锁。
-/// 
+///
 /// 因为进程之间的 parent/children 关系是一棵树，所以在任意时刻一定会有上述第一种情况的进程存在。
 /// 所以卡在这个函数上的进程最终一定能以某种顺序依次执行完成，也就消除了死锁。
-/// 
+///
 fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
     let mut tcb_inner = task.inner.lock();
     //let task_inner = task.lock();
@@ -242,7 +236,9 @@ fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
                 if tcb_inner.ppid == NO_PARENT || IS_TEST_ENV {
                     child_inner.ppid = NO_PARENT;
                     break;
-                } else if let Some(mut start_proc_tcb_inner) =  ORIGIN_USER_PROC.clone().inner.try_lock() {
+                } else if let Some(mut start_proc_tcb_inner) =
+                    ORIGIN_USER_PROC.clone().inner.try_lock()
+                {
                     child_inner.parent = Some(Arc::downgrade(&ORIGIN_USER_PROC));
                     child_inner.ppid = 0;
                     start_proc_tcb_inner.children.push(child.clone());
@@ -273,7 +269,7 @@ fn handle_zombie_task(cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
 }
 
 /// 处理用户程序的缺页异常
-pub fn handle_user_page_fault(vaddr: VirtAddr, access_flags: PTEFlags)  -> OSResult {
+pub fn handle_user_page_fault(vaddr: VirtAddr, access_flags: PTEFlags) -> OSResult {
     let cpu_id = get_cpu_id();
     let cpu_local = CPU_CONTEXTS[cpu_id].lock();
     if let Some(task) = cpu_local.current() {
@@ -318,10 +314,15 @@ pub fn handle_signals() {
                     info!("add siginfo at {:x}", sp);
                     let mut info = SigInfo::default();
                     info.si_signo = signum as i32;
-                    unsafe { *(sp as *mut SigInfo) = info; }
+                    unsafe {
+                        *(sp as *mut SigInfo) = info;
+                    }
                     trap_cx.set_a1(sp);
                     sp = (sp - size_of::<SignalUserContext>()) & !0xf;
-                    unsafe { *(sp as *mut SignalUserContext) = SignalUserContext::init(sig_inner.mask.0 as u64, old_pc); }
+                    unsafe {
+                        *(sp as *mut SignalUserContext) =
+                            SignalUserContext::init(sig_inner.mask.0 as u64, old_pc);
+                    }
                     trap_cx.set_a2(sp);
                     //let v = unsafe { *((sp + 0xb0) as *const usize) };
                     //info!("read {} pc {}", v, old_pc);
@@ -334,14 +335,15 @@ pub fn handle_signals() {
                     //info!("val {}", unsafe { *((tp - 151) as *const u8) });
                 }
                 trap_cx.set_sp(sp);
-            } else { // 否则，查找默认处理方式
+            } else {
+                // 否则，查找默认处理方式
                 match SigActionDefault::of_signal(signal) {
                     Terminate => {
                         // 这里不需要 drop(task)，因为当前函数没有用到 task_inner，在 task.save_trap... 内部用过后已经 drop 了
                         drop(handler);
                         drop(sig_inner);
                         exit_current_task(0);
-                    },
+                    }
                     Ignore => {}
                 }
             }
@@ -360,7 +362,8 @@ pub fn signal_return() -> isize {
         // 上面已经 load 了，此处获取的值是原来的上下文
         let trap_cx = unsafe { &mut *task.kernel_stack.get_first_context() };
         trap_cx.get_a0() as isize
-    } else { // 如果当前没有在信号处理函数中，却调用了 sigreturn，则返回 -1
+    } else {
+        // 如果当前没有在信号处理函数中，却调用了 sigreturn，则返回 -1
         -1
     }
 }

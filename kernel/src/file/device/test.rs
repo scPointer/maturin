@@ -1,19 +1,12 @@
 //! 运行比赛测试
 
-//#![deny(missing_docs)]
-
-use alloc::sync::Arc;
-use alloc::boxed::Box;
-use alloc::vec::Vec;
-use alloc::string::String;
-use lock::Mutex;
-use core::slice::Iter;
+use crate::{
+    constants::{NO_PARENT, ROOT_DIR},
+    task::TaskControlBlock,
+};
+use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use lazy_static::*;
-
-pub use crate::task::Scheduler;
-pub use crate::task::TaskControlBlock;
-pub use crate::loaders::parse_user_app;
-pub use crate::constants::{ROOT_DIR, NO_PARENT};
+use lock::Mutex;
 
 /*
 /// 加载用户程序。
@@ -31,17 +24,21 @@ pub fn load_testcases(scheduler: &mut Scheduler) {
 
 /// 加载下一个用户程序。
 pub fn load_next_testcase() -> Option<Arc<TaskControlBlock>> {
-    TESTCASES_ITER.lock().next().map_or_else(|| {
-        TEST_STATUS.lock().final_info();
-        None
-    },|&user_command| {
-        let mut argv: Vec<String> = user_command.split(' ').map(|s| s.into()).collect();
-        let argv = argv.drain_filter(|s| s != "").collect();
-        TEST_STATUS.lock().load(&user_command.into());
-        Some(Arc::new(TaskControlBlock::from_app_name(ROOT_DIR, NO_PARENT, argv).unwrap()))
-    })
+    TESTCASES_ITER.lock().next().map_or_else(
+        || {
+            TEST_STATUS.lock().final_info();
+            None
+        },
+        |&user_command| {
+            let mut argv: Vec<String> = user_command.split(' ').map(|s| s.into()).collect();
+            let argv = argv.drain_filter(|s| s != "").collect();
+            TEST_STATUS.lock().load(&user_command.into());
+            Some(Arc::new(
+                TaskControlBlock::from_app_name(ROOT_DIR, NO_PARENT, argv).unwrap(),
+            ))
+        },
+    )
 }
-
 
 /// 输出测试结果
 pub fn show_testcase_result(exit_code: i32) {
@@ -69,7 +66,10 @@ impl TestStatus {
 
     /// 输入测试
     pub fn load(&mut self, testcase: &String) {
-        info!(" --------------- load testcase: {} --------------- ", testcase);
+        info!(
+            " --------------- load testcase: {} --------------- ",
+            testcase
+        );
         self.now = Some(testcase.into());
     }
 
@@ -85,20 +85,26 @@ impl TestStatus {
         //cnt += 1;
         match exit_code {
             0 => {
-                info!(" --------------- test passed --------------- "); 
+                info!(" --------------- test passed --------------- ");
                 self.passed += 1;
                 self.now.take();
-            },
+            }
             _ => {
-                info!(" --------------- TEST FAILED, exit code = {} --------------- ", exit_code);
+                info!(
+                    " --------------- TEST FAILED, exit code = {} --------------- ",
+                    exit_code
+                );
                 self.failed_tests.push(self.now.take().unwrap());
-            },
+            }
         }
     }
 
     /// 最终输出测试信息
     pub fn final_info(&self) {
-        info!(" --------------- all test ended, passed {} / {} --------------- ", self.passed, self.cnt);
+        info!(
+            " --------------- all test ended, passed {} / {} --------------- ",
+            self.passed, self.cnt
+        );
         info!(" --------------- failed tests: --------------- ");
         for test in &self.failed_tests {
             info!("{}", test);
@@ -136,17 +142,17 @@ pub const SAMPLE: &[&str] = &[
     //"./runtest.exe -w entry-static.exe socket",
 
     //"./runtest.exe -w entry-dynamic.exe fdopen",
-    //"./runtest.exe -w entry-dynamic.exe fscanf", 
-    //"./runtest.exe -w entry-dynamic.exe fwscanf", 
-    //"./runtest.exe -w entry-dynamic.exe ungetc", 
+    //"./runtest.exe -w entry-dynamic.exe fscanf",
+    //"./runtest.exe -w entry-dynamic.exe fwscanf",
+    //"./runtest.exe -w entry-dynamic.exe ungetc",
     //"./runtest.exe -w entry-dynamic.exe fflush_exit",
     //"./runtest.exe -w entry-dynamic.exe ftello_unflushed_append",
     //"./runtest.exe -w entry-dynamic.exe lseek_large",
     //"./runtest.exe -w entry-dynamic.exe syscall_sign_extend",
     //"./runtest.exe -w entry-dynamic.exe rlimit_open_files",
     //"./runtest.exe -w entry-dynamic.exe stat",
-    //"./runtest.exe -w entry-dynamic.exe statvfs", 
-    
+    //"./runtest.exe -w entry-dynamic.exe statvfs",
+
     //"./runtest.exe -w entry-static.exe pthread_robust_detach",
     //"./runtest.exe -w entry-static.exe pthread_cancel_sem_wait",//dead
     //"./runtest.exe -w entry-static.exe pthread_cond_smasher",
@@ -214,7 +220,6 @@ pub const BUSYBOX_TESTCASES: &[&str] = &[
     "busybox cp busybox_cmd.txt busybox_cmd.bak",
     "busybox rm busybox_cmd.bak",
     "busybox find -name \"busybox_cmd.txt\"",
-
 ];
 
 /// 来自 lua 的测例，每行是一个命令。lua 本身是执行程序，后面的文件名实际上是参数

@@ -1,13 +1,13 @@
 //! 信号模块，用于 sigaction / sigreturn / kill 等 syscall
 //! 信号模块和 task 管理的进程/线程相关，但又相对独立；
 //! 且如果单纯作为线程的一部分，容易因为信号发送的任意性导致死锁，因此单独列出来。
-//! 
+//!
 //! 目前的模型中，不采用 ipi 实时发送信号，而是由被目标线程在 trap 时处理。因此需要开启**时钟中断**来保证信号能实际送到
 
 mod signal_no;
 pub use signal_no::SignalNo;
 mod sig_action;
-pub use sig_action::{SigAction, SigActionFlags, SigActionDefault};
+pub use sig_action::{SigAction, SigActionDefault, SigActionFlags};
 mod sig_info;
 pub use sig_info::SigInfo;
 mod ucontext;
@@ -15,12 +15,8 @@ pub use ucontext::SignalUserContext;
 mod bitset;
 pub use bitset::Bitset;
 mod tid2signals;
-pub use tid2signals::{
-    global_register_signals,
-    global_logoff_signals,
-    get_signals_from_tid,
-};
 use crate::constants::SIGSET_SIZE_IN_BIT;
+pub use tid2signals::{get_signals_from_tid, global_logoff_signals, global_register_signals};
 
 /// 处理信号的结构，每个线程有一个，根据 clone 的参数有可能是共享的
 #[derive(Clone, Copy)]
@@ -47,7 +43,9 @@ impl SignalHandlers {
     /// 因为 signum 的范围是 [1,64]，所以要 -1
     pub fn get_action<'a>(&self, signum: usize, action_pos: *mut SigAction) {
         if let Some(action) = self.actions[signum - 1] {
-            unsafe { *action_pos = action; }
+            unsafe {
+                *action_pos = action;
+            }
         }
     }
     /// 获取某个信号对应的 SigAction，如果存在，则返回其引用
@@ -59,7 +57,9 @@ impl SignalHandlers {
     /// 修改某个信号对应的 SigAction。
     /// 因为 signum 的范围是 [1,64]，所以内部要 -1
     pub fn set_action(&mut self, signum: usize, action_pos: *const SigAction) {
-        unsafe { self.actions[signum - 1] = Some(*action_pos); }
+        unsafe {
+            self.actions[signum - 1] = Some(*action_pos);
+        }
     }
 }
 
@@ -95,7 +95,7 @@ impl SignalReceivers {
 
     /// 尝试添加一个 bit 作为信号。发送的信号如果在 mask 中，则仍然会发送，只是可能不触发
     /// 因为 signum 的范围是 [1,64]，所以内部要 -1
-    /// 
+    ///
     /// 因为没有要求判断信号是否发送成功的要求，所有这里不设返回值
     pub fn try_add_bit(&mut self, signum: usize) {
         //info!("try add {}, mask = {:x}", signum, self.mask.0);
@@ -105,7 +105,8 @@ impl SignalReceivers {
 
 /// 发送一个信号给进程 tid
 pub fn send_signal(tid: usize, signum: usize) {
-    if let Some(signals) = get_signals_from_tid(tid as usize) { // 获取目标线程(可以是自己)的 signals 数组
+    if let Some(signals) = get_signals_from_tid(tid as usize) {
+        // 获取目标线程(可以是自己)的 signals 数组
         signals.lock().try_add_bit(signum);
     }
 }

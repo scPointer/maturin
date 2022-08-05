@@ -1,14 +1,12 @@
 //! 暂时的 socket 实现。只是个 buffer
 
-use alloc::vec::Vec;
-use core::mem::size_of;
-use super::{File, OpenFlags};
-
-mod resolution;
-use resolution::{addr_resolution, AddrType, IpAddr};
 mod loopback;
-use loopback::{read_from_port, write_to_port, LOCAL_LOOPBACK_ADDR};
+mod resolution;
 
+use super::{File, OpenFlags};
+use core::mem::size_of;
+use loopback::{read_from_port, write_to_port, LOCAL_LOOPBACK_ADDR};
+use resolution::{addr_resolution, AddrType, IpAddr};
 
 /// 一个套接字
 pub struct Socket {
@@ -36,7 +34,7 @@ impl Socket {
 impl File for Socket {
     /// Socket 不适用普通读写
     fn read(&self, buf: &mut [u8]) -> Option<usize> {
-        None 
+        None
     }
     /// Socket 不适用普通读写
     fn write(&self, buf: &[u8]) -> Option<usize> {
@@ -56,12 +54,18 @@ impl File for Socket {
                 } else {
                     None
                 }
-            },
-            AddrType::Unknown => { None },
+            }
+            AddrType::Unknown => None,
         }
     }
     /// 收取消息，当且仅当这个文件是 socket 时可用
-    fn recvfrom(&self, buf: &mut [u8], flags: i32, src_addr: usize, src_len: &mut u32) -> Option<usize> {
+    fn recvfrom(
+        &self,
+        buf: &mut [u8],
+        flags: i32,
+        src_addr: usize,
+        src_len: &mut u32,
+    ) -> Option<usize> {
         match addr_resolution(src_addr as *const u16) {
             AddrType::Ip(ip, port) => {
                 info!("receive from ip {:x} port {}", ip, port);
@@ -72,8 +76,8 @@ impl File for Socket {
                 } else {
                     None
                 }
-            },
-            AddrType::Unknown => { None },
+            }
+            AddrType::Unknown => None,
         }
     }
 }

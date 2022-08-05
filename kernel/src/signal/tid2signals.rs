@@ -1,12 +1,11 @@
 //! 一张全局的表，从 tid 映射到对应的 signals 数组
 
-use lazy_static::*;
-use alloc::collections::{btree_map::Entry, BTreeMap};
-use alloc::sync::Arc;
-use lock::Mutex;
 use super::SignalReceivers;
+use alloc::{collections::BTreeMap, sync::Arc};
+use lazy_static::*;
+use lock::Mutex;
 
-lazy_static!{
+lazy_static! {
     /// 从 tid 获取信号相关信息
     static ref TID2SIGNALS: Mutex<BTreeMap<usize, Arc<Mutex<SignalReceivers>>>> = Mutex::new(BTreeMap::new());
 }

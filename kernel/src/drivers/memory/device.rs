@@ -1,5 +1,5 @@
 pub mod fsio {
-    pub use fscommon::{Read, Write, Seek, SeekFrom, Result, Error, ErrorKind};
+    pub use fscommon::{Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
 }
 
 pub struct MemoryMappedDevice {
@@ -47,7 +47,7 @@ impl fsio::Write for MemoryMappedDevice {
         Ok(write_len)
     }
     /// 实际上没有 flush 。因为文件系统是从qemu引入或者 .data 段拿过来的。
-    /// 
+    ///
     /// 1. 对于前者，write 完成的时候就已经写回，buf 在上层的 BufStream里
     /// 2. 对于后者，整个fs都在内存里，不存在一个需要"写回"到磁盘的文件
     fn flush(&mut self) -> fsio::Result<()> {

@@ -12,7 +12,7 @@ pub const FIRST_CPU_ID: usize = if PLATFORM_SIFIVE { 1 } else { 0 };
 /// 指定一个特定的 cpu，用于执行启动过程中只能进行一次的初始化过程
 //pub const BOOTSTRAP_CPU_ID: usize = FIRST_CPU_ID;
 /// 最大的cpu_id再+1，可以认为是总的核数(无论是否使用)。目前在 virt 下是 4，在 sifive 下是 5
-pub const CPU_ID_LIMIT: usize =  FIRST_CPU_ID + 4;
+pub const CPU_ID_LIMIT: usize = FIRST_CPU_ID + 4;
 /// 最后一个 CPU 的编号
 pub const LAST_CPU_ID: usize = CPU_ID_LIMIT - 1;
 /// 时钟频率，和平台有关
@@ -20,7 +20,7 @@ pub const CLOCK_FREQ: usize = if PLATFORM_SIFIVE { 100_0000 } else { 1250_0000 }
 /// 是否单核运行。单核运行时，则其他核只启动，不运行用户程序
 pub const IS_SINGLE_CORE: bool = true;
 /// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序
-pub const SPIN_LOOP_AFTER_BOOT: bool  = false;
+pub const SPIN_LOOP_AFTER_BOOT: bool = false;
 /// 运行时是否打印基本的信息
 pub const BASE_INFO: bool = true;
 /// 页表中每页的大小
@@ -73,7 +73,11 @@ const LOCAL_FS_IMG_SIZE: usize = 16 * 2048 * 512; // 16MB
 /// 注意因为这个文件太大，默认是已经被qemu加载好了，启动时不会加载
 const TEST_FS_IMG_SIZE: usize = 0x4000_0000; // 1GB
 /// 文件系统镜像大小。只有这个常量可以被其他文件使用，而上面两个不能
-pub const FS_IMG_SIZE: usize = if IS_PRELOADED_FS_IMG { TEST_FS_IMG_SIZE } else { LOCAL_FS_IMG_SIZE };
+pub const FS_IMG_SIZE: usize = if IS_PRELOADED_FS_IMG {
+    TEST_FS_IMG_SIZE
+} else {
+    LOCAL_FS_IMG_SIZE
+};
 /// 设备(sdcard)映射到内存的起始位置
 pub const DEVICE_START: usize = 0x9000_0000;
 /// 设备映射到内存的最后位置
@@ -86,9 +90,9 @@ pub const AT_FDCWD: i32 = -100;
 /// 无父进程
 pub const NO_PARENT: usize = usize::MAX;
 /// 每一个目录项的大小
-pub const DIR_ENTRY_SIZE:usize = 32;
+pub const DIR_ENTRY_SIZE: usize = 32;
 /// 临时文件的大小限制
-pub const TMP_SIZE_LIMIT:usize = 0x8_000; // 1 MB
+pub const TMP_SIZE_LIMIT: usize = 0x8_000; // 1 MB
 
 /// 限制 mmap 的最长长度
 pub const MMAP_LEN_LIMIT: usize = 0x100_0000; // 16 MB

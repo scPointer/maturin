@@ -4,14 +4,12 @@
 
 //#![deny(missing_docs)]
 
-
 extern crate bitmap_allocator;
 type TidAllocatorImpl = bitmap_allocator::BitAlloc4K;
 use bitmap_allocator::BitAlloc;
 use lock::Mutex;
 
-use crate::constants::{TID_LIMIT};
-
+use crate::constants::TID_LIMIT;
 
 static TID_ALLOCATOR: Mutex<TidAllocatorImpl> = Mutex::new(TidAllocatorImpl::DEFAULT);
 

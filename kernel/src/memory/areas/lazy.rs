@@ -10,7 +10,7 @@ use lock::Mutex;
 use super::{PmArea, VmArea};
 use crate::error::{OSError, OSResult};
 use crate::memory::{
-    addr::{self, align_down, addr_to_page_id},
+    addr::{self, addr_to_page_id, align_down},
     Frame, PTEFlags, PhysAddr, VirtAddr, PAGE_SIZE, USER_VIRT_ADDR_LIMIT,
 };
 
@@ -37,7 +37,9 @@ impl PmArea for PmAreaLazy {
     }
 
     fn release_frame(&mut self, idx: usize) -> OSResult {
-        self.frames[idx].take().ok_or(OSError::PmAreaLazy_ReleaseNotAllocatedPage)?;
+        self.frames[idx]
+            .take()
+            .ok_or(OSError::PmAreaLazy_ReleaseNotAllocatedPage)?;
         Ok(())
     }
 
@@ -80,7 +82,9 @@ impl PmArea for PmAreaLazy {
             let new_frames = self.frames.drain(addr_to_page_id(right_start)..).collect();
             // 被删除的页帧会在 drop 时自动释放
             self.frames.drain(addr_to_page_id(left_end)..);
-            Ok(Arc::new(Mutex::new(PmAreaLazy::new_from_frames(new_frames))))
+            Ok(Arc::new(Mutex::new(PmAreaLazy::new_from_frames(
+                new_frames,
+            ))))
         } else {
             Err(OSError::PmArea_SplitFailed)
         }
@@ -112,9 +116,7 @@ impl PmAreaLazy {
     }
     /// 用给定页帧生成pma
     pub fn new_from_frames(frames: Vec<Option<Frame>>) -> Self {
-        Self {
-            frames: frames
-        }
+        Self { frames: frames }
     }
 
     fn for_each_frame(

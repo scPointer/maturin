@@ -1,21 +1,12 @@
 mod cpu;
+mod page_control;
 mod sbi;
 pub mod stdin;
 pub mod stdout;
-mod page_control;
 
-pub use sbi::{
-    start_hart,
-    set_timer,
-    shutdown,
-    send_ipi,
-    console_put_usize_in_hex,
-};
+pub use sbi::{console_put_usize_in_hex, send_ipi, set_timer, shutdown, start_hart};
 
-pub use page_control::{
-    setSUMAccessClose,
-    setSUMAccessOpen,
-};
+pub use page_control::{setSUMAccessClose, setSUMAccessOpen};
 
 core::arch::global_asm!(include_str!("boot/entry.S"));
 

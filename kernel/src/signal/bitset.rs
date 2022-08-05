@@ -1,5 +1,5 @@
 //! 字符数组。可取并集和差集，也可对给定的 mask 取首位
-//! 
+//!
 
 #[derive(Clone, Copy, Debug)]
 /// bit数组
@@ -37,6 +37,10 @@ impl Bitset {
     /// 寻找不在mask中的最小的 1 的位置，如果有，返回其位置，如没有则返回 None。
     pub fn find_first_one(&self, mask: Bitset) -> Option<usize> {
         let ans = (self.0 & !mask.0).trailing_zeros() as usize;
-        if ans == 64 { None } else { Some(ans) }
+        if ans == 64 {
+            None
+        } else {
+            Some(ans)
+        }
     }
 }

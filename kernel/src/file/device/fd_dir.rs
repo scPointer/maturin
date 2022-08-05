@@ -6,7 +6,7 @@
 use alloc::string::String;
 
 use super::File;
-use crate::file::{Kstat, StMode, normal_file_mode};
+use crate::file::{normal_file_mode, Kstat, StMode};
 
 /// 仅保存路径的文件描述符实现
 pub struct FdDir {
@@ -21,9 +21,7 @@ impl FdDir {
         if !dir.ends_with("/") {
             dir.push('/');
         }
-        Self {
-            dir: dir
-        }
+        Self { dir: dir }
     }
 }
 

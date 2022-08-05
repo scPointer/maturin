@@ -24,9 +24,18 @@ fn sbi_call(which: usize, arg0: usize, arg1: usize, arg2: usize) -> usize {
     ret
 }
 
-fn a_sbi_ecall(which: usize, fid: usize, arg0: usize, arg1: usize, arg2: usize, arg3: usize, arg4: usize, arg5:usize) -> usize {
+fn a_sbi_ecall(
+    which: usize,
+    fid: usize,
+    arg0: usize,
+    arg1: usize,
+    arg2: usize,
+    arg3: usize,
+    arg4: usize,
+    arg5: usize,
+) -> usize {
     let ret;
-    unsafe{
+    unsafe {
         core::arch::asm!("ecall",
             in("a0") arg0,
             in("a1") arg1,
@@ -63,7 +72,6 @@ pub fn shutdown() -> ! {
     unreachable!()
 }
 
-
 pub fn console_getchar() -> usize {
     sbi_call(SBI_CONSOLE_GETCHAR, 0, 0, 0)
 }
@@ -74,10 +82,14 @@ pub fn console_putchar(c: usize) {
 
 pub fn console_put_usize_in_hex(val: usize) {
     for x in 0..16 {
-        let bit4 = ((val>>((15-x)*4)) & 0xf) as u8;
-        let c = if bit4 < 10 { b'0' + bit4 } else { b'A' + bit4 - 10 };
+        let bit4 = ((val >> ((15 - x) * 4)) & 0xf) as u8;
+        let c = if bit4 < 10 {
+            b'0' + bit4
+        } else {
+            b'A' + bit4 - 10
+        };
         console_putchar(c as usize);
-    };
+    }
     for i in 0..10 {
         console_putchar(b'-' as usize);
     }
@@ -101,7 +113,10 @@ pub fn start_hart(hartid: usize, start_addr: usize, a1: usize) {
     let hart_mask = 1usize << hartid;
     let err_code = send_ipi(&hart_mask as *const _ as _);
     if err_code != 0 {
-        panic!("start hart{} failed to send ipi. error code={:x}", hartid, err_code);
+        panic!(
+            "start hart{} failed to send ipi. error code={:x}",
+            hartid, err_code
+        );
     }
     //print("end_start_hart");
     //console_putchar(b'0' as usize +hartid);

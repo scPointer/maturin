@@ -2,23 +2,12 @@
 
 //#![deny(missing_docs)]
 
-use core::mem::ManuallyDrop;
-use alloc::vec::Vec;
-use riscv::asm::{sfence_vma, sfence_vma_all};
-use riscv::register::satp;
-
+use super::{align_down, align_up, phys_to_virt, pte_idx_of_virt_addr, Frame, PhysAddr, VirtAddr};
 use crate::error::{OSError, OSResult};
-
-use super::{PhysAddr, VirtAddr};
-use super::Frame;
-use super::{
-    align_down,
-    align_up,
-};
-use super::{
-    page_id_to_addr,
-    pte_idx_of_virt_addr,
-    phys_to_virt,
+use alloc::vec::Vec;
+use riscv::{
+    asm::{sfence_vma, sfence_vma_all},
+    register::satp,
 };
 
 bitflags! {
@@ -109,7 +98,9 @@ impl PageTableEntry {
 /// 因为 "paddr 页的内容是页表" 需要调用者保证，所以是unsafe
 pub unsafe fn get_pte_at(paddr: PhysAddr, idx: usize) -> &'static mut PageTableEntry {
     unsafe {
-        ((phys_to_virt(paddr) + core::mem::size_of::<usize>() * idx) as *mut PageTableEntry).as_mut().unwrap()
+        ((phys_to_virt(paddr) + core::mem::size_of::<usize>() * idx) as *mut PageTableEntry)
+            .as_mut()
+            .unwrap()
     }
 }
 
@@ -123,7 +114,7 @@ pub struct PageTable {
 impl PageTable {
     // 建立页表，并申请一个根页面
     pub fn new() -> OSResult<Self> {
-        if let Some(mut frame) = Frame::new(){
+        if let Some(mut frame) = Frame::new() {
             frame.zero();
             Ok(PageTable {
                 root_paddr: frame.start_paddr(),
@@ -146,7 +137,7 @@ impl PageTable {
             if let Some(frame) = pte.alloc_and_set() {
                 self.frames.push(frame);
             } else {
-                return None
+                return None;
             }
         }
         Some(pte.addr())
@@ -170,11 +161,15 @@ impl PageTable {
         let (line0, line1, line2) = pte_idx_of_virt_addr(vaddr);
         //查第一级页表
         let pte = unsafe { get_pte_at(self.get_root_paddr(), line0) };
-        if !pte.is_valid() { return None; }
+        if !pte.is_valid() {
+            return None;
+        }
         let paddr = pte.addr();
         //查第二级页表
         let pte = unsafe { get_pte_at(paddr, line1) };
-        if !pte.is_valid() { return None; }
+        if !pte.is_valid() {
+            return None;
+        }
         let paddr = pte.addr();
         //查第三级页表
         unsafe { Some(get_pte_at(paddr, line2)) }
@@ -199,7 +194,10 @@ impl PageTable {
                 // flags 出现 empty 的情况是 VmArea 不希望现在分配这个物理页，但希望事先通过上面的函数分配前两级的页表页
                 if !flags.is_empty() {
                     // 因为 U740 板子不支持处理器设置 A/D，所以需手动设置
-                    pte.set_all(paddr, flags | PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY);
+                    pte.set_all(
+                        paddr,
+                        flags | PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY,
+                    );
                 }
                 Ok(())
             }
@@ -253,7 +251,7 @@ impl PageTable {
     /// 直接在对应位置并写入值。
     /// (写入的时候，默认当前是内核页表。即直接写在查到的物理地址上，也就是把内核看到的低地址段的虚拟地址当作物理地址)
     /// 如果页没有被映射，则返回 false
-    /// 
+    ///
     /// 为了简便，写入没有预先检查。也就是说如果一个地址不在页表里导致写入失败，之前已写入的内容也不会消失。
     /// 同时，目前不支持跨页写入。
     pub unsafe fn force_write(&mut self, start: VirtAddr, data: &[u8]) -> bool {
@@ -297,7 +295,7 @@ impl PageTable {
     }
 
     /// 切换到这个页表
-    /// 
+    ///
     /// 调用者必须保证切换前后执行流是连续的
     pub unsafe fn set_current(&self) {
         let old_root = Self::current_root_paddr();

@@ -3,47 +3,31 @@
 //! 全局常量 TASK_MANAGER 在初始化过程中导入所有用户程序的数据，并分别保存在一个 TaskControlBlock 中
 //! 所有的 TaskControlBlock 都放在 Arc<Mutex<TaskManagerInner>> 中，
 //! 每个核需要切换任务时都需要拿到这个锁，且从调度开始到结束**必须一直持有**这个锁
-//!
 
-//#![deny(missing_docs)]
-
-use lazy_static::*;
-use alloc::sync::Arc;
-use alloc::vec::Vec;
-use alloc::string::String;
-use core::sync::atomic::{Ordering, AtomicUsize};
-use lock::Mutex;
-
-mod context;
-mod switch;
-mod kernel_stack;
 mod clone_flags;
-mod scheduler;
+mod context;
 mod cpu_local;
-
+mod kernel_stack;
+mod scheduler;
+mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
-use crate::arch::get_cpu_id;
 use crate::constants::{ORIGIN_USER_PROC_NAME, ROOT_DIR};
+use alloc::sync::Arc;
+use lazy_static::*;
+use switch::{__move_to_context, __switch};
 
-use switch::{__switch, __move_to_context};
-pub use task::{TaskControlBlock, TaskControlBlockInner, TaskStatus};
-pub use context::TaskContext;
-pub use kernel_stack::KernelStack;
 pub use clone_flags::CloneFlags;
-pub use scheduler::{push_task_to_scheduler, fetch_task_from_scheduler};
-pub use scheduler::Scheduler;
+pub use context::TaskContext;
 pub use cpu_local::{
-    suspend_current_task,
-    exit_current_task,
-    handle_user_page_fault,
-    run_tasks,
-    get_current_task,
-    exec_new_task,
-    handle_signals,
-    signal_return,
+    exec_new_task, exit_current_task, get_current_task, handle_signals, handle_user_page_fault,
+    run_tasks, signal_return, suspend_current_task,
 };
+pub use kernel_stack::KernelStack;
+pub use scheduler::Scheduler;
+pub use scheduler::{fetch_task_from_scheduler, push_task_to_scheduler};
+pub use task::{TaskControlBlock, TaskControlBlockInner, TaskStatus};
 
 lazy_static! {
     /// 第一个用户程序

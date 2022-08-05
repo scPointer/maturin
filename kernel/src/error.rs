@@ -5,7 +5,6 @@
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 
-
 /// 内核中报错的类型。
 /// 错误类型的名字不一定代表发生错误的模块
 pub enum OSError {
@@ -40,7 +39,6 @@ pub enum OSError {
     PmArea_SplitFailed,
     PmAreaLazy_ReleaseNotAllocatedPage,
 
-    
     // 没有空的*物理*页
     Memory_RunOutOfMemory,
     // *虚拟*地址空间中找不到足够长的连续空间

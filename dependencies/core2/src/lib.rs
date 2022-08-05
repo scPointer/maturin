@@ -1,4 +1,3 @@
-#![cfg_attr(feature = "nightly", feature(maybe_uninit_ref))]
 #![cfg_attr(feature = "nightly", feature(never_type))]
 #![cfg_attr(all(feature = "std", feature = "nightly"), feature(read_initializer))]
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -8,13 +7,13 @@
 pub mod error;
 
 #[cfg(feature = "std")]
-pub use std::error as error;
+pub use std::error;
 
 #[cfg(not(feature = "std"))]
 pub mod io;
 
 #[cfg(feature = "std")]
-pub use std::io as io;
+pub use std::io;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;

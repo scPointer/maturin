@@ -1,11 +1,8 @@
 //! 和 RISC-V 时间处理相关的方法
 
+use crate::{arch::set_timer, constants::CLOCK_FREQ};
+use core::ops::Add;
 use riscv::register::time;
-use core::ops::{Add};
-use core::cmp::Ordering;
-
-use crate::constants::CLOCK_FREQ;
-use crate::arch::set_timer;
 
 /// 每秒的时钟中断数
 const TICKS_PER_SEC: usize = 10;
@@ -37,7 +34,11 @@ pub fn get_time_f64() -> f64 {
 
 /// 设置下一次时间中断
 pub fn set_next_trigger() {
-    set_timer((get_time() + CLOCK_FREQ / TICKS_PER_SEC).try_into().unwrap());
+    set_timer(
+        (get_time() + CLOCK_FREQ / TICKS_PER_SEC)
+            .try_into()
+            .unwrap(),
+    );
 }
 
 /// sys_gettimeofday / sys_nanosleep / sys_utimensat 中指定的结构体类型
@@ -69,9 +70,13 @@ impl TimeSpec {
     /// 根据 sys_utimensat 的格式修改当前结构
     pub fn set_as_utime(&mut self, other: &TimeSpec) {
         match other.tv_nsec {
-            UTIME_NOW => { *self = TimeSpec::get_current(); }, // 设为当前时间
-            UTIME_OMIT => {}, // 忽略
-            _ => { *self = *other; } // 设为指定时间
+            UTIME_NOW => {
+                *self = TimeSpec::get_current();
+            } // 设为当前时间
+            UTIME_OMIT => {} // 忽略
+            _ => {
+                *self = *other;
+            } // 设为指定时间
         }
     }
 }

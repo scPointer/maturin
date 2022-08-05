@@ -4,7 +4,7 @@
 
 use bitflags::*;
 
-bitflags! {    
+bitflags! {
     /// 指定文件打开时的权限
     pub struct OpenFlags: u32 {
         /// 只读
@@ -25,7 +25,7 @@ bitflags! {
         const TEXT = 1 << 14;
         /// 和上面不同，要求输入输出都不进行这个翻译
         const BINARY = 1 << 15;
-        /// 
+        ///
         const NOFOLLOW = 1 << 17;
         /// 在 exec 时需关闭
         const CLOEXEC = 1 << 19;

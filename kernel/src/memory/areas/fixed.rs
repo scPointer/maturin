@@ -86,7 +86,9 @@ impl PmArea for PmAreaFixed {
         if left_end < right_start && right_start < self.end - self.start {
             let old_end = self.end;
             self.end = self.start + left_end;
-            Ok(Arc::new(Mutex::new(PmAreaFixed::new(self.start + right_start, old_end).unwrap())))
+            Ok(Arc::new(Mutex::new(
+                PmAreaFixed::new(self.start + right_start, old_end).unwrap(),
+            )))
         } else {
             Err(OSError::PmArea_SplitFailed)
         }

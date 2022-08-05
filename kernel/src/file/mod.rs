@@ -1,22 +1,19 @@
 //! 文件类抽象，包含文件系统、stdin/stdout、管道等
 
-//#![deny(missing_docs)]
-
-use alloc::vec::Vec;
-use alloc::sync::Arc;
-pub use fatfs::SeekFrom;
+mod device;
+mod fd_manager;
+mod fs_stat;
+mod kstat;
+mod os_inode;
+mod pipe;
+mod socket;
+mod stdio;
+mod vfs;
 
 use crate::timer::TimeSpec;
+use alloc::vec::Vec;
 
-mod fd_manager;
-mod os_inode;
-mod device;
-mod stdio;
-mod pipe;
-mod vfs;
-mod kstat;
-mod fs_stat;
-mod socket;
+pub use fatfs::SeekFrom;
 
 /// 文件类抽象
 pub trait File: Send + Sync {
@@ -45,13 +42,13 @@ pub trait File: Send + Sync {
         unimplemented!();
     }
     /// 获取文件状态并写入 stat。成功时返回 true。
-    /// 
+    ///
     /// 目前只有fat文件系统中的文件会处理这个函数
     fn get_stat(&self, stat: *mut Kstat) -> bool {
         false
     }
     /// 设置时间，返回是否设置成功。
-    /// 
+    ///
     /// 注意，格式需要考虑 crate::timer 模块中 UTIME_OMIT 和 UTIME_NOW 的特殊情况
     fn set_time(&self, atime: &TimeSpec, mtime: &TimeSpec) -> bool {
         false
@@ -65,42 +62,48 @@ pub trait File: Send + Sync {
         None
     }
     /// 收取消息，当且仅当这个文件是 socket 时可用
-    fn recvfrom(&self, buf: &mut [u8], flags: i32, src_addr: usize, src_len: &mut u32) -> Option<usize> {
+    fn recvfrom(
+        &self,
+        buf: &mut [u8],
+        flags: i32,
+        src_addr: usize,
+        src_len: &mut u32,
+    ) -> Option<usize> {
         None
     }
 }
 
-pub use stdio::{Stdin, Stdout, Stderr};
 pub use fd_manager::FdManager;
 pub use pipe::Pipe;
+pub use stdio::{Stderr, Stdin, Stdout};
 /*
 pub use os_inode::{OSInode, OpenFlags};
 pub use os_inode::{
     list_apps_names_at_root_dir,
     open_file,
-    check_file_exists, 
+    check_file_exists,
 };
 */
-pub use kstat::{Kstat, StMode};
-pub use kstat::normal_file_mode;
-pub use fs_stat::FsStat;
-pub use vfs::get_virt_file_if_possible;
-pub use device::{OpenFlags, FileDisc};
 pub use device::{
-    list_files_at_root,
-    open_file,
-    check_file_exists,
     check_dir_exists,
+    check_file_exists,
+    fs_init,
+    get_kth_dir_entry_info_of_path,
+    list_files_at_root,
     //load_testcases,
     load_next_testcase,
-    show_testcase_result,
-    umount_fat_fs,
-    mount_fat_fs,
     mkdir,
-    try_remove_link,
-    try_add_link,
-    get_kth_dir_entry_info_of_path,
-    fs_init,
+    mount_fat_fs,
+    open_file,
     origin_fs_stat,
+    show_testcase_result,
+    try_add_link,
+    try_remove_link,
+    umount_fat_fs,
 };
+pub use device::{FileDisc, OpenFlags};
+pub use fs_stat::FsStat;
+pub use kstat::normal_file_mode;
+pub use kstat::{Kstat, StMode};
 pub use socket::Socket;
+pub use vfs::get_virt_file_if_possible;

@@ -11,48 +11,42 @@
 #![feature(btree_drain_filter)]
 // test.rs 输入 argv 需要
 #![feature(drain_filter)]
+
 #[macro_use]
 mod console;
 mod constants;
 mod lang;
 #[macro_use]
 mod memory;
-mod timer;
-mod error;
-mod loaders;
-mod utils;
 mod drivers;
+mod error;
 mod file;
+mod loaders;
 mod signal;
 pub mod syscall;
 pub mod task;
+mod timer;
 pub mod trap;
+mod utils;
 
 #[cfg(target_arch = "riscv64")]
 #[path = "arch/riscv/mod.rs"]
 mod arch;
 
-use core::sync::atomic::{Ordering, AtomicBool, AtomicUsize};
-use core::hint::spin_loop;
+use core::sync::atomic::{AtomicBool, AtomicUsize};
 
 #[macro_use]
 extern crate bitflags;
 
 #[macro_use]
 extern crate alloc;
-use alloc::sync::Arc;
-
-extern crate lock;
-use lock::Mutex;
-
-extern crate lazy_static;
-
-extern crate fscommon;
-
 extern crate fatfs;
+extern crate fscommon;
+extern crate lazy_static;
+extern crate lock;
 
 mod fsio {
-    pub use fscommon::{Read, Write, Seek};
+    pub use fscommon::{Read, Seek, Write};
 }
 
 core::arch::global_asm!(include_str!("fs.S"));
@@ -75,13 +69,13 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     memory::enable_kernel_page_table(); // 构造并切换到内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec
     arch::setSUMAccessOpen(); // 修改 sstatus 的 SUM 位，使内核可以读写USER页表项中的数据
-    //trap::enable_timer_interrupt(); // 开启时钟中断
-    //timer::set_next_trigger(); // 设置时钟中断频率
-    
+                              //trap::enable_timer_interrupt(); // 开启时钟中断
+                              //timer::set_next_trigger(); // 设置时钟中断频率
+
     // file::list_apps_names_at_root_dir(); // 展示所有用户程序的名字
     file::list_files_at_root(); // 展示所有用户程序的名字
     file::fs_init(); // 初始化一些不是实际文件本身但是 OS 约定需要的"文件"
-    extern {
+    extern "C" {
         fn _start_secondary();
     }
     let cpu_id = arch::get_cpu_id();
@@ -95,14 +89,14 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
 
     let cpu_id = arch::get_cpu_id();
     //println!("CPU [{}] is waiting", cpu_id);
-    
+
     // 全局初始化结束
     if constants::SPIN_LOOP_AFTER_BOOT {
         loop {}
     } else {
         task::run_tasks();
     }
-    
+
     unreachable!();
 }
 
@@ -112,8 +106,8 @@ pub extern "C" fn start_kernel_secondary(_arg0: usize, _arg1: usize) -> ! {
     memory::enable_kernel_page_table(); // 构造并切换到内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec
     arch::setSUMAccessOpen(); // 修改 sstatus 的 SUM 位，使内核可以读写USER页表项中的数据
-    //trap::enable_timer_interrupt(); // 开启时钟中断
-    //timer::set_next_trigger(); // 设置时钟中断频率
+                              //trap::enable_timer_interrupt(); // 开启时钟中断
+                              //timer::set_next_trigger(); // 设置时钟中断频率
 
     let cpu_id = arch::get_cpu_id();
     info!("I'm CPU [{}]", cpu_id);
@@ -137,7 +131,7 @@ fn can_do_global_init() -> bool {
             true
         },
         _ => false
-    } 
+    }
     */
     if GLOBAL_INIT_STARTED.load(Ordering::Acquire) == false {
         GLOBAL_INIT_STARTED.store(true, Ordering::Release);
@@ -148,7 +142,7 @@ fn can_do_global_init() -> bool {
 }
 
 /// 标记那些全局只执行一次的启动步骤已完成。
-/// 内核必须由 cpu_id 等于 AP_CAN_INIT 初始值的核先启动并执行这些全局只需要一次的操作，然后其他的核才能启动 
+/// 内核必须由 cpu_id 等于 AP_CAN_INIT 初始值的核先启动并执行这些全局只需要一次的操作，然后其他的核才能启动
 fn mark_global_init_finished() {
     // GLOBAL_INIT_FINISHED.compare_exchange(false, true, Ordering::Release, Ordering::Relaxed).unwrap();
     GLOBAL_INIT_FINISHED.store(true, Ordering::Release);

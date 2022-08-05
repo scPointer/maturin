@@ -1,16 +1,13 @@
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::string::String;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::sync::Arc;
 use core::borrow::BorrowMut;
-//use core::cell::{Cell, RefCell};
-use lock::Mutex;
 use core::char;
 use core::cmp;
 use core::convert::TryFrom;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use core::u32;
+use lock::Mutex;
 
 use crate::boot_sector::{format_boot_sector, BiosParameterBlock, BootSector};
 use crate::dir::{Dir, DirRawStream};

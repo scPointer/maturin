@@ -1,9 +1,9 @@
 //! 初始化时用到的栈。
 //! 这里封装了序列化时将不同数据结构推入栈的过程
 
+use alloc::vec::Vec;
 use core::mem::{align_of, size_of};
 use core::ops::Deref;
-use alloc::vec::Vec;
 
 use crate::constants::USER_INIT_STACK_SIZE;
 
@@ -38,7 +38,8 @@ impl InitStack {
         let offset = self.data.len() - (self.buttom - self.sp);
         unsafe {
             core::slice::from_raw_parts_mut(self.data.as_mut_ptr().add(offset) as *mut T, vs.len())
-        }.copy_from_slice(vs);
+        }
+        .copy_from_slice(vs);
     }
     /// 向栈中推入一个串，并返回推入后栈顶(函数内部加了结尾 '\0')
     pub fn push_str(&mut self, s: &str) -> usize {

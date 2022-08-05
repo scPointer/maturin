@@ -29,7 +29,7 @@ fn frame_idx_to_phys_addr(idx: usize) -> PhysAddr {
 }
 
 /// 分配一个页帧
-/// 
+///
 /// 注意这个函数不对外公开
 unsafe fn alloc_frame() -> Option<PhysAddr> {
     let ret = FRAME_ALLOCATOR.lock().alloc().map(frame_idx_to_phys_addr);
@@ -38,7 +38,7 @@ unsafe fn alloc_frame() -> Option<PhysAddr> {
 }
 
 /// 分配一段连续的页帧，并要求偏移为 PAGE_SIZE * (1 << align_log2)
-/// 
+///
 /// 在 OS 中一般的类型只要求虚拟地址连续，但是一些设备，如 virt 块设备的 buffer 需要物理地址连续，
 /// 所以需要有这个函数
 unsafe fn alloc_frame_contiguous(frame_count: usize, align_log2: usize) -> Option<PhysAddr> {
@@ -58,7 +58,7 @@ unsafe fn alloc_frame_contiguous(frame_count: usize, align_log2: usize) -> Optio
 }
 
 /// 回收一个页帧
-/// 
+///
 /// 注意这个函数不对外公开
 unsafe fn dealloc_frame(target: PhysAddr) {
     //println!("Deallocate frame: {:x}", target);
@@ -68,7 +68,7 @@ unsafe fn dealloc_frame(target: PhysAddr) {
 }
 
 /// 回收一段连续的页帧
-/// 
+///
 /// 注意这个函数不对外公开
 unsafe fn dealloc_frame_contiguous(target: PhysAddr, frame_count: usize) {
     //println!("Deallocate {} frames: {:x}", frame_count, target);
@@ -80,7 +80,7 @@ unsafe fn dealloc_frame_contiguous(target: PhysAddr, frame_count: usize) {
 }
 
 /// 初始化页帧分配器。
-/// 
+///
 /// 必须在启动时只由一个核调用，通常是启动核
 pub fn init() {
     let mut ba = FRAME_ALLOCATOR.lock();
@@ -105,27 +105,25 @@ impl Frame {
     /// 获取并保存一个页帧
     pub fn new() -> Option<Self> {
         unsafe {
-            alloc_frame()
-                .map(|start_paddr| Self {
-                    start_paddr,
-                    frame_count: 1,
-                })
+            alloc_frame().map(|start_paddr| Self {
+                start_paddr,
+                frame_count: 1,
+            })
         }
     }
 
     /// 获取并保存一段连续的页为一个页帧
     pub fn new_contiguous(frame_count: usize, align_log2: usize) -> Option<Self> {
         unsafe {
-            alloc_frame_contiguous(frame_count, align_log2)
-                .map(|start_paddr| Self {
-                    start_paddr,
-                    frame_count,
-                })
+            alloc_frame_contiguous(frame_count, align_log2).map(|start_paddr| Self {
+                start_paddr,
+                frame_count,
+            })
         }
     }
 
     /// 从物理地址直接构造一个页帧
-    /// 
+    ///
     /// 它在 Drop 时不会回收这个页帧，因为它不是从 new 构造的，也就没有分配过
     pub unsafe fn from_paddr(start_paddr: PhysAddr) -> ManuallyDrop<Self> {
         ManuallyDrop::new(Self {
