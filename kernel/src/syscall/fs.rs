@@ -6,7 +6,7 @@
 //#![deny(missing_docs)]
 
 use super::{
-    Dirent64, Dirent64_Type, ErrorNo, IoVec, UtimensatFlags, F_DUPFD, F_GETFD, F_GETFL, SEEK_CUR,
+    Dirent64, Dirent64Type, ErrorNo, IoVec, UtimensatFlags, F_DUPFD, F_GETFD, F_GETFL, SEEK_CUR,
     SEEK_END, SEEK_SET,
 };
 use crate::{
@@ -121,9 +121,6 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
 /// 从同一个 fd 中读取一组字符串。
 /// 目前这个 syscall 借用 sys_read 来实现
 pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> isize {
-    if iov_cnt < 0 {
-        return -1;
-    }
     info!("readv fd {}", fd);
     let mut read_len = 0;
     for i in 0..iov_cnt {
@@ -145,9 +142,6 @@ pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> isize {
 /// 写入一组字符串到同一个 fd 中。
 /// 目前这个 syscall 借用 sys_write 来实现
 pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> isize {
-    if iov_cnt < 0 {
-        return -1;
-    }
     info!("writev fd {}", fd);
     let mut written_len = 0;
     for i in 0..iov_cnt {
@@ -455,7 +449,7 @@ pub fn sys_pipe(pipe: *mut u32) -> isize {
             return 0;
         } else {
             // 只成功插入了一个 fd。这种情况下要把 pipe_read 退出来
-            task_fd_manager.remove_file(fd1);
+            let _ = task_fd_manager.remove_file(fd1);
         }
     }
     -1
@@ -494,9 +488,9 @@ pub fn sys_getdents64(fd: usize, buf: *mut Dirent64, len: usize) -> isize {
                 (*buf).d_off += DIR_ENTRY_SIZE as i64;
                 (*buf).d_reclen = DIR_ENTRY_SIZE as u16;
                 (*buf).set_type(if is_dir {
-                    Dirent64_Type::DIR
+                    Dirent64Type::DIR
                 } else {
-                    Dirent64_Type::REG
+                    Dirent64Type::REG
                 });
                 let name_start = (buf as usize + (*buf).d_name_offset()) as *mut u8;
                 // 算出还能放 d_name 的位置。其中字符串结尾加一个0保证最后不溢出

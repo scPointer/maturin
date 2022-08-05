@@ -163,7 +163,8 @@ pub struct Dirent64 {
     pub d_name: *mut u8,
 }
 
-pub enum Dirent64_Type {
+#[allow(unused)]
+pub enum Dirent64Type {
     UNKNOWN = 0,
     /// 先进先出的文件/队列
     FIFO = 1,
@@ -181,7 +182,7 @@ pub enum Dirent64_Type {
 }
 impl Dirent64 {
     /// 设置文件类型
-    pub fn set_type(&mut self, d_type: Dirent64_Type) {
+    pub fn set_type(&mut self, d_type: Dirent64Type) {
         self.d_type = d_type as u8;
     }
     /// 文件名字存的位置相对于结构体指针是多少

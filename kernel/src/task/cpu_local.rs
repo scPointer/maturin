@@ -338,13 +338,13 @@ pub fn handle_signals() {
             } else {
                 // 否则，查找默认处理方式
                 match SigActionDefault::of_signal(signal) {
-                    Terminate => {
+                    SigActionDefault::Terminate => {
                         // 这里不需要 drop(task)，因为当前函数没有用到 task_inner，在 task.save_trap... 内部用过后已经 drop 了
                         drop(handler);
                         drop(sig_inner);
                         exit_current_task(0);
                     }
-                    Ignore => {}
+                    SigActionDefault::Ignore => {}
                 }
             }
         }

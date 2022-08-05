@@ -87,7 +87,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
         }
     }
 
-    let cpu_id = arch::get_cpu_id();
+    // let cpu_id = arch::get_cpu_id();
     //println!("CPU [{}] is waiting", cpu_id);
 
     // 全局初始化结束
@@ -96,8 +96,6 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     } else {
         task::run_tasks();
     }
-
-    unreachable!();
 }
 
 #[no_mangle]
@@ -118,7 +116,6 @@ pub extern "C" fn start_kernel_secondary(_arg0: usize, _arg1: usize) -> ! {
     } else {
         task::run_tasks();
     }
-    unreachable!();
 }
 
 /*

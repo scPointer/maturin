@@ -53,31 +53,29 @@ pub fn sys_futex(
             if task_vm.manually_alloc_page(uaddr).is_ok() {
                 let real_val = unsafe { (uaddr as *const u32).read_volatile() };
                 if real_val != val {
-                    return ErrorNo::EAGAIN as isize;
-                }
-                // 如果是个表示 timeout 的地址
-                if val2 != 0 && task_vm.manually_alloc_page(val2 as usize).is_ok() {
-                    let time_spec: TimeSpec = unsafe { *(val2 as *const TimeSpec) };
-                    info!("timeoud {}s{}ns", time_spec.tv_sec, time_spec.tv_nsec);
-                    //panic!("");
+                    ErrorNo::EAGAIN as _
+                } else {
+                    // 如果是个表示 timeout 的地址
+                    if val2 != 0 && task_vm.manually_alloc_page(val2 as usize).is_ok() {
+                        let time_spec: TimeSpec = unsafe { *(val2 as *const TimeSpec) };
+                        info!("timeoud {}s{}ns", time_spec.tv_sec, time_spec.tv_nsec);
+                        //panic!("");
+                    }
+                    drop(task_vm); // 切换任务前取消对锁的占用
+                    drop(task);
+                    suspend_current_task();
+                    0
                 }
             } else {
                 // 若地址无效
-                return ErrorNo::EFAULT as isize;
+                ErrorNo::EFAULT as _
             }
-            drop(task_vm); // 切换任务前取消对锁的占用
-            drop(task);
-            suspend_current_task();
-            return 0;
         }
         Flags::WAKE => {
             info!("wake");
             suspend_current_task();
-            return val as isize;
+            val as isize
         }
-        _ => {
-            return -1;
-        }
+        _ => -1,
     }
-    0
 }
