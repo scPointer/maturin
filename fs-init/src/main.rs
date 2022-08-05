@@ -5,7 +5,6 @@
 #![deny(missing_docs)]
 
 use clap::{App, Arg, ArgMatches};
-use std::env;
 use std::fs::{self, File, DirEntry};
 use fatfs::{
     format_volume, 
