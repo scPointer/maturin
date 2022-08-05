@@ -16,7 +16,6 @@ use crate::{
         open_file, origin_fs_stat, try_add_link, try_remove_link, umount_fat_fs,
     },
     file::{FsStat, Kstat, OpenFlags, Pipe, SeekFrom},
-    memory::UserPtr,
     task::{get_current_task, TaskControlBlock},
     timer::TimeSpec,
     utils::raw_ptr_to_ref_str,
@@ -63,6 +62,7 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
     let tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
     info!("fd {} buf {:x} len {}", fd, buf as usize, len);
+    /*
     let buf = buf as usize;
     let buf = match user_ptr_from!(buf, task_vm) {
         Ok(buf) => buf,
@@ -70,12 +70,12 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
             return num as isize;
         }
     };
-    /*
+    */
     if task_vm.manually_alloc_page(buf as usize).is_err() {
         return ErrorNo::EFAULT as isize; // 地址不合法
     }
-    */
-    let slice = unsafe { core::slice::from_raw_parts_mut(buf.raw(), len) };
+    
+    let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
     // 尝试了一下用 .map 串来写，但实际效果好像不如直接 if... 好看
     if let Ok(file) = task.fd_manager.lock().get_file(fd) {
         // 读文件可能触发进程切换
@@ -93,8 +93,9 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     let task = get_current_task().unwrap();
     let tcb_inner = task.inner.lock();
-    let mut task_vm = task.vm.lock();
+    let task_vm = task.vm.lock();
     //println!("write pos {:x}", buf as usize);
+    /*
     let buf = buf as usize;
     let buf = match user_ptr_from!(buf, task_vm) {
         Ok(buf) => buf,
@@ -102,7 +103,8 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
             return num as isize;
         }
     };
-    let slice = unsafe { core::slice::from_raw_parts(buf.raw(), len) };
+    */
+    let slice = unsafe { core::slice::from_raw_parts(buf, len) };
 
     if let Ok(file) = task.fd_manager.lock().get_file(fd) {
         // 写文件也可能触发进程切换

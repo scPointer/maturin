@@ -34,6 +34,7 @@ impl<T> TryFrom<(usize, &mut MutexGuard<'_, MemorySet>)> for UserPtr<T> {
 }
 
 impl<T> UserPtr<T> {
+    #[allow(unused)]
     pub unsafe fn raw(&self) -> *mut T {
         self.0.raw()
     }
@@ -51,6 +52,7 @@ impl<T> From<usize> for UserPtrUnchecked<T> {
 }
 
 impl<T> UserPtrUnchecked<T> {
+    #[allow(unused)]
     pub unsafe fn raw(&self) -> *mut T {
         self.0
     }

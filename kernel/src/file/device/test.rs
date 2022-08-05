@@ -142,7 +142,7 @@ pub const SAMPLE: &[&str] = &[
     //"./runtest.exe -w entry-static.exe socket",
 
     //"./runtest.exe -w entry-dynamic.exe fdopen",
-    //"./runtest.exe -w entry-dynamic.exe fscanf",
+    "./runtest.exe -w entry-dynamic.exe fscanf",
     //"./runtest.exe -w entry-dynamic.exe fwscanf",
     //"./runtest.exe -w entry-dynamic.exe ungetc",
     //"./runtest.exe -w entry-dynamic.exe fflush_exit",
