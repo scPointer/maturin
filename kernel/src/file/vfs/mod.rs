@@ -6,7 +6,6 @@ mod virt_dir;
 mod zero;
 
 use alloc::{string::String, sync::Arc};
-use lazy_static::*;
 use lock::Mutex;
 // 其实这里不要求有序性，可以不用 BTree。
 // 但 std::collections::HashMap 不是那么容易在 no_std 下找到，需要引入依赖库
@@ -17,7 +16,7 @@ use null::NullFile;
 use virt_dir::VirtDir;
 use zero::ZeroFile;
 
-lazy_static! {
+lazy_static::lazy_static! {
     /// 属于虚拟文件系统的目录
     static ref VFS_DIRS: Mutex<BTreeMap<String, VirtDir>> = Mutex::new({
         let mut dirs:BTreeMap<String, VirtDir> = BTreeMap::new();

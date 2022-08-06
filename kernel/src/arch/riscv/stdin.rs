@@ -19,9 +19,7 @@ impl Stdin {
     }
 }
 
-lazy_static::lazy_static! {
-    pub static ref STDIN: Mutex<Stdin> = Mutex::new(Stdin);
-}
+pub static STDIN: Mutex<Stdin> = Mutex::new(Stdin);
 
 /// 从输入流读取一个字符
 pub fn getchar() -> u8 {

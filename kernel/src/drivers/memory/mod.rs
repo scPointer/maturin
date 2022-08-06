@@ -9,14 +9,12 @@
 mod device;
 mod wrapper;
 
+use crate::{
+    constants::{DEVICE_END, DEVICE_START},
+    memory::phys_to_virt,
+};
 use fatfs::{DefaultTimeProvider, FileSystem, FsOptions, LossyOemCpConverter};
 use fscommon::BufStream;
-//use lock::Mutex;
-//use lazy_static::*;
-
-use crate::constants::{DEVICE_END, DEVICE_START};
-
-use crate::memory::phys_to_virt;
 
 pub use device::MemoryMappedDevice;
 pub use wrapper::IoWrapper;

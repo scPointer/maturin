@@ -3,16 +3,13 @@
 
 use alloc::{collections::BTreeMap, vec::Vec};
 use core::cmp::min;
-use lazy_static::*;
 use lock::Mutex;
 
 /// 本地的网络地址，即 127.0.0.1
 pub const LOCAL_LOOPBACK_ADDR: u32 = 0x7f000001;
 
-lazy_static! {
-    /// 端口映射
-    static ref PORT_MAP: Mutex<BTreeMap<u16, PortData>> = Mutex::new(BTreeMap::new());
-}
+/// 端口映射
+static PORT_MAP: Mutex<BTreeMap<u16, PortData>> = Mutex::new(BTreeMap::new());
 
 /// 端口上的被发送或等待接收的数据
 pub struct PortData {

@@ -5,7 +5,6 @@ use crate::{
     task::TaskControlBlock,
 };
 use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
-use lazy_static::*;
 use lock::Mutex;
 
 /*
@@ -114,7 +113,7 @@ impl TestStatus {
     }
 }
 
-lazy_static! {
+lazy_static::lazy_static! {
     //static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(FORMAT_LIBC_STATIC.into_iter().chain(FORMAT_LIBC_DYNAMIC.into_iter())));
     //static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(&[FORMAT_LIBC_STATIC, FORMAT_LIBC_DYNAMIC].concat()));
     static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(SAMPLE.into_iter()));

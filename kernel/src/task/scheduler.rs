@@ -1,10 +1,9 @@
 use super::{TaskControlBlock, ORIGIN_USER_PROC};
 use crate::{arch::get_cpu_id, constants::IS_TEST_ENV, file::load_next_testcase};
 use alloc::{collections::VecDeque, sync::Arc};
-use lazy_static::*;
 use lock::Mutex;
 
-lazy_static! {
+lazy_static::lazy_static! {
     /// 任务调度器。它是全局的，每次只能有一个核访问它
     /// 它启动时会自动在队列中插入 ORIGIN_USER_PROC 作为第一个用户程序
     pub static ref GLOBAL_TASK_SCHEDULER: Mutex<Scheduler> = {

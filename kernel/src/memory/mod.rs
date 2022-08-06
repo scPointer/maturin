@@ -4,9 +4,8 @@ pub mod addr;
 mod allocator;
 mod areas;
 mod page_table;
-mod vmm;
-#[macro_use]
 mod user;
+mod vmm;
 
 use crate::{
     constants::{

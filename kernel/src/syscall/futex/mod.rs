@@ -8,18 +8,15 @@
 
 mod flags;
 
+use super::{sys_gettid, ErrorNo};
+use crate::{
+    task::{get_current_task, suspend_current_task},
+    timer::TimeSpec,
+};
 use flags::{Flags, FutexFlag};
-
-use super::sys_gettid;
-use super::ErrorNo;
-use crate::task::{get_current_task, suspend_current_task};
-use crate::timer::TimeSpec;
-use lazy_static::*;
 use lock::Mutex;
 
-lazy_static! {
-    static ref FCOUNT: Mutex<usize> = Mutex::new(0);
-}
+static FCOUNT: Mutex<usize> = Mutex::new(0);
 
 pub fn sys_futex(
     uaddr: usize,

@@ -1,6 +1,5 @@
 use super::BlockDevice;
 use crate::memory::{phys_to_virt, virt_to_phys, Frame, PhysAddr, VirtAddr};
-use lazy_static::*;
 use lock::Mutex;
 use virtio_drivers::{VirtIOBlk, VirtIOHeader};
 
@@ -9,9 +8,7 @@ const VIRTIO0: usize = 0x10001000;
 
 pub struct VirtIOBlock(Mutex<VirtIOBlk<'static>>);
 
-lazy_static! {
-    static ref QUEUE_FRAMES: Mutex<Option<Frame>> = Mutex::new(None);
-}
+static QUEUE_FRAMES: Mutex<Option<Frame>> = Mutex::new(None);
 
 impl BlockDevice for VirtIOBlock {
     fn read_block(&self, block_id: usize, buf: &mut [u8]) {

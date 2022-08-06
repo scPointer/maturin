@@ -64,7 +64,7 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
     info!("fd {} buf {:x} len {}", fd, buf as usize, len);
     /*
     let buf = buf as usize;
-    let buf = match user_ptr_from!(buf, task_vm) {
+    let buf = match UserPtr::try_from((buf, &mut task_vm)) {
         Ok(buf) => buf,
         Err(num) => {
             return num as isize;
@@ -74,7 +74,7 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
     if task_vm.manually_alloc_page(buf as usize).is_err() {
         return ErrorNo::EFAULT as isize; // 地址不合法
     }
-    
+
     let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
     // 尝试了一下用 .map 串来写，但实际效果好像不如直接 if... 好看
     if let Ok(file) = task.fd_manager.lock().get_file(fd) {
@@ -97,7 +97,7 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     //println!("write pos {:x}", buf as usize);
     /*
     let buf = buf as usize;
-    let buf = match user_ptr_from!(buf, task_vm) {
+    let buf = match UserPtr::try_from((buf, &mut task_vm)) {
         Ok(buf) => buf,
         Err(num) => {
             return num as isize;

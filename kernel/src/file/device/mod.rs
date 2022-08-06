@@ -3,15 +3,22 @@
 
 //#![deny(missing_docs)]
 
-use alloc::string::String;
-use alloc::sync::Arc;
-use fatfs::{DefaultTimeProvider, Error, FileSystem, LossyOemCpConverter};
-use lazy_static::*;
+mod fat_dir;
+mod fat_file;
+mod fd_dir;
+mod link;
+mod open_flags;
+mod stat;
+mod test;
 
-use super::get_virt_file_if_possible;
-use super::File;
-use crate::constants::ROOT_DIR;
-use crate::drivers::{new_memory_mapped_fs, MemoryMappedFsIoType};
+use super::{get_virt_file_if_possible, File};
+use crate::{
+    constants::ROOT_DIR,
+    drivers::{new_memory_mapped_fs, MemoryMappedFsIoType},
+};
+use alloc::{string::String, sync::Arc};
+use fatfs::{DefaultTimeProvider, Error, FileSystem, LossyOemCpConverter};
+use link::parse_file_name;
 
 type FsIO = MemoryMappedFsIoType;
 type FsTP = DefaultTimeProvider;
@@ -20,14 +27,6 @@ type FsOCC = LossyOemCpConverter;
 type FsDir = fatfs::Dir<'static, FsIO, FsTP, FsOCC>;
 type FsFile = fatfs::File<'static, FsIO, FsTP, FsOCC>;
 type FATFileSystem = FileSystem<FsIO, FsTP, FsOCC>;
-
-mod fat_dir;
-mod fat_file;
-mod fd_dir;
-mod link;
-mod open_flags;
-mod stat;
-mod test;
 
 pub use fat_dir::FatDir;
 pub use fat_file::FatFile;
@@ -42,9 +41,7 @@ pub use test::{
     show_testcase_result,
 };
 
-use link::parse_file_name;
-
-lazy_static! {
+lazy_static::lazy_static! {
     //static ref MEMORY_FS: Arc<Mutex<FileSystem<FsIO, FsTP, FsOCC>>> = Arc::new(Mutex::new(new_memory_mapped_fs()));
     static ref MEMORY_FS: FATFileSystem = new_memory_mapped_fs();
 }

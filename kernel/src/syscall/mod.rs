@@ -92,12 +92,9 @@ use crate::constants::IS_TEST_ENV;
 use crate::file::{FsStat, Kstat};
 use crate::signal::SigAction;
 use crate::timer::TimeSpec;
-use lazy_static::*;
 use lock::Mutex;
 
-lazy_static! {
-    static ref WRITEV_COUNT: Mutex<usize> = Mutex::new(0);
-}
+static WRITEV_COUNT: Mutex<usize> = Mutex::new(0);
 
 /// 处理系统调用
 pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {

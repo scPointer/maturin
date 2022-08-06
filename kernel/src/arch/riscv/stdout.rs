@@ -24,10 +24,8 @@ impl Write for Stdout {
     }
 }
 
-lazy_static::lazy_static! {
-    pub static ref STDOUT: Mutex<Stdout> = Mutex::new(Stdout);
-    pub static ref STDERR: Mutex<Stdout> = Mutex::new(Stdout);
-}
+pub static STDOUT: Mutex<Stdout> = Mutex::new(Stdout);
+pub static STDERR: Mutex<Stdout> = Mutex::new(Stdout);
 
 /// 输出到 stdout
 pub fn stdout_puts(fmt: Arguments) {

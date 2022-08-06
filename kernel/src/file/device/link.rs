@@ -6,15 +6,12 @@
 
 use super::{check_dir_exists, check_file_exists, remove_file, split_path_and_file};
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
-use lazy_static::*;
 use lock::Mutex;
 
-lazy_static! {
-    /// 用户看到的文件到实际文件的映射
-    static ref LINK_PATH_MAP: Mutex<BTreeMap<FileDisc, FileDisc>> = Mutex::new(BTreeMap::new());
-    /// 实际文件(而不是用户文件)到链接数的映射
-    static ref LINK_COUNT_MAP: Mutex<BTreeMap<FileDisc, usize>> = Mutex::new(BTreeMap::new());
-}
+/// 用户看到的文件到实际文件的映射
+static LINK_PATH_MAP: Mutex<BTreeMap<FileDisc, FileDisc>> = Mutex::new(BTreeMap::new());
+/// 实际文件(而不是用户文件)到链接数的映射
+static LINK_COUNT_MAP: Mutex<BTreeMap<FileDisc, usize>> = Mutex::new(BTreeMap::new());
 
 /// 将用户提供的路径和文件转换成实际的路径和文件
 pub fn parse_file_name((path, file): (String, String)) -> (String, String) {
@@ -155,11 +152,9 @@ impl MountedFs {
     }
 }
 
-lazy_static! {
-    /// 已挂载的文件系统(设备)。
-    /// 注意启动时的文件系统不在这个 vec 里，它在 mod.rs 里。
-    static ref MOUNTED: Mutex<Vec<MountedFs>> = Mutex::new(Vec::new());
-}
+/// 已挂载的文件系统(设备)。
+/// 注意启动时的文件系统不在这个 vec 里，它在 mod.rs 里。
+static MOUNTED: Mutex<Vec<MountedFs>> = Mutex::new(Vec::new());
 
 /// 挂载一个fatfs类型的设备
 pub fn mount_fat_fs(device_path: String, device_file: &str, mount_path: String) -> bool {

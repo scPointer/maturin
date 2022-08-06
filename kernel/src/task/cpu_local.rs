@@ -17,7 +17,6 @@ use crate::{
 };
 use alloc::{sync::Arc, vec::Vec};
 use core::mem::size_of;
-use lazy_static::*;
 use lock::Mutex;
 
 /// 每个核当前正在运行的任务及上下文信息。
@@ -53,7 +52,7 @@ impl CpuLocal {
     }
 }
 
-lazy_static! {
+lazy_static::lazy_static! {
     /// 所有 CPU 的上下文信息
     pub static ref CPU_CONTEXTS: Vec<Mutex<CpuLocal>> = {
         let mut cpu_contexts: Vec<Mutex<CpuLocal>> = Vec::new();

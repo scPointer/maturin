@@ -3,8 +3,6 @@
 
 mod user_data;
 mod user_ptr;
-#[macro_use]
-mod user_macro;
 
 use super::MemorySet;
 

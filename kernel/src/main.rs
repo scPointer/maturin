@@ -9,19 +9,20 @@
 #![feature(naked_functions, asm_sym, asm_const)]
 // MemorySet 处理相交的 VmArea 时需要
 #![feature(btree_drain_filter)]
+// used in file/device/link.rs
+#![feature(const_btree_new)]
 // test.rs 输入 argv 需要
 #![feature(drain_filter)]
 
 #[macro_use]
 mod console;
 mod constants;
-mod lang;
-#[macro_use]
-mod memory;
 mod drivers;
 mod error;
 mod file;
+mod lang;
 mod loaders;
+mod memory;
 mod signal;
 pub mod syscall;
 pub mod task;
@@ -33,8 +34,6 @@ mod utils;
 #[path = "arch/riscv/mod.rs"]
 mod arch;
 
-use core::sync::atomic::AtomicUsize;
-
 #[macro_use]
 extern crate bitflags;
 
@@ -42,7 +41,6 @@ extern crate bitflags;
 extern crate alloc;
 extern crate fatfs;
 extern crate fscommon;
-extern crate lazy_static;
 extern crate lock;
 
 mod fsio {
@@ -51,9 +49,8 @@ mod fsio {
 
 core::arch::global_asm!(include_str!("fs.S"));
 
-lazy_static::lazy_static! {
-    static ref BOOTED_CPU_NUM: AtomicUsize = AtomicUsize::new(0);
-}
+// use core::sync::atomic::AtomicUsize;
+// static BOOTED_CPU_NUM: AtomicUsize = AtomicUsize::new(0);
 
 #[no_mangle]
 /// 主核启动OS
