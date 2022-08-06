@@ -43,7 +43,7 @@ pub fn sys_futex(
     //}
     match flag.operation() {
         Flags::WAIT => {
-            info!("wait, suspend---");
+            //info!("futex wait, suspend---");
             // 检查 uaddr 处的地址
             let task = get_current_task().unwrap();
             let mut task_vm = task.vm.lock();
@@ -54,8 +54,8 @@ pub fn sys_futex(
                 } else {
                     // 如果是个表示 timeout 的地址
                     if val2 != 0 && task_vm.manually_alloc_page(val2 as usize).is_ok() {
-                        let time_spec: TimeSpec = unsafe { *(val2 as *const TimeSpec) };
-                        info!("timeoud {}s{}ns", time_spec.tv_sec, time_spec.tv_nsec);
+                        //let time_spec: TimeSpec = unsafe { *(val2 as *const TimeSpec) };
+                        //info!("futex timeoud {}s{}ns", time_spec.tv_sec, time_spec.tv_nsec);
                         //panic!("");
                     }
                     drop(task_vm); // 切换任务前取消对锁的占用
@@ -69,7 +69,7 @@ pub fn sys_futex(
             }
         }
         Flags::WAKE => {
-            info!("wake");
+            //info!("futex wake");
             suspend_current_task();
             val as isize
         }
