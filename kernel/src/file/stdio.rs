@@ -62,11 +62,11 @@ impl File for Stderr {
     /// UTF-8 格式写
     fn write(&self, buf: &[u8]) -> Option<usize> {
         if let Ok(data) = core::str::from_utf8(buf) {
-            error_print!("{}", data);
+            eprint!("{}", data);
             Some(buf.len())
         } else {
             for i in 0..buf.len() {
-                error_print!("{} ", buf[i]);
+                eprint!("{} ", buf[i]);
             }
             Some(buf.len())
         }

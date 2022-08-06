@@ -152,9 +152,9 @@ pub fn start_hart(hartid: usize, start_addr: usize, a1: usize) {
 }
 
 #[inline]
-pub fn shutdown() -> ! {
+pub fn shutdown_failure() -> ! {
     use sbi_rt::*;
-    system_reset(RESET_TYPE_SHUTDOWN, RESET_REASON_NO_REASON);
+    system_reset(RESET_TYPE_SHUTDOWN, RESET_REASON_SYSTEM_FAILURE);
     unreachable!()
 }
 

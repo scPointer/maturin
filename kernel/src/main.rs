@@ -69,7 +69,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     file::list_files_at_root(); // 展示所有用户程序的名字
     file::fs_init(); // 初始化一些不是实际文件本身但是 OS 约定需要的"文件"
     let cpu_id = arch::get_cpu_id();
-    info!("CPU [{}] bootstrap", cpu_id);
+    info!("CPU [{cpu_id}] bootstrap");
     for other_cpu in constants::FIRST_CPU_ID..=constants::LAST_CPU_ID {
         if other_cpu != cpu_id {
             let _entry = arch::secondary_entry as usize;
@@ -99,7 +99,7 @@ pub extern "C" fn start_kernel_secondary(_arg0: usize, _arg1: usize) -> ! {
                               //timer::set_next_trigger(); // 设置时钟中断频率
 
     let cpu_id = arch::get_cpu_id();
-    info!("I'm CPU [{}]", cpu_id);
+    info!("I'm CPU [{cpu_id}]");
 
     // 全局初始化结束
     if constants::SPIN_LOOP_AFTER_BOOT || constants::IS_SINGLE_CORE {
@@ -173,6 +173,24 @@ pub fn test_vm() {
         fn sbss();
         fn ebss();
     }
-    println!("stext = {:x}\netext = {:x}\nsdata = {:x}\nedata = {:x}\nsrodata = {:x}\nerodata = {:x}\nsbss = {:x}\nebss = {:x}\n",
-        stext as usize, etext as usize, sdata as usize, edata as usize, srodata as usize, erodata as usize, sbss as usize, ebss as usize);
+    println!(
+        "\
+stext = {:x}
+etext = {:x}
+sdata = {:x}
+edata = {:x}
+srodata = {:x}
+erodata = {:x}
+sbss = {:x}
+ebss = {:x}
+",
+        stext as usize,
+        etext as usize,
+        sdata as usize,
+        edata as usize,
+        srodata as usize,
+        erodata as usize,
+        sbss as usize,
+        ebss as usize,
+    );
 }

@@ -191,18 +191,18 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             ) as usize;
         }
         Trap::Exception(Exception::StoreFault) => {
-            error_println!("[kernel] StoreFault in kernel, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
+            eprintln!("[kernel] StoreFault in kernel, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
             //exit_current_and_run_next();
         }
         Trap::Exception(Exception::IllegalInstruction) => {
-            error_println!(
+            eprintln!(
                 "[cpu {}] IllegalInstruction in kernel, kernel killed it.",
                 get_cpu_id()
             );
             //exit_current_and_run_next();
         }
         Trap::Exception(Exception::InstructionPageFault) => {
-            error_println!("[cpu {}] InstructionPageFault in kernel, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
+            eprintln!("[cpu {}] InstructionPageFault in kernel, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
             /*
             if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::EXECUTE) {
                 println!("{:#?}", e);
@@ -212,7 +212,7 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             //PageFault(stval, PTEFlags::USER | PTEFlags::EXECUTE)
         }
         Trap::Exception(Exception::LoadPageFault) => {
-            error_println!(
+            eprintln!(
                 "[cpu {}] LoadPageFault in kernel, bad addr = {:#x}, bad instruction = {:#x}.",
                 get_cpu_id(),
                 stval,
@@ -227,7 +227,7 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             //PageFault(stval, PTEFlags::USER | PTEFlags::READ)
         }
         Trap::Exception(Exception::StorePageFault) => {
-            error_println!(
+            eprintln!(
                 "[cpu {}] StorePageFault in kernel, bad addr = {:#x}, bad instruction = {:#x}.",
                 get_cpu_id(),
                 stval,
