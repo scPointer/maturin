@@ -4,7 +4,9 @@ mod sbi;
 pub mod stdin;
 pub mod stdout;
 
-pub use page_control::{setSUMAccessClose, setSUMAccessOpen};
+use core::mem::MaybeUninit;
+
+pub use page_control::{allow_sum_access, refuse_sum_access};
 pub use sbi::{console_put_usize_in_hex, send_ipi, set_timer, shutdown, start_hart};
 
 core::arch::global_asm!(
@@ -24,15 +26,21 @@ core::arch::global_asm!(
     "
 );
 
-core::arch::global_asm!(
-    "   .section .bss.stack
-        .global idle_stack
-        .global idle_stack_top
-    idle_stack:
-        .space 256 * 1024 * 5    # 256 K per core * 4
-    idle_stack_top:
-    "
-);
+/// 一个核的启动栈
+#[repr(C, align(4096))]
+struct KernelStack([u8; 256 * 1024]);
+
+/// 所有核的启动栈
+#[link_section = ".bss.stack"]
+static mut KERNEL_STACK: MaybeUninit<[KernelStack; 4]> = MaybeUninit::uninit();
+
+/// 获取启动栈地址
+#[inline]
+pub fn kernel_stack() -> core::ops::Range<usize> {
+    let base = unsafe { KERNEL_STACK.assume_init_ref() } as *const _ as usize;
+    let size = core::mem::size_of_val(unsafe { &KERNEL_STACK });
+    base..base + size
+}
 
 /// 入口。
 ///
@@ -90,10 +98,11 @@ unsafe extern "C" fn set_stack(hartid: usize) {
     core::arch::asm!(
         "   add  t0, a0, 1
             slli t0, t0, 18
-            la   sp, idle_stack
+            la   sp, {stack}
             add  sp, sp, t0
             ret
         ",
+        stack = sym KERNEL_STACK,
         options(noreturn),
     )
 }

@@ -3,8 +3,7 @@
 
 #![no_std]
 #![no_main]
-//#![deny(missing_docs)]
-//#![deny(warnings)]
+#![deny(warnings)]
 #![feature(panic_info_message)]
 #![feature(default_alloc_error_handler)]
 #![feature(naked_functions, asm_sym, asm_const)]
@@ -30,7 +29,7 @@ mod timer;
 pub mod trap;
 mod utils;
 
-#[cfg(target_arch = "riscv64")]
+// #[cfg(target_arch = "riscv64")]
 #[path = "arch/riscv/mod.rs"]
 mod arch;
 
@@ -64,9 +63,10 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
 
     memory::enable_kernel_page_table(); // 构造并切换到内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec
-    arch::setSUMAccessOpen(); // 修改 sstatus 的 SUM 位，使内核可以读写USER页表项中的数据
-                              //trap::enable_timer_interrupt(); // 开启时钟中断
-                              //timer::set_next_trigger(); // 设置时钟中断频率
+    arch::allow_sum_access(); // 内核可以读写 USER 页表项中的数据
+
+    //trap::enable_timer_interrupt(); // 开启时钟中断
+    //timer::set_next_trigger(); // 设置时钟中断频率
 
     // file::list_apps_names_at_root_dir(); // 展示所有用户程序的名字
     file::list_files_at_root(); // 展示所有用户程序的名字
@@ -97,7 +97,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
 pub extern "C" fn start_kernel_secondary(_arg0: usize, _arg1: usize) -> ! {
     memory::enable_kernel_page_table(); // 构造并切换到内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec
-    arch::setSUMAccessOpen(); // 修改 sstatus 的 SUM 位，使内核可以读写USER页表项中的数据
+    arch::allow_sum_access(); // 修改 sstatus 的 SUM 位，使内核可以读写USER页表项中的数据
                               //trap::enable_timer_interrupt(); // 开启时钟中断
                               //timer::set_next_trigger(); // 设置时钟中断频率
 
