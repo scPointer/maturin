@@ -3,6 +3,7 @@ MODE ?= debug
 PLATFORM ?= qemu
 SMP ?= 4
 MACHINE ?= virt
+SBI ?= rustsbi
 
 OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy
@@ -34,8 +35,13 @@ qemu_args := -nographic -smp $(SMP) -m 8G
 ifeq ($(ARCH), riscv64)
 qemu_args += \
 	-machine $(MACHINE) \
-	-bios rustsbi-qemu.bin \
 	-kernel $(kernel_img)
+endif
+
+ifeq ($(SBI), rustsbi)
+qemu_args += -bios rustsbi-qemu.bin
+else
+qemu_args += -bios default
 endif
 
 .PHONY: build testcases-img kernel run qemu asm clean gdb-runner gdb-listener doc
