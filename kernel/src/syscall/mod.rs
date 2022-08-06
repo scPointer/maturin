@@ -103,6 +103,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
         SyscallNo::READV => sys_readv(args[0], args[1] as *mut IoVec, args[2]),
         SyscallNo::WRITEV => sys_writev(args[0], args[1] as *const IoVec, args[2]),
+        SyscallNo::PREAD => sys_pread(args[0], args[1] as *mut u8, args[2], args[3]),
         SyscallNo::FSTATAT => sys_fstatat(args[0] as i32, args[1] as *const u8, args[2] as *mut Kstat),
         SyscallNo::FSTAT => sys_fstat(args[0], args[1] as *mut Kstat),
         SyscallNo::UTIMENSAT => sys_utimensat(

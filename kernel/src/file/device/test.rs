@@ -120,6 +120,7 @@ lazy_static::lazy_static! {
     static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(SAMPLE));
 }
 
+#[allow(dead_code)]
 pub const SAMPLE: &[&str] = &[
     //"lmbench_all lat_syscall -P 1 null",
     //"busybox kill 10",

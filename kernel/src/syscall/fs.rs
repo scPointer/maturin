@@ -61,7 +61,7 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> SysResult {
     let task = get_current_task().unwrap();
     let tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
-    info!("fd {} buf {:x} len {}", fd, buf as usize, len);
+    info!("sys_read fd {} buf {:x} len {}", fd, buf as usize, len);
     /*
     let buf = buf as usize;
     let buf = match UserPtr::try_from((buf, &mut task_vm)) {
@@ -120,7 +120,7 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> SysResult {
 /// 从同一个 fd 中读取一组字符串。
 /// 目前这个 syscall 借用 sys_read 来实现
 pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> SysResult {
-    info!("readv fd {}", fd);
+    info!("sys_readv fd {}", fd);
     let mut read_len = 0;
     for i in 0..iov_cnt {
         let io_vec: &IoVec = unsafe { &*iov.add(i) };
@@ -139,7 +139,7 @@ pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> SysResult {
 /// 写入一组字符串到同一个 fd 中。
 /// 目前这个 syscall 借用 sys_write 来实现
 pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> SysResult {
-    info!("writev fd {}", fd);
+    info!("sys_writev fd {}", fd);
     let mut written_len = 0;
     for i in 0..iov_cnt {
         let io_vec: &IoVec = unsafe { &*iov.add(i) };
@@ -153,6 +153,35 @@ pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> SysResult {
         }
     }
     Ok(written_len)
+}
+
+/// 在 offset 位置读 count 个字符。这个文件必须支持 seek
+pub fn sys_pread(fd: usize, buf: *mut u8, count: usize, offset: usize) -> SysResult {
+    let task = get_current_task().unwrap();
+    let tcb_inner = task.inner.lock();
+    let mut task_vm = task.vm.lock();
+    info!("sys_pread fd {} buf {:x} count {} offset {}", fd, buf as usize, count, offset);
+    if task_vm.manually_alloc_page(buf as usize).is_err() {
+        return Err(ErrorNo::EFAULT); // 地址不合法
+    }
+
+    let slice = unsafe { core::slice::from_raw_parts_mut(buf, count) };
+    // 尝试了一下用 .map 串来写，但实际效果好像不如直接 if... 好看
+    if let Ok(file) = task.fd_manager.lock().get_file(fd) {
+        if let Some(pos) = file.seek(SeekFrom::Start(offset as u64)) {
+            // 保证确实 seek 到对应位置。而不是超过文件末尾
+            if pos == offset {
+                // 读文件可能触发进程切换
+                drop(tcb_inner);
+                drop(task_vm);
+                if let Some(read_len) = file.read(slice) {
+                    //println!("[kernel] read syscall size {} wanted {}", read_len, len);
+                    return Ok(read_len);
+                }
+            }
+        }
+    }
+    Err(ErrorNo::EINVAL)
 }
 
 /// 获取文件状态信息

@@ -30,6 +30,7 @@ numeric_enum! {
         WRITE = 64,
         READV = 65,
         WRITEV = 66,
+        PREAD = 67,
         //SENDFILE64 = 71,
         //READLINKAT = 78,
         FSTATAT = 79,
