@@ -292,7 +292,7 @@ pub fn handle_signals() {
     let mut sig_inner = task.signal_receivers.lock();
     let handler = task.signal_handlers.lock();
     if let Some(signum) = sig_inner.get_one_signal() {
-        let signal = SignalNo::from(signum as u8);
+        let signal = SignalNo::from(signum);
         info!("tid {} handling signal: {:#?}", task.get_tid_num(), signal);
         // 保存成功说明当前没有在处理其他信号
         if task.save_trap_cx_if_not_handling_signals() {

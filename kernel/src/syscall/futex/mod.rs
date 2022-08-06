@@ -11,7 +11,7 @@ mod flags;
 use super::{sys_gettid, ErrorNo};
 use crate::{
     task::{get_current_task, suspend_current_task},
-    timer::TimeSpec,
+    //timer::TimeSpec,
 };
 use flags::{Flags, FutexFlag};
 use lock::Mutex;
