@@ -1,6 +1,5 @@
 ARCH ?= riscv64
 MODE ?= debug
-USERMODE ?= release
 PLATFORM ?= qemu
 SMP ?= 4
 MACHINE ?= virt
@@ -24,8 +23,6 @@ qemu := qemu-system-$(ARCH)
 build_path := target/$(target)/$(MODE)
 kernel := $(build_path)/maturin
 kernel_img := $(build_path)/maturin.img
-fs_img := ../user/target/$(target)/$(USERMODE)/fs.img
-fat_fs_img := ../user/target/$(target)/$(USERMODE)/fat.img
 testcases_img := ../fat.img
 
 build_args := --target $(target)
@@ -41,19 +38,11 @@ qemu_args += \
 	-kernel $(kernel_img)
 endif
 
-.PHONY: build kernel run qemu asm clean
+.PHONY: build testcases-img kernel run qemu asm clean gdb-runner gdb-listener doc
 
 #build: $(kernel_img) easy-fs-img
 build: $(kernel_img)
 	cp $(kernel_img) ../os.bin
-easy-fs-img:
-	@cd ../user && make build
-	@rm -f $(fs_img)
-	@cd ../dependencies/easy-fs-fuse && cargo run --release -- -s ../../user/src/bin/ -t ../../user/target/$(target)/$(USERMODE)/
-
-fat-fs-img:
-	@rm -f $(fat_fs_img)
-	@cd ../fs-init && cargo run --release -- -s ../user/src/bin/ -t ../user/target/$(target)/$(USERMODE)/ -o ../user/target/
 
 testcases-img:
 	@rm -f $(testcases_img)
