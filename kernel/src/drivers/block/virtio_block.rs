@@ -1,4 +1,4 @@
-use super::BlockDevice;
+use crate::drivers::block::BlockDevice;
 use crate::memory::{phys_to_virt, virt_to_phys, Frame, PhysAddr, VirtAddr};
 use lock::Mutex;
 use virtio_drivers::{VirtIOBlk, VirtIOHeader};
