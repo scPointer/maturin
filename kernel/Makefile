@@ -3,7 +3,7 @@ MODE ?= debug
 USERMODE ?= release
 PLATFORM ?= qemu
 SMP ?= 4
-MACHINE ?= virt 
+MACHINE ?= virt
 
 OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy
@@ -37,13 +37,8 @@ qemu_args := -nographic -smp $(SMP) -m 8G
 ifeq ($(ARCH), riscv64)
 qemu_args += \
 	-machine $(MACHINE) \
-	-bios default \
+	-bios rustsbi-qemu.bin \
 	-kernel $(kernel_img)
-endif
-
-ifeq ($(MACHINE), virt)
-qemu_args += -drive file=$(fs_img),if=none,format=raw,id=x0
-qemu_args += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 endif
 
 .PHONY: build kernel run qemu asm clean
