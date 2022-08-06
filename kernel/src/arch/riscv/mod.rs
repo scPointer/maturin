@@ -7,7 +7,7 @@ pub mod stdout;
 use core::mem::MaybeUninit;
 
 pub use page_control::{allow_sum_access, refuse_sum_access};
-pub use sbi::{console_put_usize_in_hex, send_ipi, set_timer, shutdown, start_hart};
+pub use sbi::{console_put_usize_in_hex, set_timer, shutdown, start_hart};
 
 core::arch::global_asm!(
     "   .section .data
