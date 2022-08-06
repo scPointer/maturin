@@ -1,13 +1,7 @@
-mod cpu;
-mod page_control;
-mod sbi;
 pub mod stdin;
 pub mod stdout;
 
-use core::mem::MaybeUninit;
-
-pub use page_control::{allow_sum_access, refuse_sum_access};
-pub use sbi::{console_put_usize_in_hex, set_timer, shutdown, start_hart};
+pub use page_control::*;
 
 core::arch::global_asm!(
     "   .section .data
@@ -32,7 +26,8 @@ struct KernelStack([u8; 256 * 1024]);
 
 /// 所有核的启动栈
 #[link_section = ".bss.stack"]
-static mut KERNEL_STACK: MaybeUninit<[KernelStack; 4]> = MaybeUninit::uninit();
+static mut KERNEL_STACK: core::mem::MaybeUninit<[KernelStack; 4]> =
+    core::mem::MaybeUninit::uninit();
 
 /// 获取启动栈地址
 #[inline]
@@ -129,6 +124,52 @@ pub fn cpu_init(cpu_id: usize) {
     println!("Hello, CPU [{}]", cpu_id);
 }
 
+#[inline]
 pub fn get_cpu_id() -> usize {
-    cpu::id()
+    let cpu_id;
+    unsafe { core::arch::asm!("mv {0}, tp", out(reg) cpu_id) };
+    cpu_id
+}
+
+#[inline]
+pub fn set_timer(stime_value: u64) {
+    sbi_rt::set_timer(stime_value);
+}
+
+#[allow(unused)]
+#[inline]
+pub fn start_hart(hartid: usize, start_addr: usize, a1: usize) {
+    //print("start_hart");
+    //console_putchar(b'0' as usize + hartid);
+    //print("\n");
+    let ret = sbi_rt::hart_start(hartid, start_addr, a1);
+    if ret.error != sbi_rt::RET_SUCCESS {
+        panic!("start hart{} failed: {:?}", hartid, ret);
+    }
+    //print("end_start_hart");
+    //console_putchar(b'0' as usize +hartid);
+    //print("\n");
+}
+
+#[inline]
+pub fn shutdown() -> ! {
+    use sbi_rt::*;
+    system_reset(RESET_TYPE_SHUTDOWN, RESET_REASON_NO_REASON);
+    unreachable!()
+}
+
+/// SUM Access for Supervisor User Memory Access
+mod page_control {
+    use riscv::register::sstatus;
+
+    #[inline]
+    pub fn allow_sum_access() {
+        unsafe { sstatus::set_sum() };
+    }
+
+    #[allow(unused)]
+    #[inline]
+    pub fn refuse_sum_access() {
+        unsafe { sstatus::clear_sum() };
+    }
 }
