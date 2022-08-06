@@ -200,6 +200,7 @@ pub struct IoVec {
 
 /// 错误编号
 #[repr(C)]
+#[derive(Debug)]
 pub enum ErrorNo {
     /// 非法操作
     EPERM = -1,

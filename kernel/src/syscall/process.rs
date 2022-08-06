@@ -1,7 +1,7 @@
 //! 与进程相关的系统调用
 
 use super::{
-    resolve_clone_flags_and_signal, ErrorNo, MMAPFlags, RLimit, UtsName, WaitFlags, MMAPPROT,
+    resolve_clone_flags_and_signal, SysResult, ErrorNo, MMAPFlags, RLimit, UtsName, WaitFlags, MMAPPROT,
     RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK,
 };
 use crate::signal::{send_signal, Bitset, SigAction, SignalNo};
@@ -25,15 +25,15 @@ pub fn sys_exit(exit_code: i32) -> ! {
 }
 
 /// 进程主动放弃时间片，立即切换到其他进程执行
-pub fn sys_yield() -> isize {
+pub fn sys_yield() -> SysResult {
     suspend_current_task();
-    0
+    Ok(0)
 }
 
 /// 获取当前进程的 pid。
 /// 如果该核没有正在运行的线程，则直接 panic
-pub fn sys_getpid() -> isize {
-    get_current_task().unwrap().get_pid_num() as isize
+pub fn sys_getpid() -> SysResult {
+    Ok(get_current_task().unwrap().get_pid_num())
 }
 
 /// 获取父进程的 pid。
@@ -41,31 +41,31 @@ pub fn sys_getpid() -> isize {
 ///
 /// 一个进程的父进程在它被 clone(fork) 时就确定了，但退出时它的状态信息会被移交给初始进程。
 /// 当然如果一个用户进程已经退出，就不可能再调用 syscall 获取 ppid 了
-pub fn sys_getppid() -> isize {
-    get_current_task().unwrap().get_ppid() as isize
+pub fn sys_getppid() -> SysResult {
+    Ok(get_current_task().unwrap().get_ppid())
 }
 
 /// 获取当前线程的编号。
 /// 每个进程的初始线程的编号就是它的 pid
-pub fn sys_gettid() -> isize {
-    get_current_task().unwrap().get_tid_num() as isize
+pub fn sys_gettid() -> SysResult {
+    Ok(get_current_task().unwrap().get_tid_num())
 }
 
 /// 修改用户堆大小，
 ///
 /// - 如输入 brk 为 0 ，则返回堆顶地址
 /// - 否则，尝试修改堆顶为 brk，成功时返回0，失败时返回-1。
-pub fn sys_brk(brk: usize) -> isize {
+pub fn sys_brk(brk: usize) -> SysResult {
     if brk == 0 {
-        get_current_task().unwrap().get_user_heap_top() as isize
+        Ok(get_current_task().unwrap().get_user_heap_top())
     } else {
         //info!("user try to move brk at {:x}", brk);
-        get_current_task().unwrap().set_user_heap_top(brk) as isize // 如果设置不合法，会保持不变并返回原来的堆顶
+        Ok(get_current_task().unwrap().set_user_heap_top(brk)) // 如果设置不合法，会保持不变并返回原来的堆顶
     }
 }
 
 /// 创建一个子任务，如成功，返回其 tid
-pub fn sys_clone(flags: usize, user_stack: usize, ptid: usize, tls: usize, ctid: usize) -> isize {
+pub fn sys_clone(flags: usize, user_stack: usize, ptid: usize, tls: usize, ctid: usize) -> SysResult {
     let (clone_flags, signal) = resolve_clone_flags_and_signal(flags);
     info!(
         "clone: flags {:#?} signal {} ptid {:x} tls {:x} ctid {:x}",
@@ -91,7 +91,7 @@ pub fn sys_clone(flags: usize, user_stack: usize, ptid: usize, tls: usize, ctid:
     let new_task_tid = new_task.get_tid_num();
     // 将新任务加入调度器
     push_task_to_scheduler(new_task);
-    new_task_tid as isize
+    Ok(new_task_tid)
     /*
     if signal == SignalNo::SIGCHLD { // 子进程
         let user_stack = if user_stack == 0 { None } else { Some(user_stack) };
@@ -109,7 +109,7 @@ pub fn sys_clone(flags: usize, user_stack: usize, ptid: usize, tls: usize, ctid:
 ///
 /// 目前 fork 的功能由 sys_clone 接管，所以不再是 pub 的
 /*
-fn sys_fork(user_stack: Option<usize>) -> isize {
+fn sys_fork(user_stack: Option<usize>) -> SysResult {
     let old_task = get_current_task().unwrap();
     // 生成新进程。注意 from_fork 方法内部已经把对用户的返回值设成了0
     let new_task = old_task.from_clone(user_stack);
@@ -127,7 +127,7 @@ fn sys_fork(user_stack: Option<usize>) -> isize {
 /// 将当前进程替换为指定用户程序。
 ///
 /// 环境变量留了接口但目前未实现
-pub fn sys_execve(path: *const u8, args: *const usize, mut _envs: *const usize) -> isize {
+pub fn sys_execve(path: *const u8, args: *const usize, mut _envs: *const usize) -> SysResult {
     sys_exec(path, args)
 }
 
@@ -135,7 +135,7 @@ pub fn sys_execve(path: *const u8, args: *const usize, mut _envs: *const usize) 
 ///
 /// 如果找到这个名字的用户程序，返回 argc(参数个数)；
 /// 如果没有找到这个名字的用户程序，则返回 -1
-fn sys_exec(path: *const u8, args: *const usize) -> isize {
+fn sys_exec(path: *const u8, args: *const usize) -> SysResult {
     // 因为这里直接用用户空间提供的虚拟地址来访问，所以一定能连续访问到字符串，不需要考虑物理地址是否连续。
     // 把路径和参数复制到内核里。因为上面的 slice 在用户空间中，在 exec 中会被 drop 掉。
     let app_name = unsafe { raw_ptr_to_string(path) };
@@ -143,31 +143,31 @@ fn sys_exec(path: *const u8, args: *const usize) -> isize {
     // 而且目前认为所有用户程序在根目录下，所以直接把路径当作文件名
     if get_current_task().unwrap().exec(&app_name, args) {
         exec_new_task();
-        0
+        Ok(0)
     } else {
-        -1
+        Err(ErrorNo::EINVAL)
     }
 }
 
 /// 等待子进程执行完成。如果它还没完成，则先切换掉
 ///
 /// 目前只支持 WNOHANG 选项
-pub fn sys_wait4(pid: isize, exit_code_ptr: *mut i32, option: WaitFlags) -> isize {
+pub fn sys_wait4(pid: isize, exit_code_ptr: *mut i32, option: WaitFlags) -> SysResult {
     loop {
-        let child_pid = sys_waitpid(pid, exit_code_ptr);
+        let child_pid = waitpid(pid, exit_code_ptr);
         // 找不到子进程，直接返回-1
         if child_pid == -1 {
-            return -1;
+            return Err(ErrorNo::EINVAL)
         } else if child_pid == -2 {
             if option.contains(WaitFlags::WNOHANG) {
-                return 0;
+                return Ok(0);
             } else {
                 //println!("find child but suspend");
                 suspend_current_task();
             }
         } else {
             //println!("find child and return {}", child_pid);
-            return child_pid;
+            return Ok(child_pid as usize);
         }
     }
 }
@@ -178,7 +178,7 @@ pub fn sys_wait4(pid: isize, exit_code_ptr: *mut i32, option: WaitFlags) -> isiz
 /// 2. 如果能找到，但该子进程没有运行结束，返回 -2
 /// 3. 否则，返回这个进程的 pid。
 /// 3.1 如果 exit_code_ptr == 0，则将子进程的 exit_code 写入 exit_code_ptr
-fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
+fn waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
     let request_pid = pid as usize;
     let task = get_current_task().unwrap();
     let tcb_inner = task.inner.lock();
@@ -248,18 +248,18 @@ pub fn sys_mmap(
     flags: MMAPFlags,
     fd: i32,
     offset: usize,
-) -> isize {
+) -> SysResult {
     info!(
         "try mmap start={:x} len={:x} prot=[{:#?}] flags=[{:#?}] fd={} offset={:x}",
         start, len, prot, flags, fd, offset
     );
     let prot = MMAPPROT::PROT_READ | MMAPPROT::PROT_WRITE | MMAPPROT::PROT_EXEC;
     if len > MMAP_LEN_LIMIT {
-        return -1;
+        return Err(ErrorNo::EINVAL);
     }
     // start == 0 表明需要OS为其找一段内存，而 MAP_FIXED 表明必须 mmap 在固定位置。两者是冲突的
     if start == 0 && flags.contains(MMAPFlags::MAP_FIXED) {
-        return -1;
+        return Err(ErrorNo::EINVAL);
     }
     // 是否可以放在任意位置
     let anywhere = start == 0 || !flags.contains(MMAPFlags::MAP_FIXED);
@@ -272,7 +272,7 @@ pub fn sys_mmap(
         // 根据linuz规范需要 fd 设为 -1 且 offset 设为 0
         if fd == -1 && offset == 0 {
             if let Some(start) = task.mmap(start, start + len, prot.into(), &[], anywhere) {
-                return start as isize;
+                return Ok(start);
             }
         }
     } else if let Ok(file) = task.fd_manager.lock().get_file(fd as usize) {
@@ -291,51 +291,51 @@ pub fn sys_mmap(
                         task.mmap(start, start + len, prot.into(), &data[..read_len], anywhere)
                     {
                         //println!("start {:x}", start);
-                        return start as isize;
+                        return Ok(start);
                     }
                 }
             }
         }
     }
-    -1
+    Err(ErrorNo::EINVAL)
 }
 
 /// 取消映射一段内存
-pub fn sys_munmap(start: usize, len: usize) -> isize {
+pub fn sys_munmap(start: usize, len: usize) -> SysResult {
     info!("start {:x}, len {}", start, len);
     if get_current_task().unwrap().munmap(start, start + len) {
-        0
+        Ok(0)
     } else {
-        -1
+        Err(ErrorNo::EINVAL)
     }
 }
 
 /// 获取系统信息
-pub fn sys_uname(uts: *mut UtsName) -> isize {
+pub fn sys_uname(uts: *mut UtsName) -> SysResult {
     unsafe {
         (*uts) = UtsName::default();
     }
-    0
+    Ok(0)
 }
 
 /// 获取用户 id。在实现多用户权限前默认为最高权限
-pub fn sys_getuid() -> isize {
-    0
+pub fn sys_getuid() -> SysResult {
+    Ok(0)
 }
 
 /// 获取有效用户 id，即相当于哪个用户的权限。在实现多用户权限前默认为最高权限
-pub fn sys_geteuid() -> isize {
-    0
+pub fn sys_geteuid() -> SysResult {
+    Ok(0)
 }
 
 /// 获取用户组 id。在实现多用户权限前默认为最高权限
-pub fn sys_getgid() -> isize {
-    0
+pub fn sys_getgid() -> SysResult {
+    Ok(0)
 }
 
 /// 获取有效用户组 id，即相当于哪个用户的权限。在实现多用户权限前默认为最高权限
-pub fn sys_getegid() -> isize {
-    0
+pub fn sys_getegid() -> SysResult {
+    Ok(0)
 }
 
 /// 向 pid 指定的进程发送信号。
@@ -348,13 +348,13 @@ pub fn sys_getegid() -> isize {
 /// 4. pid < -2，则发送给组内 pid 为参数相反数的进程
 ///
 /// 目前 2/3/4 未实现。对于 1，仿照 zCore 的设置，认为**当前进程自己或其直接子进程** 是"有权限"或者"同组"的进程。
-pub fn sys_kill(pid: isize, signal_id: isize) -> isize {
+pub fn sys_kill(pid: isize, signal_id: isize) -> SysResult {
     info!("kill pid {}, signal id {}", pid, signal_id);
     if pid > 0 {
         send_signal(pid as usize, signal_id as usize);
-        0
+        Ok(0)
     } else {
-        -1
+        Err(ErrorNo::EINVAL)
     }
 }
 
@@ -363,13 +363,13 @@ pub fn sys_kill(pid: isize, signal_id: isize) -> isize {
 /// 在 `https://man7.org/linux/man-pages/man2/tkill.2.html` 中，建议使用 tgkill 替代，
 /// 这需要多加一个 tgid 参数，以防止错误的线程( tid 已被删除后重用)发送信号。
 /// 但 libc 的测例中仍会使用这个 tkill
-pub fn sys_tkill(tid: isize, signal_id: isize) -> isize {
+pub fn sys_tkill(tid: isize, signal_id: isize) -> SysResult {
     info!("tkill tid {}, signal id {}", tid, signal_id);
     if tid > 0 {
         send_signal(tid as usize, signal_id as usize);
-        0
+        Ok(0)
     } else {
-        -1
+        Err(ErrorNo::EINVAL)
     }
 }
 
@@ -384,9 +384,9 @@ pub fn sys_sigprocmask(
     set: *const usize,
     old_set: *mut usize,
     sigsetsize: usize,
-) -> isize {
+) -> SysResult {
     if sigsetsize != SIGSET_SIZE_IN_BYTE {
-        return ErrorNo::EINVAL as isize;
+        return Err(ErrorNo::EINVAL)
     }
 
     // 这里仅输出调试信息，与处理无关
@@ -407,7 +407,7 @@ pub fn sys_sigprocmask(
     if old_set as usize != 0 {
         // old_set 非零说明要求写入到这个地址
         if task_vm.manually_alloc_page(old_set as usize).is_err() {
-            return ErrorNo::EINVAL as isize; // 地址不合法
+            return Err(ErrorNo::EINVAL); // 地址不合法
         }
         unsafe {
             *old_set = receiver.mask.0;
@@ -416,7 +416,7 @@ pub fn sys_sigprocmask(
     if set as usize != 0 {
         // set 非零时才考虑 how 并修改
         if task_vm.manually_alloc_page(set as usize).is_err() {
-            return ErrorNo::EINVAL as isize; // 地址不合法
+            return Err(ErrorNo::EINVAL); // 地址不合法
         }
         let set_val = Bitset::new(unsafe { *set });
         match how {
@@ -424,19 +424,19 @@ pub fn sys_sigprocmask(
             SIG_UNBLOCK => receiver.mask.get_difference(set_val),
             SIG_SETMASK => receiver.mask.set_new(set_val),
             _ => {
-                return ErrorNo::EINVAL as isize;
+                return Err(ErrorNo::EINVAL);
             }
         };
     }
-    0
+    Ok(0)
 }
 
 /// 改变当前进程的信号处理函数。
 ///
 /// 如果 action 为 0，则不设置；如果 old_action 为 0，则不存入。
-pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut SigAction) -> isize {
+pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut SigAction) -> SysResult {
     if signum == SignalNo::SIGKILL as usize || signum == SignalNo::SIGSTOP as usize {
-        return ErrorNo::EINVAL as isize; // 特殊信号不能被覆盖
+        return Err(ErrorNo::EINVAL); // 特殊信号不能被覆盖
     }
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
@@ -458,7 +458,7 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
                 .manually_alloc_page(old_addr + size_of::<SigAction>() - 1)
                 .is_err()
         {
-            return ErrorNo::EINVAL as isize; // 地址不合法
+            return Err(ErrorNo::EINVAL); // 地址不合法
         }
         handler.get_action(signum, old_action);
     }
@@ -471,11 +471,11 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
                 .manually_alloc_page(addr + size_of::<SigAction>() - 1)
                 .is_err()
         {
-            return ErrorNo::EINVAL as isize; // 地址不合法
+            return Err(ErrorNo::EINVAL); // 地址不合法
         }
         handler.set_action(signum, action);
     }
-    0
+    Ok(0)
 }
 
 /// 从信号处理过程中返回，即恢复信号处理前的用户程序上下文。
@@ -484,14 +484,19 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
 /// 但为了 syscall 通用性考虑，这里的实现还是返回了原本上下文中 a0 的值，即相当于实际做了 `a0 = a0;` 的操作
 ///
 /// 一般由 libc 库调用。
-pub fn sys_sigreturn() -> isize {
-    signal_return()
+pub fn sys_sigreturn() -> SysResult {
+    let a0 = signal_return();
+    if a0 == -1 {
+        Err(ErrorNo::EINVAL)
+    } else {
+        Ok(a0 as usize)
+    }
 }
 
 /// 设置 clear_child_tid 属性并返回 tid。
 /// 这个属性会使得线程退出时发送:
 /// `futex(clear_child_tid, FUTEX_WAKE, 1, NULL, NULL, 0);`
-pub fn sys_set_tid_address(addr: usize) -> isize {
+pub fn sys_set_tid_address(addr: usize) -> SysResult {
     info!("set tid addresss to {:x}", addr);
     get_current_task().unwrap().set_tid_address(addr);
     sys_gettid()
@@ -505,7 +510,7 @@ pub fn sys_prlimt64(
     resource: i32,
     new_limit: *const RLimit,
     old_limit: *mut RLimit,
-) -> isize {
+) -> SysResult {
     info!("pid {} resource {}", pid, resource);
     if pid == 0 {
         let task = get_current_task().unwrap();
@@ -550,5 +555,5 @@ pub fn sys_prlimt64(
             _ => {}
         }
     }
-    0
+    Ok(0)
 }

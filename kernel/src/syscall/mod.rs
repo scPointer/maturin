@@ -36,6 +36,8 @@ use lock::Mutex;
 
 static WRITEV_COUNT: Mutex<usize> = Mutex::new(0);
 
+type SysResult = Result<usize, ErrorNo>;
+
 /// 处理系统调用
 pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     let syscall_id = if let Ok(id) = SyscallNo::try_from(syscall_id) {
@@ -63,7 +65,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         }
     }
 
-    let a0 = match syscall_id {
+    let result = match syscall_id {
         SyscallNo::GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
         SyscallNo::DUP => sys_dup(args[0]),
         SyscallNo::DUP3 => sys_dup3(args[0], args[1]),
@@ -191,16 +193,24 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[2] as *const RLimit,
             args[3] as *mut RLimit,
         ),
-        SyscallNo::IOCTL => 0,
+        SyscallNo::IOCTL => Ok(0),
         //SyscallNo::MPROTECT => 0,
-        SyscallNo::SIGTIMEDWAIT => 0,
-        SyscallNo::MEMBARRIER => 0,
+        SyscallNo::SIGTIMEDWAIT => Ok(0),
+        SyscallNo::MEMBARRIER => Ok(0),
         _ => {
             //_ => panic!("Unsupported syscall id = {:#?}()", syscall_id, syscall_id as usize);
             info!("Unsupported syscall id = {:#?}({})", syscall_id, syscall_id as usize);
-            0
+            Ok(0)
         }
     };
-    info!("[[kernel -> return {}  =0x{:x}]]", a0, a0);
-    a0
+    match result {
+        Ok(a0) => {
+            info!("[[kernel -> return {}  =0x{:x}]]", a0, a0);
+            a0 as isize
+        },
+        Err(num) => {
+            info!("[[kernel -> return {:#?}]]", num);
+            num as isize
+        }
+    }
 }

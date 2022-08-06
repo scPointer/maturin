@@ -8,7 +8,7 @@
 
 mod flags;
 
-use super::{sys_gettid, ErrorNo};
+use super::{sys_gettid, SysResult, ErrorNo};
 use crate::{
     task::{get_current_task, suspend_current_task},
     //timer::TimeSpec,
@@ -25,9 +25,9 @@ pub fn sys_futex(
     val2: usize,
     uaddr2: usize,
     val3: u32,
-) -> isize {
+) -> SysResult {
     let flag = FutexFlag::new(futex_op);
-    let tid = sys_gettid();
+    let tid = sys_gettid().unwrap();
     info!("now tid {}", tid);
     info!(
         "futex: uaddr {:x}, op {} val {} val2 {:x} uaddr2 {:x} val3 {}",
@@ -50,7 +50,7 @@ pub fn sys_futex(
             if task_vm.manually_alloc_page(uaddr).is_ok() {
                 let real_val = unsafe { (uaddr as *const u32).read_volatile() };
                 if real_val != val {
-                    ErrorNo::EAGAIN as _
+                    Err(ErrorNo::EAGAIN)
                 } else {
                     // 如果是个表示 timeout 的地址
                     if val2 != 0 && task_vm.manually_alloc_page(val2 as usize).is_ok() {
@@ -61,18 +61,18 @@ pub fn sys_futex(
                     drop(task_vm); // 切换任务前取消对锁的占用
                     drop(task);
                     suspend_current_task();
-                    0
+                    Ok(0)
                 }
             } else {
                 // 若地址无效
-                ErrorNo::EFAULT as _
+                Err(ErrorNo::EFAULT)
             }
         }
         Flags::WAKE => {
             //info!("futex wake");
             suspend_current_task();
-            val as isize
+            Ok(val as usize)
         }
-        _ => -1,
+        _ => Err(ErrorNo::EINVAL),
     }
 }

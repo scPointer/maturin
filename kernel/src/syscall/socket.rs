@@ -1,17 +1,17 @@
 //! 关于 socket 的 syscall
 
-use super::ErrorNo;
+use super::{SysResult, ErrorNo};
 use crate::{file::Socket, task::get_current_task};
 use alloc::sync::Arc;
 
 /// 创建一个 socket
-pub fn sys_socket(domain: usize, s_type: usize, protocol: usize) -> isize {
+pub fn sys_socket(domain: usize, s_type: usize, protocol: usize) -> SysResult {
     let task = get_current_task().unwrap();
     let mut fd_manager = task.fd_manager.lock();
     if let Ok(fd) = fd_manager.push(Arc::new(Socket::new(domain, s_type, protocol))) {
-        fd as isize
+        Ok(fd)
     } else {
-        ErrorNo::EMFILE as isize
+        Err(ErrorNo::EMFILE)
     }
 }
 
@@ -23,7 +23,7 @@ pub fn sys_sendto(
     flags: i32,
     dest_addr: usize,
     addr_len: usize,
-) -> isize {
+) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
     let fd_manager = task.fd_manager.lock();
@@ -32,19 +32,19 @@ pub fn sys_sendto(
         || task_vm.manually_alloc_page(dest_addr).is_err()
         || task_vm.manually_alloc_page(dest_addr + addr_len).is_err()
     {
-        return ErrorNo::EINVAL as isize;
+        return Err(ErrorNo::EINVAL);
     }
     let slice = unsafe { core::slice::from_raw_parts(buf, len) };
 
     if let Ok(file) = fd_manager.get_file(fd) {
         // 这里不考虑进程切换
         if let Some(write_len) = file.sendto(slice, flags, dest_addr) {
-            return write_len as isize;
+            return Ok(write_len)
         } else {
-            return ErrorNo::EINVAL as isize;
+            return Err(ErrorNo::EINVAL);
         }
     } else {
-        return ErrorNo::EBADF as isize;
+        return Err(ErrorNo::EBADF);
     }
 }
 
@@ -58,7 +58,7 @@ pub fn sys_recvfrom(
     flags: i32,
     src_addr: usize,
     src_len_pos: *mut u32,
-) -> isize {
+) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
     let fd_manager = task.fd_manager.lock();
@@ -67,7 +67,7 @@ pub fn sys_recvfrom(
         || task_vm.manually_alloc_page(src_addr).is_err()
         || task_vm.manually_alloc_page(src_len_pos as usize).is_err()
     {
-        return ErrorNo::EINVAL as isize;
+        return Err(ErrorNo::EINVAL);
     }
     let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
     if let Ok(file) = fd_manager.get_file(fd) {
@@ -75,11 +75,11 @@ pub fn sys_recvfrom(
         if let Some(read_len) = file.recvfrom(slice, flags, src_addr, unsafe {
             src_len_pos.as_mut().unwrap()
         }) {
-            return read_len as isize;
+            return Ok(read_len);
         } else {
-            return ErrorNo::EINVAL as isize;
+            return Err(ErrorNo::EINVAL);
         }
     } else {
-        return ErrorNo::EBADF as isize;
+        return Err(ErrorNo::EBADF);
     }
 }

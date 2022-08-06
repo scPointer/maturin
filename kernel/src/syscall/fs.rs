@@ -6,7 +6,7 @@
 //#![deny(missing_docs)]
 
 use super::{
-    Dirent64, Dirent64Type, ErrorNo, IoVec, UtimensatFlags, F_DUPFD, F_GETFD, F_GETFL, SEEK_CUR,
+    Dirent64, Dirent64Type, SysResult, ErrorNo, IoVec, UtimensatFlags, F_DUPFD, F_GETFD, F_GETFL, SEEK_CUR,
     SEEK_END, SEEK_SET,
 };
 use crate::{
@@ -23,12 +23,12 @@ use crate::{
 use alloc::{string::String, sync::Arc};
 
 /// 获取当前工作路径
-pub fn sys_getcwd(buf: *mut u8, len: usize) -> isize {
+pub fn sys_getcwd(buf: *mut u8, len: usize) -> SysResult {
     let task = get_current_task().unwrap();
     let tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
     if task_vm.manually_alloc_page(buf as usize).is_err() {
-        return ErrorNo::EFAULT as isize; // 地址不合法
+        return Err(ErrorNo::EFAULT); // 地址不合法
     }
     let dir = &tcb_inner.dir;
     // buf 可以塞下这个目录
@@ -41,23 +41,23 @@ pub fn sys_getcwd(buf: *mut u8, len: usize) -> isize {
         unsafe {
             *buf.add(dir.len() - 1) = 0;
         }
-        buf as isize
+        Ok(buf as usize)
     } else {
         // 否则，buf 长度不够，按照规范返回 ERANGE
-        ErrorNo::ERANGE as isize
+        Err(ErrorNo::ERANGE)
         /*
         if len - 1 > 0 {
             let slice = unsafe { core::slice::from_raw_parts_mut(buf, len - 1) };
             slice.copy_from_slice(&dir[1..len-1].as_bytes());
             unsafe { *buf.add(len - 1) = 0; }
         }
-        0isize
+        Ok(0)
         */
     }
 }
 
 /// 从 fd 代表的文件中读一个字串，最长为 len，放入 buf 中
-pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
+pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> SysResult {
     let task = get_current_task().unwrap();
     let tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
@@ -72,7 +72,7 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
     };
     */
     if task_vm.manually_alloc_page(buf as usize).is_err() {
-        return ErrorNo::EFAULT as isize; // 地址不合法
+        return Err(ErrorNo::EFAULT); // 地址不合法
     }
 
     let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
@@ -83,14 +83,14 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> isize {
         drop(task_vm);
         if let Some(read_len) = file.read(slice) {
             //println!("[kernel] read syscall size {} wanted {}", read_len, len);
-            return read_len as isize;
+            return Ok(read_len);
         }
     }
-    -1
+    Err(ErrorNo::EINVAL)
 }
 
 /// 写一个字串到 fd 代表的文件。这个串放在 buf 中，长为 len
-pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
+pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> SysResult {
     let task = get_current_task().unwrap();
     let tcb_inner = task.inner.lock();
     let task_vm = task.vm.lock();
@@ -111,15 +111,15 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
         drop(tcb_inner);
         drop(task_vm);
         if let Some(write_len) = file.write(slice) {
-            return write_len as isize;
+            return Ok(write_len);
         }
     }
-    -1
+    Err(ErrorNo::EINVAL)
 }
 
 /// 从同一个 fd 中读取一组字符串。
 /// 目前这个 syscall 借用 sys_read 来实现
-pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> isize {
+pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> SysResult {
     info!("readv fd {}", fd);
     let mut read_len = 0;
     for i in 0..iov_cnt {
@@ -128,19 +128,17 @@ pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> isize {
             "sys_readv: io_vec.base {:x}, len {:x}",
             io_vec.base as usize, io_vec.len
         );
-        let ret = sys_read(fd, io_vec.base, io_vec.len);
-        if ret == -1 {
-            break;
-        } else {
-            read_len += ret;
+        match sys_read(fd, io_vec.base, io_vec.len) {
+            Ok(len) => read_len += len,
+            Err(_) => { break; },
         }
     }
-    read_len
+    Ok(read_len)
 }
 
 /// 写入一组字符串到同一个 fd 中。
 /// 目前这个 syscall 借用 sys_write 来实现
-pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> isize {
+pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> SysResult {
     info!("writev fd {}", fd);
     let mut written_len = 0;
     for i in 0..iov_cnt {
@@ -149,54 +147,52 @@ pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> isize {
             "sys_writev: io_vec.base {:x}, len {:x}",
             io_vec.base as usize, io_vec.len
         );
-        let ret = sys_write(fd, io_vec.base, io_vec.len);
-        if ret == -1 {
-            break;
-        } else {
-            written_len += ret;
+        match sys_write(fd, io_vec.base, io_vec.len) {
+            Ok(len) =>  written_len += len,
+            Err(_) => { break; }
         }
     }
-    written_len
+    Ok(written_len)
 }
 
 /// 获取文件状态信息
-pub fn sys_fstat(fd: usize, kstat: *mut Kstat) -> isize {
+pub fn sys_fstat(fd: usize, kstat: *mut Kstat) -> SysResult {
     let task = get_current_task().unwrap();
     if let Ok(file) = task.fd_manager.lock().get_file(fd) {
         if file.get_stat(kstat) {
-            return 0;
+            return Ok(0);
         }
     }
-    -1
+    Err(ErrorNo::EINVAL)
 }
 /// 获取文件状态信息，但是给出的是目录 fd 和相对路径。
-pub fn sys_fstatat(dir_fd: i32, path: *const u8, kstat: *mut Kstat) -> isize {
+pub fn sys_fstatat(dir_fd: i32, path: *const u8, kstat: *mut Kstat) -> SysResult {
     let task = get_current_task().unwrap();
     if let Some((path, file)) = resolve_path_from_fd(&task, dir_fd, path) {
         info!("fstatat: path {} file {}", path, file);
         // 打开文件，选项为空，不可读不可写，只用于获取信息
         if let Some(file) = open_file(path.as_str(), file, OpenFlags::empty()) {
             if file.get_stat(kstat) {
-                return 0;
+                return Ok(0);
             }
         } else if let Some(file) = open_file(path.as_str(), file, OpenFlags::DIR) {
             if file.get_stat(kstat) {
-                return 0;
+                return Ok(0);
             }
         }
     }
-    -1
+    Err(ErrorNo::EINVAL)
 }
 
 /// 获取文件系统的信息
-pub fn sys_statfs(path: *const u8, stat: *mut FsStat) -> isize {
+pub fn sys_statfs(path: *const u8, stat: *mut FsStat) -> SysResult {
     let file_path = unsafe { raw_ptr_to_ref_str(path) };
     if file_path == "/" {
         // 目前只支持访问根目录文件系统的信息
         origin_fs_stat(stat);
-        0
+        Ok(0)
     } else {
-        -1
+        Err(ErrorNo::EINVAL)
     }
 }
 /// 从一个表示目录的文件描述符中获取目录名。
@@ -254,27 +250,27 @@ pub fn sys_linkat(
     new_dir_fd: i32,
     new_path: *const u8,
     _flags: u32,
-) -> isize {
+) -> SysResult {
     let task = get_current_task().unwrap();
     if let Some((old_path, old_file)) = resolve_path_from_fd(&task, old_dir_fd, old_path) {
         if let Some((new_path, new_file)) = resolve_path_from_fd(&task, new_dir_fd, new_path) {
             if try_add_link(old_path, old_file, new_path, new_file) {
-                return 0;
+                return Ok(0);
             }
         }
     }
-    -1
+    Err(ErrorNo::EINVAL)
 }
 
 /// 删除硬链接，并在链接数为0时实际删除文件。成功时返回0，失败时返回-1
-pub fn sys_unlinkat(dir_fd: i32, path: *const u8, _flags: u32) -> isize {
+pub fn sys_unlinkat(dir_fd: i32, path: *const u8, _flags: u32) -> SysResult {
     let task = get_current_task().unwrap();
     if let Some((path, file)) = resolve_path_from_fd(&task, dir_fd, path) {
         if try_remove_link(path, file) {
-            return 0;
+            return Ok(0);
         }
     }
-    -1
+    Err(ErrorNo::EINVAL)
 }
 
 /// 挂载文件系统。成功时返回0，失败时返回-1。
@@ -286,11 +282,11 @@ pub fn sys_mount(
     fs_type: *const u8,
     _flags: u32,
     _data: *const u8,
-) -> isize {
+) -> SysResult {
     let fs_type = unsafe { raw_ptr_to_ref_str(fs_type) };
     if fs_type != "vfat" {
         // 不支持挂载其他类型
-        return -1;
+        return Err(ErrorNo::EINVAL);
     }
     let task = get_current_task().unwrap();
     // 这里把 fd 写成"当前目录"，但其实如果内部发现路径是 '/' 开头，会用绝对路径替代。
@@ -305,17 +301,17 @@ pub fn sys_mount(
                 mount_path.push('/');
             }
             if mount_fat_fs(device_path, device_file, mount_path) {
-                return 0;
+                return Ok(0);
             }
         }
     }
-    -1
+    Err(ErrorNo::EINVAL)
 }
 
 /// 卸载文件系统。成功时返回0，失败时(目录不存在/未挂载等)返回-1。
 ///
 /// 目前只是语义上实现，还没有真实板子上测试过
-pub fn sys_umount(mount_path: *const u8, _flags: u32) -> isize {
+pub fn sys_umount(mount_path: *const u8, _flags: u32) -> SysResult {
     let task = get_current_task().unwrap();
     if let Some((mut mount_path, mount_file)) = resolve_path_from_fd(&task, AT_FDCWD, mount_path) {
         mount_path += mount_file;
@@ -323,30 +319,30 @@ pub fn sys_umount(mount_path: *const u8, _flags: u32) -> isize {
             mount_path.push('/');
         }
         if umount_fat_fs(mount_path) {
-            return 0;
+            return Ok(0);
         }
     }
-    -1
+    Err(ErrorNo::EINVAL)
 }
 
 /// 创建目录，成功时返回 0，失败时返回 -1
 ///
 /// - 如果path是相对路径，则它是相对于dirfd目录而言的。
 /// - 如果path是绝对路径，则dirfd被忽略。
-pub fn sys_mkdir(dir_fd: i32, path: *const u8, _user_mode: u32) -> isize {
+pub fn sys_mkdir(dir_fd: i32, path: *const u8, _user_mode: u32) -> SysResult {
     let task = get_current_task().unwrap();
     if let Some((parent_dir, file_path)) = resolve_path_from_fd(&task, dir_fd, path) {
         if mkdir(parent_dir.as_str(), file_path) {
-            return 0;
+            return Ok(0);
         }
     }
-    -1
+    Err(ErrorNo::EINVAL)
 }
 
 /// 切换当前工作路径，如果以.开头，默认是相对路径；如果以/开头，默认是绝对路径。切换成功时返回0，失败时返回-1
 ///
 /// 会先检查要切换到的路径是否存在。
-pub fn sys_chdir(path: *const u8) -> isize {
+pub fn sys_chdir(path: *const u8) -> SysResult {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
     let file_path = unsafe { raw_ptr_to_ref_str(path) };
@@ -366,19 +362,19 @@ pub fn sys_chdir(path: *const u8) -> isize {
     //info!("new path = {}", new_path);
     if check_dir_exists(new_path.as_str()) {
         *(&mut tcb_inner.dir) = new_path;
-        0
+        Ok(0)
     } else {
-        -1
+        Err(ErrorNo::EINVAL)
     }
 }
 
 /// 打开文件，返回对应的 fd。如打开失败，则返回 -1
-pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, _user_mode: u32) -> isize {
+pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, _user_mode: u32) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_fd_manager = task.fd_manager.lock();
     // 如果 fd 已满，则不再添加
     if task_fd_manager.is_full() {
-        return ErrorNo::EMFILE as isize;
+        return Err(ErrorNo::EMFILE);
     }
     if let Some((parent_dir, file_path)) = resolve_path_from_fd(&task, dir_fd, path) {
         let mut file_path = String::from(file_path);
@@ -405,27 +401,27 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, _user_mode: u32) -> is
                 //println!("opened");
                 if let Ok(fd) = task_fd_manager.push(node) {
                     info!("return fd {}", fd);
-                    return fd as isize;
+                    return Ok(fd);
                 } else if open_flags.contains(OpenFlags::EXCL) {
                     // 要求创建文件却打开失败，说明是文件已存在
-                    return ErrorNo::EEXIST as isize;
+                    return Err(ErrorNo::EEXIST);
                 }
             }
         }
     }
-    ErrorNo::ENOENT as isize
+    Err(ErrorNo::ENOENT)
 }
 
 /// 关闭文件，成功时返回 0，失败时返回 -1
-pub fn sys_close(fd: usize) -> isize {
+pub fn sys_close(fd: usize) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_fd_manager = task.fd_manager.lock();
     if let Ok(_file) = task_fd_manager.remove_file(fd) {
         // 其实可以对 file 做最后处理。
         // 但此处不知道 file 的具体类型，所以还是推荐实现 Trait File 的类型自己写 Drop 时处理
-        0
+        Ok(0)
     } else {
-        -1
+        Err(ErrorNo::EINVAL)
     }
 }
 
@@ -433,7 +429,7 @@ pub fn sys_close(fd: usize) -> isize {
 /// 成功时返回 0，失败则返回 -1
 ///
 /// 注意，因为
-pub fn sys_pipe(pipe: *mut u32) -> isize {
+pub fn sys_pipe(pipe: *mut u32) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_fd_manager = task.fd_manager.lock();
     let (pipe_read, pipe_write) = Pipe::new_pipe();
@@ -443,38 +439,38 @@ pub fn sys_pipe(pipe: *mut u32) -> isize {
                 *pipe = fd1 as u32;
                 *pipe.add(1) = fd2 as u32;
             }
-            return 0;
+            return Ok(0);
         } else {
             // 只成功插入了一个 fd。这种情况下要把 pipe_read 退出来
             let _ = task_fd_manager.remove_file(fd1);
         }
     }
-    -1
+    Err(ErrorNo::EINVAL)
 }
 
 /// 复制一个 fd 中的文件到一个新 fd 中，成功时返回新的文件描述符，失败则返回 -1
-pub fn sys_dup(fd: usize) -> isize {
+pub fn sys_dup(fd: usize) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_fd_manager = task.fd_manager.lock();
     if let Ok(new_fd) = task_fd_manager.copy_fd_anywhere(fd) {
-        new_fd as isize
+        Ok(new_fd)
     } else {
-        ErrorNo::EMFILE as isize
+        Err(ErrorNo::EMFILE)
     }
 }
 
 /// 复制一个 fd 中的文件到指定的新 fd 中，成功时返回新的文件描述符，失败则返回 -1
-pub fn sys_dup3(old_fd: usize, new_fd: usize) -> isize {
+pub fn sys_dup3(old_fd: usize, new_fd: usize) -> SysResult {
     let task = get_current_task().unwrap();
     if task.fd_manager.lock().copy_fd_to(old_fd, new_fd) {
-        new_fd as isize
+        Ok(new_fd)
     } else {
-        -1
+        Err(ErrorNo::EINVAL)
     }
 }
 
 /// 获取目录项信息
-pub fn sys_getdents64(fd: usize, buf: *mut Dirent64, len: usize) -> isize {
+pub fn sys_getdents64(fd: usize, buf: *mut Dirent64, len: usize) -> SysResult {
     let task = get_current_task().unwrap();
     if let Some(dir) = get_dir_from_fd(&task, fd as i32) {
         let entry_id = unsafe { (*buf).d_off as usize / DIR_ENTRY_SIZE };
@@ -500,11 +496,11 @@ pub fn sys_getdents64(fd: usize, buf: *mut Dirent64, len: usize) -> isize {
                 slice.copy_from_slice(&file_name.as_bytes());
                 // 字符串结尾
                 *name_start.add(copy_len) = 0;
-                return (copy_len + (*buf).d_name_offset()) as isize;
+                return Ok(copy_len + (*buf).d_name_offset());
             }
         }
     }
-    -1
+    Err(ErrorNo::EINVAL)
 }
 
 /// 修改文件的访问时间和/或修改时间。
@@ -517,20 +513,20 @@ pub fn sys_utimensat(
     path: *const u8,
     time_spec: *const TimeSpec,
     flags: UtimensatFlags,
-) -> isize {
+) -> SysResult {
     info!(
         "dir_fd {}, path {:x}, ts {:x}, flags {:x}",
         dir_fd, path as usize, time_spec as usize, flags
     );
     let task = get_current_task().unwrap();
     if dir_fd != AT_FDCWD && dir_fd < 0 {
-        return ErrorNo::EBADF as isize; // 错误的文件描述符
+        return Err(ErrorNo::EBADF); // 错误的文件描述符
     }
     let mut task_vm = task.vm.lock();
     let fd_manager = task.fd_manager.lock();
     //info!("fd {} buf {} len {}", fd, buf as usize, len);
     if dir_fd == AT_FDCWD && task_vm.manually_alloc_page(path as usize).is_err() {
-        return ErrorNo::EFAULT as isize; // 地址不合法
+        return Err(ErrorNo::EFAULT); // 地址不合法
     }
 
     // 获取需要设置的新时间
@@ -538,23 +534,23 @@ pub fn sys_utimensat(
         (TimeSpec::get_current(), TimeSpec::get_current())
     } else {
         if task_vm.manually_alloc_page(time_spec as usize).is_err() {
-            return ErrorNo::EFAULT as isize; // 地址不合法
+            return Err(ErrorNo::EFAULT); // 地址不合法
         }
         unsafe { (*time_spec, *time_spec.add(1)) }
     };
     if dir_fd > 0 {
         if let Ok(file) = fd_manager.get_file(dir_fd as usize) {
             file.set_time(&new_atime, &new_mtime);
-            return 0;
+            return Ok(0);
         }
     } else if let Some((parent_dir, file_path)) = resolve_path_from_fd(&task, dir_fd, path) {
         if check_file_exists(parent_dir.as_str(), file_path) {
             if let Some(file) = open_file(parent_dir.as_str(), file_path, OpenFlags::empty()) {
                 if file.set_time(&new_atime, &new_mtime) {
-                    return 0;
+                    return Ok(0);
                 }
             }
-            return ErrorNo::EINVAL as isize;
+            return Err(ErrorNo::EINVAL);
         } else {
             let full_dir = if let Some(pos) = file_path.rfind('/') {
                 parent_dir + &file_path[..pos]
@@ -563,15 +559,15 @@ pub fn sys_utimensat(
             };
             if !check_dir_exists(full_dir.as_str()) {
                 // 如果连目录都不存在
-                return ErrorNo::ENOTDIR as isize;
+                return Err(ErrorNo::ENOTDIR);
             }
         }
     }
-    ErrorNo::ENOENT as isize
+    Err(ErrorNo::ENOENT)
 }
 
 /// 修改文件指针位置
-pub fn sys_lseek(fd: usize, offset: isize, whence: isize) -> isize {
+pub fn sys_lseek(fd: usize, offset: isize, whence: isize) -> SysResult {
     info!("lseek fd {} offset {} whence {}", fd, offset, whence);
     let task = get_current_task().unwrap();
     //let mut tcb_inner = task.inner.lock();
@@ -581,18 +577,18 @@ pub fn sys_lseek(fd: usize, offset: isize, whence: isize) -> isize {
             SEEK_CUR => SeekFrom::Current(offset as i64),
             SEEK_END => SeekFrom::End(offset as i64),
             _ => {
-                return ErrorNo::EINVAL as isize;
+                return Err(ErrorNo::EINVAL);
             }
         }) {
-            return new_offset as isize;
+            return Ok(new_offset);
         } else {
-            return ErrorNo::EINVAL as isize;
+            return Err(ErrorNo::EINVAL);
         }
     }
-    ErrorNo::EBADF as isize
+    Err(ErrorNo::EBADF)
 }
 
-pub fn sys_fcntl64(fd: usize, cmd: usize, _arg: usize) -> isize {
+pub fn sys_fcntl64(fd: usize, cmd: usize, _arg: usize) -> SysResult {
     let task = get_current_task().unwrap();
     let mut fd_manager = task.fd_manager.lock();
     if let Ok(file) = fd_manager.get_file(fd) {
@@ -600,21 +596,21 @@ pub fn sys_fcntl64(fd: usize, cmd: usize, _arg: usize) -> isize {
             F_DUPFD => {
                 // 复制 fd
                 if let Ok(new_fd) = fd_manager.copy_fd_anywhere(fd) {
-                    new_fd as isize
+                    Ok(new_fd)
                 } else {
-                    ErrorNo::EMFILE as isize
+                    Err(ErrorNo::EMFILE)
                 }
             }
             F_GETFD => {
                 if file.get_status().contains(OpenFlags::CLOEXEC) {
-                    1
+                    Ok(1)
                 } else {
-                    0
+                    Ok(0)
                 }
             }
-            F_GETFL => file.get_status().bits() as isize,
-            _ => ErrorNo::EINVAL as isize,
+            F_GETFL => Ok(file.get_status().bits() as usize),
+            _ => Err(ErrorNo::EINVAL),
         };
     }
-    ErrorNo::EBADF as isize
+    Err(ErrorNo::EBADF)
 }
