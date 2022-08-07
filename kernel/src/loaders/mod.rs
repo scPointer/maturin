@@ -1,12 +1,12 @@
 mod flags;
-use flags::*;
 mod init_info;
-use init_info::InitInfo;
 mod init_stack;
-use init_stack::InitStack;
 
 use alloc::{string::String, sync::Arc, vec::Vec};
 use core::convert::From;
+use flags::*;
+use init_info::InitInfo;
+use init_stack::InitStack;
 use lock::Mutex;
 use xmas_elf::{
     header,
@@ -27,11 +27,11 @@ use crate::constants::{
     USER_STACK_SIZE,
 };
 use crate::error::{OSError, OSResult};
+use crate::ffi::WithTerminator;
 use crate::file::{open_file, OpenFlags};
 use crate::memory::addr::{page_count, page_offset, VirtAddr};
 use crate::memory::{MemorySet, PTEFlags};
 use crate::memory::{PmArea, PmAreaLazy, VmArea};
-use crate::utils::raw_ptr_to_ref_str;
 
 pub struct ElfLoader<'a> {
     elf: ElfFile<'a>,
@@ -89,8 +89,8 @@ impl<'a> ElfLoader<'a> {
                 SegmentData::Undefined(data) => data,
                 _ => return Err(OSError::Loader_InvalidSegment),
             };
-            let path = unsafe { raw_ptr_to_ref_str(data.as_ptr()) };
-            info!("path: {:?}", path);
+            let path = unsafe { WithTerminator(data.as_ptr()).as_str() };
+            info!("path: {path:?}");
             let mut new_args = vec![String::from(path)];
             new_args.extend(args);
             info!("args {:#?}", new_args);

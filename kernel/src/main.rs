@@ -19,6 +19,7 @@ mod console;
 mod constants;
 mod drivers;
 mod error;
+mod ffi;
 mod file;
 mod lang;
 mod loaders;
@@ -28,7 +29,6 @@ pub mod syscall;
 pub mod task;
 mod timer;
 pub mod trap;
-mod utils;
 
 // #[cfg(target_arch = "riscv64")]
 #[path = "arch/riscv/mod.rs"]
