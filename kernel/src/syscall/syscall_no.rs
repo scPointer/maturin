@@ -1,8 +1,7 @@
 //! 系统调用编号
 
-use numeric_enum_macro::numeric_enum;
 
-numeric_enum! {
+numeric_enum_macro::numeric_enum! {
     #[repr(usize)]
     #[derive(Debug, PartialEq, Clone, Copy)]
     #[allow(non_camel_case_types)]

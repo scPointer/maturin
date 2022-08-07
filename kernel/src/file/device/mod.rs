@@ -252,10 +252,11 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
                             real_dir,
                             String::from(file_name),
                             file,
+                            flags,
                         );
                         if flags.contains(OpenFlags::CREATE) {
                             // 清空这个文件
-                            fat_file.inner.lock().truncate().unwrap();
+                            fat_file.file.lock().truncate().unwrap();
                         };
                         Some(Arc::new(fat_file))
                     }
@@ -269,6 +270,7 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
                             real_dir,
                             String::from(file_name),
                             file,
+                            flags,
                         )))
                     } else {
                         None

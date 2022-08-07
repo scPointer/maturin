@@ -6,7 +6,7 @@
 //#![deny(missing_docs)]
 
 use super::{
-    Dirent64, Dirent64Type, SysResult, ErrorNo, IoVec, UtimensatFlags, F_DUPFD, F_GETFD, F_GETFL, SEEK_CUR,
+    Dirent64, Dirent64Type, SysResult, ErrorNo, IoVec, UtimensatFlags, Fcntl64Cmd, SEEK_CUR,
     SEEK_END, SEEK_SET,
 };
 use crate::{
@@ -617,27 +617,57 @@ pub fn sys_lseek(fd: usize, offset: isize, whence: isize) -> SysResult {
     Err(ErrorNo::EBADF)
 }
 
-pub fn sys_fcntl64(fd: usize, cmd: usize, _arg: usize) -> SysResult {
+/// 设置文件属性。目前支持的比较少
+pub fn sys_fcntl64(fd: usize, cmd: usize, arg: usize) -> SysResult {
     let task = get_current_task().unwrap();
     let mut fd_manager = task.fd_manager.lock();
+    info!("fcntl {fd} {cmd}");
     if let Ok(file) = fd_manager.get_file(fd) {
-        return match cmd {
-            F_DUPFD => {
+        return match Fcntl64Cmd::try_from(cmd) {
+            Ok(Fcntl64Cmd::F_DUPFD) => {
                 // 复制 fd
                 if let Ok(new_fd) = fd_manager.copy_fd_anywhere(fd) {
                     Ok(new_fd)
                 } else {
                     Err(ErrorNo::EMFILE)
                 }
-            }
-            F_GETFD => {
+            },
+            Ok(Fcntl64Cmd::F_GETFD) => {
                 if file.get_status().contains(OpenFlags::CLOEXEC) {
                     Ok(1)
                 } else {
                     Ok(0)
                 }
-            }
-            F_GETFL => Ok(file.get_status().bits() as usize),
+            },
+            Ok(Fcntl64Cmd::F_SETFD) => {
+                if file.set_close_on_exec((arg & 1) != 0) {
+                    Ok(0)
+                } else {
+                    Err(ErrorNo::EINVAL)
+                }
+            },
+            Ok(Fcntl64Cmd::F_GETFL) => Ok(file.get_status().bits() as usize),
+            Ok(Fcntl64Cmd::F_SETFL) => {
+                if let Some(flags) = OpenFlags::from_bits(arg as u32) {
+                    if file.set_status(flags) {
+                        return Ok(0);
+                    }
+                }
+                Err(ErrorNo::EINVAL)
+            },
+            Ok(Fcntl64Cmd::F_DUPFD_CLOEXEC) => {
+                if let Ok(new_fd) = fd_manager.copy_fd_anywhere(fd) {
+                    if file.set_close_on_exec((arg & 1) != 0) {
+                        Ok(new_fd)
+                    } else {
+                        // 如果不能设置 CLOEXEC 位，则删除文件并返回错误
+                        fd_manager.remove_file(new_fd).unwrap();
+                        Err(ErrorNo::EMFILE)
+                    }
+                } else {
+                    Err(ErrorNo::EMFILE)
+                }
+            },
             _ => Err(ErrorNo::EINVAL),
         };
     }

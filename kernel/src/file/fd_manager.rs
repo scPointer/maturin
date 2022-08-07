@@ -10,7 +10,7 @@ use crate::constants::FD_LIMIT_ORIGIN;
 use crate::error::{OSError, OSResult};
 use crate::memory::FdAllocator;
 
-use super::File;
+use super::{File, OpenFlags};
 use super::{Stderr, Stdin, Stdout};
 
 /// 文件描述符管理，每个进程应该有一个
@@ -151,5 +151,14 @@ impl FdManager {
             self.fd_allocator.expand_range(self.limit, new_limit);
         }
         self.limit = new_limit;
+    }
+    /// 删除所有带有 CLOEXEC 标记的文件。在 exec 时使用
+    pub fn close_cloexec_files(&mut self) {
+        // 这里希望删除文件后其他文件顺序不变，所以用枚举 fd 而不是迭代器之类的方法
+        for fd in 0..self.files.len() {
+            if self.files[fd].is_some() && self.files[fd].as_ref().unwrap().get_status().contains(OpenFlags::CLOEXEC) {
+                self.files[fd].take();
+            }
+        }
     }
 }

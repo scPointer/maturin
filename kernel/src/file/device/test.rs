@@ -124,6 +124,7 @@ lazy_static::lazy_static! {
 pub const SAMPLE: &[&str] = &[
     //"lmbench_all lat_syscall -P 1 null",
     //"busybox kill 10",
+    //"busybox sh lua_testcode.sh",
     //"sigreturn",
     //"dyn/tls_init.dout",
     "./runtest.exe -w entry-dynamic.exe argv",

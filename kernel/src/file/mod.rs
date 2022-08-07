@@ -52,6 +52,16 @@ pub trait File: Send + Sync {
     fn set_time(&self, _atime: &TimeSpec, _mtime: &TimeSpec) -> bool {
         false
     }
+    /// 设置文件状态信息，返回设置是否成功。
+    fn set_status(&self, _flags: OpenFlags) -> bool {
+        false
+    }
+    /// 设置状态信息的 CLOEXEC 位，返回设置是否成功。
+    /// 单独拆出接口是因为文件在 fd_manager 里存时是没有 mutex 锁的，
+    /// 所以如果先 get 再 set 可能导致操作不原子。
+    fn set_close_on_exec(&self, _is_set: bool) -> bool {
+        false
+    }
     /// 获取文件状态信息
     fn get_status(&self) -> OpenFlags {
         OpenFlags::empty()

@@ -1,8 +1,7 @@
 //! 信号的编号
 
-use numeric_enum_macro::numeric_enum;
 
-numeric_enum! {
+numeric_enum_macro::numeric_enum! {
     #[repr(u8)]
     #[allow(missing_docs)]
     #[derive(Eq, PartialEq, Debug, Copy, Clone)]

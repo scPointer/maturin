@@ -165,9 +165,11 @@ pub struct Dirent64 {
 
 #[allow(unused)]
 pub enum Dirent64Type {
+    /// 未知类型文件
     UNKNOWN = 0,
     /// 先进先出的文件/队列
     FIFO = 1,
+    /// 字符设备
     CHR = 2,
     /// 目录
     DIR = 4,
@@ -177,6 +179,7 @@ pub enum Dirent64Type {
     REG = 8,
     /// 符号链接
     LNK = 10,
+    /// socket
     SOCK = 12,
     WHT = 14,
 }
@@ -266,14 +269,23 @@ pub const RLIMIT_NOFILE: i32 = 7;
 /// 用户地址空间的最大大小
 pub const RLIMIT_AS: i32 = 9;
 
-// sys_fcntl64 使用的选项
-/// 复制这个 fd，相当于 sys_dup
-pub const F_DUPFD: usize = 0;
-/// 获取 cloexec 信息
-pub const F_GETFD: usize = 1;
-// 设置 cloexec 信息
-//pub const F_SETFD: usize = 2;
-/// 获取 flags 信息
-pub const F_GETFL: usize = 3;
-// 设置 flags 信息
-//pub const F_SETFL: usize = 4;
+numeric_enum_macro::numeric_enum! {
+    #[repr(usize)]
+    #[allow(non_camel_case_types)]
+    #[derive(Debug)]
+    /// sys_fcntl64 使用的选项
+    pub enum Fcntl64Cmd {
+        /// 复制这个 fd，相当于 sys_dup
+        F_DUPFD = 0,
+        /// 获取 cloexec 信息，即 exec 成功时是否删除该 fd
+        F_GETFD = 1,
+        /// 设置 cloexec 信息，即 exec 成功时删除该 fd
+        F_SETFD = 2,
+        /// 获取 flags 信息
+        F_GETFL = 3,
+        /// 设置 flags 信息
+        F_SETFL = 4,
+        /// 复制 fd，然后设置 cloexec 信息，即 exec 成功时删除该 fd
+        F_DUPFD_CLOEXEC = 1030,
+    }
+}

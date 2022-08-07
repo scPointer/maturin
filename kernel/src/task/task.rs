@@ -330,6 +330,8 @@ impl TaskControlBlock {
         // 清空信号模块
         self.signal_handlers.lock().clear();
         self.signal_receivers.lock().clear();
+        // 处理 fd 中需要在 exec 时关闭的文件
+        self.fd_manager.lock().close_cloexec_files();
         // 如果用户程序调用时没有参数，则手动加上程序名作为唯一的参数
         // 需要这个调整，是因为用户库(/user下)使用了 rCore 的版本，
         // 里面的 user_shell 调用 exec 时会加上程序名作为 args 的第一个参数
