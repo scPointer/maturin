@@ -160,7 +160,7 @@ pub struct Dirent64 {
     /// 文件类型
     pub d_type: u8,
     /// 文件名
-    pub d_name: *mut u8,
+    pub d_name: [u8; 0],
 }
 
 #[allow(unused)]
@@ -184,12 +184,15 @@ pub enum Dirent64Type {
     WHT = 14,
 }
 impl Dirent64 {
-    /// 设置文件类型
-    pub fn set_type(&mut self, d_type: Dirent64Type) {
+    /// 设置一个目录项的信息
+    pub fn set_info(&mut self, ino: usize, reclen: usize, d_type: Dirent64Type) {
+        self.d_ino = ino as u64;
+        self.d_off = -1;
+        self.d_reclen = reclen as u16;
         self.d_type = d_type as u8;
     }
     /// 文件名字存的位置相对于结构体指针是多少
-    pub fn d_name_offset(&self) -> usize {
+    pub fn d_name_offset() -> usize {
         size_of::<u64>() + size_of::<i64>() + size_of::<u16>() + size_of::<u8>()
     }
 }

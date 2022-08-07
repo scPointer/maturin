@@ -25,7 +25,9 @@ bitflags! {
         const TEXT = 1 << 14;
         /// 和上面不同，要求输入输出都不进行这个翻译
         const BINARY = 1 << 15;
-        ///
+        /// 对这个文件的输出需符合 IO 同步一致性。可以理解为随时 fsync
+        const DSYNC = 1 << 16;
+        /// 如果是符号链接，不跟随符号链接去寻找文件，而是针对连接本身
         const NOFOLLOW = 1 << 17;
         /// 在 exec 时需关闭
         const CLOEXEC = 1 << 19;

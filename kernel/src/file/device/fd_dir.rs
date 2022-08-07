@@ -38,6 +38,10 @@ impl File for FdDir {
     fn get_dir(&self) -> Option<&str> {
         Some(self.dir.as_str())
     }
+    /// 可修改 CLOEXEC 信息
+    fn set_close_on_exec(&self, _is_set: bool) -> bool {
+        true
+    }
     /// 文件属性
     fn get_stat(&self, stat: *mut Kstat) -> bool {
         unsafe {

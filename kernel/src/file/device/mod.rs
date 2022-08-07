@@ -25,6 +25,7 @@ type FsTP = DefaultTimeProvider;
 type FsOCC = LossyOemCpConverter;
 
 type FsDir = fatfs::Dir<'static, FsIO, FsTP, FsOCC>;
+type FsDirIter<'a> = fatfs::DirIter<'a, FsIO, FsTP, FsOCC>;
 type FsFile = fatfs::File<'static, FsIO, FsTP, FsOCC>;
 type FATFileSystem = FileSystem<FsIO, FsTP, FsOCC>;
 
@@ -361,6 +362,7 @@ pub fn check_dir_exists(dir_name: &str) -> bool {
     inner_open_dir(root, dir_name.as_str()).is_some()
 }
 
+/*
 /// 获取目录下的第 entry_id 个 DirEntry，返回文件类型(是否是目录)以及文件名。如果找不到，返回 None
 ///
 /// 这里实际上没有检查硬链接
@@ -384,3 +386,17 @@ pub fn get_kth_dir_entry_info_of_path(dir_name: &str, entry_id: usize) -> Option
         })
         .unwrap_or(None)
 }
+*/
+
+/// 获取一个迭代器，每次返回一个目录中的 DirEntry。如果对应目录不存在，返回 None
+///
+/// 这里实际上没有检查硬链接
+pub fn get_dir_entry_iter<'a>(dir_name: &str) -> Option<FsDirIter<'a>> {
+    //let fs = MEMORY_FS.lock();
+    //let root = fs.root_dir();
+    let root = MEMORY_FS.root_dir();
+    let dir_name = map_path_and_file(dir_name, "").unwrap().0;
+    info!("get dir: dir = {}", dir_name);
+    inner_open_dir(root, dir_name.as_str()).map(|dir| {dir.iter()})
+}
+

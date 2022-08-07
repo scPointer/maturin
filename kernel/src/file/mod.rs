@@ -89,7 +89,7 @@ pub use device::{
     check_dir_exists,
     check_file_exists,
     fs_init,
-    get_kth_dir_entry_info_of_path,
+    get_dir_entry_iter,
     list_files_at_root,
     //load_testcases,
     load_next_testcase,

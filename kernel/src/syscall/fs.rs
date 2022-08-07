@@ -10,9 +10,9 @@ use super::{
     SEEK_END, SEEK_SET,
 };
 use crate::{
-    constants::{AT_FDCWD, DIR_ENTRY_SIZE, SENDFILE_BUFFER_SIZE},
+    constants::{AT_FDCWD, SENDFILE_BUFFER_SIZE},
     file::{
-        check_dir_exists, check_file_exists, get_kth_dir_entry_info_of_path, mkdir, mount_fat_fs,
+        check_dir_exists, check_file_exists, get_dir_entry_iter, mkdir, mount_fat_fs,
         open_file, origin_fs_stat, try_add_link, try_remove_link, umount_fat_fs,
     },
     file::{FsStat, Kstat, OpenFlags, Pipe, SeekFrom},
@@ -505,34 +505,47 @@ pub fn sys_dup3(old_fd: usize, new_fd: usize) -> SysResult {
 }
 
 /// 获取目录项信息
-pub fn sys_getdents64(fd: usize, buf: *mut Dirent64, len: usize) -> SysResult {
+pub fn sys_getdents64(fd: usize, buf: *mut u8, len: usize) -> SysResult {
     let task = get_current_task().unwrap();
-    if let Some(dir) = get_dir_from_fd(&task, fd as i32) {
-        let entry_id = unsafe { (*buf).d_off as usize / DIR_ENTRY_SIZE };
-        if let Some((is_dir, file_name)) = get_kth_dir_entry_info_of_path(dir.as_str(), entry_id) {
-            unsafe {
-                (*buf).d_ino = 1;
-                (*buf).d_off += DIR_ENTRY_SIZE as i64;
-                (*buf).d_reclen = DIR_ENTRY_SIZE as u16;
-                (*buf).set_type(if is_dir {
+    let entry_id_from = unsafe { (*(buf as *const Dirent64)).d_off};
+    if entry_id_from == -1 { // 说明已经读完了
+        return Ok(0);
+    }
+    if let Some(dir) = get_dir_from_fd(&task, fd as i32) { // 获取实际目录
+        let mut task_vm = task.vm.lock();
+        if task_vm.manually_alloc_page(buf as usize).is_err() ||
+            task_vm.manually_alloc_page(buf as usize + len - 1).is_err() {
+                return Err(ErrorNo::EFAULT); // 检查传入的地址是否合法
+        }
+        if let Some(dir_iter) = get_dir_entry_iter(dir.as_str()) {
+            let mut offset = 0; // buf 共有 len 长，当前将 buf.add(offset) 视为一个结构 Dirent64
+            for entry in dir_iter {
+                let file = entry.unwrap();
+                let file_name = file.file_name();
+                let file_type = if file.is_dir() {
                     Dirent64Type::DIR
                 } else {
                     Dirent64Type::REG
-                });
-                let name_start = (buf as usize + (*buf).d_name_offset()) as *mut u8;
-                // 算出还能放 d_name 的位置。其中字符串结尾加一个0保证最后不溢出
-                let len = len - (*buf).d_name_offset() - 1;
-                let copy_len = if len < file_name.len() {
-                    len
-                } else {
-                    file_name.len()
                 };
-                let slice = core::slice::from_raw_parts_mut(name_start, copy_len);
-                slice.copy_from_slice(&file_name.as_bytes());
-                // 字符串结尾
-                *name_start.add(copy_len) = 0;
-                return Ok(copy_len + (*buf).d_name_offset());
+                // 当前的这一项如果要放到用户给的 buf 里，会有多大
+                let entry_size = Dirent64::d_name_offset() + file_name.len() + 1;
+                // 如果放进去会超过 buffer 大小，则就此退出
+                if offset + entry_size > len {
+                    break;
+                }
+                unsafe { // 下面这一段会直接在用户地址空间操作，因而整体是 unsafe 的
+                    let dirent64: &mut Dirent64 = &mut *(buf.add(offset) as *mut _);
+                    let name_in_buf: &mut [u8] = core::slice::from_raw_parts_mut(
+                        buf.add(offset + Dirent64::d_name_offset()) as *mut _,
+                        file_name.len() + 1 // 最后一个位置留给 '\0'
+                    );
+                    offset += entry_size;
+                    dirent64.set_info(1, entry_size, file_type);
+                    name_in_buf[..file_name.len()].copy_from_slice(&file_name.as_bytes());
+                    name_in_buf[file_name.len()] = 0;
+                }
             }
+            return Ok(offset);
         }
     }
     Err(ErrorNo::EINVAL)
@@ -704,7 +717,8 @@ pub fn sys_sendfile64(out_fd: usize, in_fd: usize, offset: *mut usize, count: us
                 }
             };
             // 读取最多 count 字符
-            // todo: 使用 buffer 避免一次读取太多到内存里
+            // 这里目前直接限制了最大读取长度，没有分次读取
+            // todo: 使用 buffer 分次读，避免一次读取太多到内存里
             let mut buf = vec![0u8; count.min(SENDFILE_BUFFER_SIZE)];
             
             if let Some(read_len) = in_file.read(&mut buf) {
@@ -724,4 +738,19 @@ pub fn sys_sendfile64(out_fd: usize, in_fd: usize, offset: *mut usize, count: us
         }
     }
     Err(ErrorNo::EBADF)
+}
+
+pub fn sys_ioctl(fd: usize, request: usize, argp: *mut usize) -> SysResult {
+    info!("ioctl fd = {} request = {:x} argp {:x}", fd, request, argp as usize);
+    info!("unimplemented now, error checks only");
+    let task = get_current_task().unwrap();
+    let mut task_vm = task.vm.lock();
+    let fd_manager = task.fd_manager.lock();
+    if fd_manager.get_file(fd).is_err() {
+        return Err(ErrorNo::EBADF);
+    }
+    if task_vm.manually_alloc_page(argp as usize).is_err() {
+        return Err(ErrorNo::EFAULT); // 地址不合法
+    }
+    Ok(0)    
 }

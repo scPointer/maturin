@@ -53,7 +53,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         // 为了避免内核死循环，这种情况下要手动结束进程
         if syscall_id == SyscallNo::WAIT4 {
             *WRITEV_COUNT.lock() += 1;
-            if *WRITEV_COUNT.lock() >= 10 {
+            if *WRITEV_COUNT.lock() >= 50 {
                 sys_exit(-100);
             }
         } else {
@@ -97,7 +97,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         ),
         SyscallNo::CLOSE => sys_close(args[0]),
         SyscallNo::PIPE => sys_pipe(args[0] as *mut u32),
-        SyscallNo::GETDENTS64 => sys_getdents64(args[0], args[1] as *mut Dirent64, args[2]),
+        SyscallNo::GETDENTS64 => sys_getdents64(args[0], args[1] as *mut u8, args[2]),
         SyscallNo::LSEEK => sys_lseek(args[0], args[1] as isize, args[2] as isize),
         SyscallNo::READ => sys_read(args[0], args[1] as *mut u8, args[2]),
         SyscallNo::WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
@@ -195,7 +195,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[2] as *const RLimit,
             args[3] as *mut RLimit,
         ),
-        SyscallNo::IOCTL => Ok(0),
+        SyscallNo::IOCTL => sys_ioctl(args[0], args[1], args[2] as *mut usize),
         //SyscallNo::MPROTECT => 0,
         SyscallNo::SIGTIMEDWAIT => Ok(0),
         SyscallNo::MEMBARRIER => Ok(0),
