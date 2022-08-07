@@ -1,5 +1,5 @@
-//! 程序入口为 mod arch 中的 entry.S
-//! 将cpu_id存到tp寄存器并设置好初始的内核栈与页表后，跳转到 start_kernel 启动
+//! 程序入口为 mod arch/riscv/mod.rs 中的函数 entry ( 也是build.rs中的ENTRY(_start) ),
+//! 函数 entry 将cpu_id存到tp寄存器并设置好初始的内核栈与页表后，跳转到 start_kernel 启动
 
 #![no_std]
 #![no_main]
