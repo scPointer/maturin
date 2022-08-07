@@ -7,10 +7,9 @@
 #![feature(panic_info_message)]
 #![feature(default_alloc_error_handler)]
 #![feature(naked_functions, asm_sym, asm_const)]
+#![feature(const_btree_new)]
 // MemorySet 处理相交的 VmArea 时需要
 #![feature(btree_drain_filter)]
-// used in file/device/link.rs
-#![feature(const_btree_new)]
 // test.rs 输入 argv 需要
 #![feature(drain_filter)]
 
@@ -19,6 +18,7 @@ mod console;
 mod constants;
 mod drivers;
 mod error;
+mod ffi;
 mod file;
 mod lang;
 mod loaders;
@@ -28,7 +28,6 @@ pub mod syscall;
 pub mod task;
 mod timer;
 pub mod trap;
-mod utils;
 
 // #[cfg(target_arch = "riscv64")]
 #[path = "arch/riscv/mod.rs"]
@@ -52,7 +51,6 @@ core::arch::global_asm!(include_str!("fs.S"));
 // use core::sync::atomic::AtomicUsize;
 // static BOOTED_CPU_NUM: AtomicUsize = AtomicUsize::new(0);
 
-#[no_mangle]
 /// 主核启动OS
 pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     memory::clear_bss(); // 清空 bss 段
@@ -89,7 +87,6 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     }
 }
 
-#[no_mangle]
 /// 其他核启动OS
 pub extern "C" fn start_kernel_secondary(_arg0: usize, _arg1: usize) -> ! {
     memory::enable_kernel_page_table(); // 构造并切换到内核态页表与 MemorySet

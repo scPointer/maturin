@@ -51,14 +51,15 @@ unsafe extern "C" fn entry(hartid: usize) -> ! {
         "   call {set_stack}",
         "   call {set_boot_pt}",
         // jump to start_kernel
-        "   la   t0, start_kernel
+        "   la   t0, {start_kernel}
             li   t1, 0xffffffff00000000
             add  t0, t0, t1
             add  sp, sp, t1
             jr   t0
         ",
-        set_stack   = sym set_stack,
-        set_boot_pt = sym set_boot_pt,
+        set_stack    = sym set_stack,
+        set_boot_pt  = sym set_boot_pt,
+        start_kernel = sym crate::start_kernel,
         options(noreturn),
     )
 }
@@ -75,14 +76,15 @@ pub unsafe extern "C" fn secondary_entry(hartid: usize) -> ! {
         "   call {set_stack}",
         "   call {set_boot_pt}",
         // jump to start_kernel
-        "   la   t0, start_kernel_secondary
+        "   la   t0, {start_kernel}
             li   t1, 0xffffffff00000000
             add  t0, t0, t1
             add  sp, sp, t1
             jr   t0
         ",
-        set_stack = sym set_stack,
-        set_boot_pt = sym set_boot_pt,
+        set_stack    = sym set_stack,
+        set_boot_pt  = sym set_boot_pt,
+        start_kernel = sym crate::start_kernel_secondary,
         options(noreturn),
     )
 }

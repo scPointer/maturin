@@ -6,11 +6,12 @@
 //#![deny(missing_docs)]
 
 use super::{
-    Dirent64, Dirent64Type, SysResult, ErrorNo, IoVec, UtimensatFlags, Fcntl64Cmd, SEEK_CUR,
+    Dirent64, Dirent64Type, ErrorNo, Fcntl64Cmd, IoVec, SysResult, UtimensatFlags, SEEK_CUR,
     SEEK_END, SEEK_SET,
 };
 use crate::{
     constants::{AT_FDCWD, DIR_ENTRY_SIZE},
+    ffi::WithTerminator,
     file::{
         check_dir_exists, check_file_exists, get_kth_dir_entry_info_of_path, mkdir, mount_fat_fs,
         open_file, origin_fs_stat, try_add_link, try_remove_link, umount_fat_fs,
@@ -18,7 +19,6 @@ use crate::{
     file::{FsStat, Kstat, OpenFlags, Pipe, SeekFrom},
     task::{get_current_task, TaskControlBlock},
     timer::TimeSpec,
-    utils::raw_ptr_to_ref_str,
 };
 use alloc::{string::String, sync::Arc};
 
@@ -130,7 +130,9 @@ pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> SysResult {
         );
         match sys_read(fd, io_vec.base, io_vec.len) {
             Ok(len) => read_len += len,
-            Err(_) => { break; },
+            Err(_) => {
+                break;
+            }
         }
     }
     Ok(read_len)
@@ -148,8 +150,10 @@ pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> SysResult {
             io_vec.base as usize, io_vec.len
         );
         match sys_write(fd, io_vec.base, io_vec.len) {
-            Ok(len) =>  written_len += len,
-            Err(_) => { break; }
+            Ok(len) => written_len += len,
+            Err(_) => {
+                break;
+            }
         }
     }
     Ok(written_len)
@@ -160,7 +164,10 @@ pub fn sys_pread(fd: usize, buf: *mut u8, count: usize, offset: usize) -> SysRes
     let task = get_current_task().unwrap();
     let tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
-    info!("sys_pread fd {} buf {:x} count {} offset {}", fd, buf as usize, count, offset);
+    info!(
+        "sys_pread fd {} buf {:x} count {} offset {}",
+        fd, buf as usize, count, offset
+    );
     if task_vm.manually_alloc_page(buf as usize).is_err() {
         return Err(ErrorNo::EFAULT); // 地址不合法
     }
@@ -215,7 +222,7 @@ pub fn sys_fstatat(dir_fd: i32, path: *const u8, kstat: *mut Kstat) -> SysResult
 
 /// 获取文件系统的信息
 pub fn sys_statfs(path: *const u8, stat: *mut FsStat) -> SysResult {
-    let file_path = unsafe { raw_ptr_to_ref_str(path) };
+    let file_path = unsafe { WithTerminator(path).as_str() };
     if file_path == "/" {
         // 目前只支持访问根目录文件系统的信息
         origin_fs_stat(stat);
@@ -257,7 +264,7 @@ fn resolve_path_from_fd<'a>(
     dir_fd: i32,
     path: *const u8,
 ) -> Option<(String, &'a str)> {
-    let file_path = unsafe { raw_ptr_to_ref_str(path) };
+    let file_path = unsafe { WithTerminator(path).as_str() };
     //println!("file_path {}", file_path);
     if file_path.starts_with("/") {
         // 绝对路径
@@ -312,7 +319,7 @@ pub fn sys_mount(
     _flags: u32,
     _data: *const u8,
 ) -> SysResult {
-    let fs_type = unsafe { raw_ptr_to_ref_str(fs_type) };
+    let fs_type = unsafe { WithTerminator(fs_type).as_str() };
     if fs_type != "vfat" {
         // 不支持挂载其他类型
         return Err(ErrorNo::EINVAL);
@@ -374,7 +381,7 @@ pub fn sys_mkdir(dir_fd: i32, path: *const u8, _user_mode: u32) -> SysResult {
 pub fn sys_chdir(path: *const u8) -> SysResult {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
-    let file_path = unsafe { raw_ptr_to_ref_str(path) };
+    let file_path = unsafe { WithTerminator(path).as_str() };
 
     let new_path = {
         if file_path.starts_with("/") {
@@ -631,21 +638,21 @@ pub fn sys_fcntl64(fd: usize, cmd: usize, arg: usize) -> SysResult {
                 } else {
                     Err(ErrorNo::EMFILE)
                 }
-            },
+            }
             Ok(Fcntl64Cmd::F_GETFD) => {
                 if file.get_status().contains(OpenFlags::CLOEXEC) {
                     Ok(1)
                 } else {
                     Ok(0)
                 }
-            },
+            }
             Ok(Fcntl64Cmd::F_SETFD) => {
                 if file.set_close_on_exec((arg & 1) != 0) {
                     Ok(0)
                 } else {
                     Err(ErrorNo::EINVAL)
                 }
-            },
+            }
             Ok(Fcntl64Cmd::F_GETFL) => Ok(file.get_status().bits() as usize),
             Ok(Fcntl64Cmd::F_SETFL) => {
                 if let Some(flags) = OpenFlags::from_bits(arg as u32) {
@@ -654,7 +661,7 @@ pub fn sys_fcntl64(fd: usize, cmd: usize, arg: usize) -> SysResult {
                     }
                 }
                 Err(ErrorNo::EINVAL)
-            },
+            }
             Ok(Fcntl64Cmd::F_DUPFD_CLOEXEC) => {
                 if let Ok(new_fd) = fd_manager.copy_fd_anywhere(fd) {
                     if file.set_close_on_exec((arg & 1) != 0) {
@@ -667,7 +674,7 @@ pub fn sys_fcntl64(fd: usize, cmd: usize, arg: usize) -> SysResult {
                 } else {
                     Err(ErrorNo::EMFILE)
                 }
-            },
+            }
             _ => Err(ErrorNo::EINVAL),
         };
     }

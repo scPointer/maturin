@@ -1,20 +1,20 @@
 //! 与进程相关的系统调用
 
 use super::{
-    resolve_clone_flags_and_signal, SysResult, ErrorNo, MMAPFlags, RLimit, UtsName, WaitFlags, MMAPPROT,
-    RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK,
+    resolve_clone_flags_and_signal, ErrorNo, MMAPFlags, RLimit, SysResult, UtsName, WaitFlags,
+    MMAPPROT, RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK,
 };
-use crate::signal::{send_signal, Bitset, SigAction, SignalNo};
 use crate::{
     constants::{MMAP_LEN_LIMIT, SIGSET_SIZE_IN_BYTE, USER_STACK_SIZE, USER_VIRT_ADDR_LIMIT},
+    ffi::WithTerminator,
     file::SeekFrom,
+    signal::{send_signal, Bitset, SigAction, SignalNo},
     task::{
         exec_new_task, exit_current_task, get_current_task, push_task_to_scheduler, signal_return,
         suspend_current_task,
     },
-    utils::{raw_ptr_to_string, str_ptr_array_to_vec_string},
 };
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 use core::mem::size_of;
 
 /// 进程退出，并提供 exit_code 供 wait 等 syscall 拿取
@@ -65,7 +65,13 @@ pub fn sys_brk(brk: usize) -> SysResult {
 }
 
 /// 创建一个子任务，如成功，返回其 tid
-pub fn sys_clone(flags: usize, user_stack: usize, ptid: usize, tls: usize, ctid: usize) -> SysResult {
+pub fn sys_clone(
+    flags: usize,
+    user_stack: usize,
+    ptid: usize,
+    tls: usize,
+    ctid: usize,
+) -> SysResult {
     let (clone_flags, signal) = resolve_clone_flags_and_signal(flags);
     info!(
         "clone: flags {:#?} signal {} ptid {:x} tls {:x} ctid {:x}",
@@ -138,8 +144,13 @@ pub fn sys_execve(path: *const u8, args: *const usize, mut _envs: *const usize) 
 fn sys_exec(path: *const u8, args: *const usize) -> SysResult {
     // 因为这里直接用用户空间提供的虚拟地址来访问，所以一定能连续访问到字符串，不需要考虑物理地址是否连续。
     // 把路径和参数复制到内核里。因为上面的 slice 在用户空间中，在 exec 中会被 drop 掉。
-    let app_name = unsafe { raw_ptr_to_string(path) };
-    let args = unsafe { str_ptr_array_to_vec_string(args) };
+    let app_name = unsafe { String::from(WithTerminator(path).as_str()) };
+    let args = unsafe {
+        WithTerminator(args as *const *const u8)
+            .into_iter()
+            .map(|ptr| WithTerminator(*ptr).as_str().into())
+            .collect()
+    };
     // 而且目前认为所有用户程序在根目录下，所以直接把路径当作文件名
     if get_current_task().unwrap().exec(&app_name, args) {
         exec_new_task();
@@ -157,7 +168,7 @@ pub fn sys_wait4(pid: isize, exit_code_ptr: *mut i32, option: WaitFlags) -> SysR
         let child_pid = waitpid(pid, exit_code_ptr);
         // 找不到子进程，直接返回-1
         if child_pid == -1 {
-            return Err(ErrorNo::EINVAL)
+            return Err(ErrorNo::EINVAL);
         } else if child_pid == -2 {
             if option.contains(WaitFlags::WNOHANG) {
                 return Ok(0);
@@ -386,7 +397,7 @@ pub fn sys_sigprocmask(
     sigsetsize: usize,
 ) -> SysResult {
     if sigsetsize != SIGSET_SIZE_IN_BYTE {
-        return Err(ErrorNo::EINVAL)
+        return Err(ErrorNo::EINVAL);
     }
 
     // 这里仅输出调试信息，与处理无关
@@ -434,7 +445,11 @@ pub fn sys_sigprocmask(
 /// 改变当前进程的信号处理函数。
 ///
 /// 如果 action 为 0，则不设置；如果 old_action 为 0，则不存入。
-pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut SigAction) -> SysResult {
+pub fn sys_sigaction(
+    signum: usize,
+    action: *const SigAction,
+    old_action: *mut SigAction,
+) -> SysResult {
     if signum == SignalNo::SIGKILL as usize || signum == SignalNo::SIGSTOP as usize {
         return Err(ErrorNo::EINVAL); // 特殊信号不能被覆盖
     }
