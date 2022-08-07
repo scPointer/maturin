@@ -124,11 +124,13 @@ lazy_static::lazy_static! {
 pub const SAMPLE: &[&str] = &[
     //"lmbench_all lat_syscall -P 1 null",
     //"busybox kill 10",
-    //"busybox sh lua_testcode.sh",
+    "busybox sh lua_testcode.sh",
+    //"busybox sh busybox_testcode.sh",
+    //"busybox",
     //"sigreturn",
     //"dyn/tls_init.dout",
-    "./runtest.exe -w entry-dynamic.exe argv",
-    "./runtest.exe -w entry-dynamic.exe tls_init",
+    //"./runtest.exe -w entry-dynamic.exe argv",
+    //"./runtest.exe -w entry-dynamic.exe tls_init",
     //"./runtest.exe -w entry-dynamic.exe tls_local_exec",
     //"./runtest.exe -w entry-dynamic.exe pthread_exit_cancel",
 
@@ -143,7 +145,7 @@ pub const SAMPLE: &[&str] = &[
     //"./runtest.exe -w entry-static.exe socket",
 
     //"./runtest.exe -w entry-dynamic.exe fdopen",
-    "./runtest.exe -w entry-dynamic.exe fscanf",
+    //"./runtest.exe -w entry-dynamic.exe fscanf",
     //"./runtest.exe -w entry-dynamic.exe fwscanf",
     //"./runtest.exe -w entry-dynamic.exe ungetc",
     //"./runtest.exe -w entry-dynamic.exe fflush_exit",

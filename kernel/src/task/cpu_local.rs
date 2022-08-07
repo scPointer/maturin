@@ -12,7 +12,7 @@ use crate::{
     memory::{enable_kernel_page_table, PTEFlags, VirtAddr},
     signal::{
         global_logoff_signals, send_signal, SigActionDefault, SigActionFlags, SigInfo, SignalNo,
-        SignalUserContext,
+        SignalUserContext, SIG_IGN,
     },
 };
 use alloc::{sync::Arc, vec::Vec};
@@ -298,6 +298,9 @@ pub fn handle_signals() {
         if task.save_trap_cx_if_not_handling_signals() {
             // 如果有，则调取处理函数
             if let Some(action) = handler.get_action_ref(signum) {
+                if action.handler == SIG_IGN {
+                    return;
+                }
                 // 保存后开始操作准备修改上下文，跳转到用户的信号处理函数
                 let trap_cx = unsafe { &mut *task.kernel_stack.get_first_context() };
                 trap_cx.set_ra(action.restorer);
@@ -308,6 +311,7 @@ pub fn handle_signals() {
                 trap_cx.set_sepc(action.handler);
                 trap_cx.set_a0(signum);
                 if action.flags.contains(SigActionFlags::SA_SIGINFO) {
+                    task.save_if_set_siginfo(true);
                     // 如果带 SIGINFO，则需要在用户栈上放额外的信息
                     sp = (sp - size_of::<SigInfo>()) & !0xf;
                     info!("add siginfo at {:x}", sp);
@@ -326,14 +330,15 @@ pub fn handle_signals() {
                     //let v = unsafe { *((sp + 0xb0) as *const usize) };
                     //info!("read {} pc {}", v, old_pc);
 
-                    //let tp = trap_cx.x[4];
+                    let tp = trap_cx.x[4];
                     //let cancel = tp - 156;
-                    //info!("val {}", unsafe { *((tp - 168) as *const u32) }); //tid
-                    //info!("val {}", unsafe { *((tp - 156) as *const u32) });
-                    //info!("val {}", unsafe { *((tp - 152) as *const u8) });
-                    //info!("val {}", unsafe { *((tp - 151) as *const u8) });
+                    info!("val {}", unsafe { *((tp - 168) as *const u32) }); //tid
+                    info!("val {}", unsafe { *((tp - 156) as *const u32) });
+                    info!("val {}", unsafe { *((tp - 152) as *const u8) });
+                    info!("val {}", unsafe { *((tp - 151) as *const u8) });
                 }
                 trap_cx.set_sp(sp);
+                info!("into signal handler, sp = {:x} old_pc = {:x}", sp, old_pc);
             } else {
                 // 否则，查找默认处理方式
                 match SigActionDefault::of_signal(signal) {

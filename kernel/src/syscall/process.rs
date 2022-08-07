@@ -154,6 +154,7 @@ fn sys_exec(path: *const u8, args: *const usize) -> SysResult {
 /// 目前只支持 WNOHANG 选项
 pub fn sys_wait4(pid: isize, exit_code_ptr: *mut i32, option: WaitFlags) -> SysResult {
     loop {
+        info!("sys_wait4 {}, {:x}, {:#?}", pid, exit_code_ptr as usize, option);
         let child_pid = waitpid(pid, exit_code_ptr);
         // 找不到子进程，直接返回-1
         if child_pid == -1 {
@@ -177,11 +178,11 @@ pub fn sys_wait4(pid: isize, exit_code_ptr: *mut i32, option: WaitFlags) -> SysR
 /// 1. 如果找不到对应 pid 的进程，或者它不是调用进程的子进程，返回 -1
 /// 2. 如果能找到，但该子进程没有运行结束，返回 -2
 /// 3. 否则，返回这个进程的 pid。
-/// 3.1 如果 exit_code_ptr == 0，则将子进程的 exit_code 写入 exit_code_ptr
+/// 3.1 如果 exit_code_ptr != 0，则将子进程的 exit_code 写入 exit_code_ptr
 fn waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
     let request_pid = pid as usize;
     let task = get_current_task().unwrap();
-    let tcb_inner = task.inner.lock();
+    let mut tcb_inner = task.inner.lock();
     // 找到这个子进程并返回它在 children 数组里的下标。
     // 如果找不到，它设为 -1; 如果找到了但没结束，它设为 -2
     let mut flag: isize = -1;
@@ -223,7 +224,7 @@ fn waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
     }
     */
     if flag >= 0 {
-        // let child = tcb_inner.children.remove(flag as usize);
+        let _child = tcb_inner.children.remove(flag as usize);
         // 确认它没有其他引用了
         // Todo: 这里加 assert 偶尔会报错，有可能是其他核在退出这个子进程的时候还拿着锁，但没法稳定触发
         // assert_eq!(Arc::strong_count(&child), 1, "child pid = {}", flag);
@@ -231,6 +232,7 @@ fn waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
         // linux 调用规定中，返回的 exit_code 要左移8位
         if exit_code_ptr as usize != 0 {
             unsafe {
+                //info!("write exit code {}", exit_code);
                 *exit_code_ptr = exit_code << 8;
             }
         }
@@ -443,11 +445,13 @@ pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut S
     let mut handler = task.signal_handlers.lock();
 
     unsafe {
-        info!(
-            "when receive signal {:#?} action {:#?}",
-            SignalNo::from(signum),
-            *action
-        );
+        if action as usize != 0 {
+            info!(
+                "when receive signal {:#x?} action {:#x?}",
+                SignalNo::from(signum),
+                *action
+            );
+        }
     }
 
     let old_addr = old_action as usize;

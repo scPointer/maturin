@@ -3,7 +3,7 @@ MODE ?= debug
 PLATFORM ?= qemu
 SMP ?= 4
 MACHINE ?= virt
-SBI ?= rustsbi
+SBI ?= default
 
 OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy

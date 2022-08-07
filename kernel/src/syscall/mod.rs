@@ -51,7 +51,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     if IS_TEST_ENV {
         // libc-test 在某些 syscall 没有正确实现的时候，会不断循环调用 writev
         // 为了避免内核死循环，这种情况下要手动结束进程
-        if syscall_id == SyscallNo::WRITEV {
+        if syscall_id == SyscallNo::WAIT4 {
             *WRITEV_COUNT.lock() += 1;
             if *WRITEV_COUNT.lock() >= 10 {
                 sys_exit(-100);

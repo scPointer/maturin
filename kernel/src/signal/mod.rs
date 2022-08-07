@@ -7,7 +7,7 @@
 mod signal_no;
 pub use signal_no::SignalNo;
 mod sig_action;
-pub use sig_action::{SigAction, SigActionDefault, SigActionFlags};
+pub use sig_action::{SigAction, SigActionDefault, SigActionFlags, SIG_DFL, SIG_IGN};
 mod sig_info;
 pub use sig_info::SigInfo;
 mod ucontext;
@@ -51,7 +51,11 @@ impl SignalHandlers {
     /// 获取某个信号对应的 SigAction，如果存在，则返回其引用
     /// 因为 signum 的范围是 [1,64]，所以要 -1
     pub fn get_action_ref<'a>(&self, signum: usize) -> &Option<SigAction> {
-        &self.actions[signum - 1]
+        if self.actions[signum - 1].is_some() && self.actions[signum - 1].unwrap().handler == SIG_DFL {
+            &None
+        } else {
+            &self.actions[signum - 1]
+        }
         //if signum != 33 {&self.actions[signum - 1]} else {&None}
     }
     /// 修改某个信号对应的 SigAction。
@@ -59,6 +63,7 @@ impl SignalHandlers {
     pub fn set_action(&mut self, signum: usize, action_pos: *const SigAction) {
         unsafe {
             self.actions[signum - 1] = Some(*action_pos);
+            //self.actions[signum - 1].as_mut().unwrap().flags |= SigActionFlags::SA_SIGINFO;
         }
     }
 }
