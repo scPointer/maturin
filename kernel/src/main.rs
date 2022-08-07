@@ -26,6 +26,7 @@ mod memory;
 mod signal;
 pub mod syscall;
 pub mod task;
+mod testcases;
 mod timer;
 pub mod trap;
 mod utils;

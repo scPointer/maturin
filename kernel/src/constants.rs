@@ -105,3 +105,5 @@ pub const SIGSET_SIZE_IN_BYTE: usize = 8;
 pub const SIGSET_SIZE_IN_BIT: usize = SIGSET_SIZE_IN_BYTE * 8; // =64
 /// SIGINFO 要求把一些信息存在用户栈上，从用户栈开辟一块空间来保存它们
 pub const USER_STACK_RED_ZONE: usize = 0x200; // 512 B
+/// sys_sendfile64 中使用 buffer 的大小
+pub const SENDFILE_BUFFER_SIZE: usize = 0x2000;

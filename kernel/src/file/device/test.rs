@@ -113,19 +113,22 @@ impl TestStatus {
     }
 }
 
+#[allow(dead_code)]
+const CASES: &[&str] = crate::testcases::TESTCASES;
+
 lazy_static::lazy_static! {
     //static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(FORMAT_LIBC_STATIC.into_iter().chain(FORMAT_LIBC_DYNAMIC.into_iter())));
     //static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(&[FORMAT_LIBC_STATIC, FORMAT_LIBC_DYNAMIC].concat()));
-    static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(SAMPLE.into_iter()));
-    static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(SAMPLE));
+    static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(CASES.into_iter()));
+    static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(CASES));
 }
 
 #[allow(dead_code)]
 pub const SAMPLE: &[&str] = &[
     //"lmbench_all lat_syscall -P 1 null",
     //"busybox kill 10",
-    "busybox sh lua_testcode.sh",
-    //"busybox sh busybox_testcode.sh",
+    //"busybox sh lua_testcode.sh",
+    "busybox sh busybox_testcode.sh",
     //"busybox",
     //"sigreturn",
     //"dyn/tls_init.dout",

@@ -104,6 +104,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::READV => sys_readv(args[0], args[1] as *mut IoVec, args[2]),
         SyscallNo::WRITEV => sys_writev(args[0], args[1] as *const IoVec, args[2]),
         SyscallNo::PREAD => sys_pread(args[0], args[1] as *mut u8, args[2], args[3]),
+        SyscallNo::SENDFILE64 => sys_sendfile64(args[0], args[1], args[2] as *mut usize, args[3]),
         SyscallNo::FSTATAT => sys_fstatat(args[0] as i32, args[1] as *const u8, args[2] as *mut Kstat),
         SyscallNo::FSTAT => sys_fstat(args[0], args[1] as *mut Kstat),
         SyscallNo::UTIMENSAT => sys_utimensat(
@@ -198,6 +199,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         //SyscallNo::MPROTECT => 0,
         SyscallNo::SIGTIMEDWAIT => Ok(0),
         SyscallNo::MEMBARRIER => Ok(0),
+        SyscallNo::PPOLL => Ok(1),
         _ => {
             //_ => panic!("Unsupported syscall id = {:#?}()", syscall_id, syscall_id as usize);
             info!("Unsupported syscall id = {:#?}({})", syscall_id, syscall_id as usize);

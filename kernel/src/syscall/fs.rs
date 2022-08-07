@@ -10,7 +10,7 @@ use super::{
     SEEK_END, SEEK_SET,
 };
 use crate::{
-    constants::{AT_FDCWD, DIR_ENTRY_SIZE},
+    constants::{AT_FDCWD, DIR_ENTRY_SIZE, SENDFILE_BUFFER_SIZE},
     file::{
         check_dir_exists, check_file_exists, get_kth_dir_entry_info_of_path, mkdir, mount_fat_fs,
         open_file, origin_fs_stat, try_add_link, try_remove_link, umount_fat_fs,
@@ -78,6 +78,8 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> SysResult {
     let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
     // 尝试了一下用 .map 串来写，但实际效果好像不如直接 if... 好看
     if let Ok(file) = task.fd_manager.lock().get_file(fd) {
+        //let pos = file.seek(SeekFrom::Current(0)).unwrap();
+        //info!("read from pos {pos}");
         // 读文件可能触发进程切换
         drop(tcb_inner);
         drop(task_vm);
@@ -448,6 +450,7 @@ pub fn sys_close(fd: usize) -> SysResult {
     if let Ok(_file) = task_fd_manager.remove_file(fd) {
         // 其实可以对 file 做最后处理。
         // 但此处不知道 file 的具体类型，所以还是推荐实现 Trait File 的类型自己写 Drop 时处理
+        info!("close fd {fd}");
         Ok(0)
     } else {
         Err(ErrorNo::EINVAL)
@@ -468,6 +471,7 @@ pub fn sys_pipe(pipe: *mut u32) -> SysResult {
                 *pipe = fd1 as u32;
                 *pipe.add(1) = fd2 as u32;
             }
+            info!("pipe: read {fd1}, write {fd2}");
             return Ok(0);
         } else {
             // 只成功插入了一个 fd。这种情况下要把 pipe_read 退出来
@@ -482,6 +486,7 @@ pub fn sys_dup(fd: usize) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_fd_manager = task.fd_manager.lock();
     if let Ok(new_fd) = task_fd_manager.copy_fd_anywhere(fd) {
+        info!("dup: from {fd} to {new_fd}");
         Ok(new_fd)
     } else {
         Err(ErrorNo::EMFILE)
@@ -490,6 +495,7 @@ pub fn sys_dup(fd: usize) -> SysResult {
 
 /// 复制一个 fd 中的文件到指定的新 fd 中，成功时返回新的文件描述符，失败则返回 -1
 pub fn sys_dup3(old_fd: usize, new_fd: usize) -> SysResult {
+    info!("dup3: from {old_fd} to {new_fd}");
     let task = get_current_task().unwrap();
     if task.fd_manager.lock().copy_fd_to(old_fd, new_fd) {
         Ok(new_fd)
@@ -670,6 +676,52 @@ pub fn sys_fcntl64(fd: usize, cmd: usize, arg: usize) -> SysResult {
             },
             _ => Err(ErrorNo::EINVAL),
         };
+    }
+    Err(ErrorNo::EBADF)
+}
+
+/// 从 in_fd 读取最多 count 个字符，存到 out_fd 中。
+/// - 如果 offset != 0，则其指定了 in_fd 中文件的偏移，此时完成后会修改 offset 为读取后的位置，但不更新文件内部的 offset
+/// - 否则，正常更新文件内部的 offset
+pub fn sys_sendfile64(out_fd: usize, in_fd: usize, offset: *mut usize, count: usize) -> SysResult {
+    //file.seek(SeekFrom::Current(0)).unwrap()
+    let task = get_current_task().unwrap();
+    let mut task_vm = task.vm.lock();
+    let fd_manager = task.fd_manager.lock();
+    info!("sendfile out fd {out_fd} in fd {in_fd} offset {:x} count {count}", offset as usize);
+    if let Ok(out_file) = fd_manager.get_file(out_fd) {
+        if let Ok(in_file) = fd_manager.get_file(in_fd) {
+            let current_pos = if offset as usize == 0 {
+                in_file.seek(SeekFrom::Current(0)).unwrap_or(0)
+            } else {
+                if task_vm.manually_alloc_page(offset as usize).is_err() {
+                    return Err(ErrorNo::EFAULT); // 地址不合法
+                }
+                if let Some(pos) = in_file.seek(SeekFrom::Start(unsafe {*offset} as u64)) {
+                    pos
+                } else { // 如果指定的 offset 无法取到，则直接返回
+                    return Err(ErrorNo::ESPIPE);
+                }
+            };
+            // 读取最多 count 字符
+            // todo: 使用 buffer 避免一次读取太多到内存里
+            let mut buf = vec![0u8; count.min(SENDFILE_BUFFER_SIZE)];
+            
+            if let Some(read_len) = in_file.read(&mut buf) {
+                if let Some(write_len) = out_file.write(&buf[..read_len]) {
+                    if offset as usize != 0 { // offset 非零则要求不更新实际文件，更新这个用户给的值
+                        unsafe {
+                            *offset += write_len;
+                        }
+                        in_file.seek(SeekFrom::Start(current_pos as u64)).unwrap_or(0);
+                    } else if write_len != read_len { // 否则更新实际文件，此时如果写不完要退回去
+                        in_file.seek(SeekFrom::Current(write_len as i64 - read_len as i64)).unwrap_or(0);
+                    }
+                    return Ok(write_len);
+                }
+            }
+            return Err(ErrorNo::EINVAL);
+        }
     }
     Err(ErrorNo::EBADF)
 }
