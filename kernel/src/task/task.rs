@@ -55,7 +55,7 @@ pub struct TaskControlBlock {
 /// 任务控制块的可变部分
 pub struct TaskControlBlockInner {
     /// 用户程序当前的工作目录
-    /// - 注意 dir[0] == '.' ，如以 ./ 开头时代表根目录，以 "./abc/" 开头代表根目录下的abc目录。
+    /// - 注意 dir\[0\] == '.' ，如以 ./ 开头时代表根目录，以 "./abc/" 开头代表根目录下的abc目录。
     /// 这样处理是因为 open_file 时先打开文件所在目录，它的实现是先打开根目录，再从根目录找相对路径
     pub dir: String,
     /// 父进程的 pid。
@@ -96,7 +96,7 @@ pub struct TaskControlBlockInner {
 unsafe impl Send for TaskControlBlockInner {}
 
 impl TaskControlBlock {
-    /// 从用户程序名生成 TCB，其中文件名默认为 args[0]
+    /// 从用户程序名生成 TCB，其中文件名默认为 args\[0\]
     ///
     /// 在目前的实现下，如果生成 TCB 失败，只有以下情况：
     /// 1. 找不到文件名所对应的文件

@@ -66,12 +66,12 @@ impl PageTableEntry {
 
 /// 页表项(修改部分)
 impl PageTableEntry {
-    /// 设置页号，将地址[55:12]位取出作为物理页号，置于页表项[53:10]位
-    /// 并保留表项中[7:0]位标志位不变
+    /// 设置页号，将地址\[55:12\]位取出作为物理页号，置于页表项\[53:10\]位
+    /// 并保留表项中\[7:0\]位标志位不变
     pub fn set_addr(&mut self, paddr: PhysAddr) {
         self.bits = ((paddr >> 12 & ((1usize << 44) - 1)) << 10) | (self.bits & 0xff);
     }
-    /// 设置[7:0]位标志位，并保持物理页号不变
+    /// 设置\[7:0\]位标志位，并保持物理页号不变
     pub fn set_flags(&mut self, flags: PTEFlags) {
         self.bits = (self.bits & (!0xff)) | flags.bits as usize;
     }

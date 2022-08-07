@@ -48,7 +48,7 @@ pub fn page_offset(addr: usize) -> usize {
     addr & (PAGE_SIZE - 1)
 }
 
-/// 虚拟地址所对应的Sv39的三级页表项，即第 [38:30],[29:21],[20:12] 位
+/// 虚拟地址所对应的Sv39的三级页表项，即第 \[38:30\],\[29:21\],\[20:12\] 位
 pub fn pte_idx_of_virt_addr(vaddr: VirtAddr) -> (usize, usize, usize) {
     (
         (vaddr >> 30) & 0x1ff,

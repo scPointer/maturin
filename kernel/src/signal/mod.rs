@@ -40,7 +40,7 @@ impl SignalHandlers {
         }
     }
     /// 获取某个信号对应的 SigAction。
-    /// 因为 signum 的范围是 [1,64]，所以要 -1
+    /// 因为 signum 的范围是 \[1,64\]，所以要 -1
     pub fn get_action<'a>(&self, signum: usize, action_pos: *mut SigAction) {
         if let Some(action) = self.actions[signum - 1] {
             unsafe {
@@ -49,7 +49,7 @@ impl SignalHandlers {
         }
     }
     /// 获取某个信号对应的 SigAction，如果存在，则返回其引用
-    /// 因为 signum 的范围是 [1,64]，所以要 -1
+    /// 因为 signum 的范围是 \[1,64\]，所以要 -1
     pub fn get_action_ref<'a>(&self, signum: usize) -> &Option<SigAction> {
         if self.actions[signum - 1].is_some() && self.actions[signum - 1].unwrap().handler == SIG_DFL {
             &None
@@ -59,7 +59,7 @@ impl SignalHandlers {
         //if signum != 33 {&self.actions[signum - 1]} else {&None}
     }
     /// 修改某个信号对应的 SigAction。
-    /// 因为 signum 的范围是 [1,64]，所以内部要 -1
+    /// 因为 signum 的范围是 \[1,64\]，所以内部要 -1
     pub fn set_action(&mut self, signum: usize, action_pos: *const SigAction) {
         unsafe {
             self.actions[signum - 1] = Some(*action_pos);
@@ -99,7 +99,7 @@ impl SignalReceivers {
     }
 
     /// 尝试添加一个 bit 作为信号。发送的信号如果在 mask 中，则仍然会发送，只是可能不触发
-    /// 因为 signum 的范围是 [1,64]，所以内部要 -1
+    /// 因为 signum 的范围是 \[1,64\]，所以内部要 -1
     ///
     /// 因为没有要求判断信号是否发送成功的要求，所有这里不设返回值
     pub fn try_add_bit(&mut self, signum: usize) {
