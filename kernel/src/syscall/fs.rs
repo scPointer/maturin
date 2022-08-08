@@ -437,6 +437,8 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, _user_mode: u32) -> Sy
                     // 要求创建文件却打开失败，说明是文件已存在
                     return Err(ErrorNo::EEXIST);
                 }
+            } else if check_dir_exists(&[parent_dir.as_str(), file_path.as_str()].concat()) {
+                return Err(ErrorNo::EISDIR);
             }
         }
     }

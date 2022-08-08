@@ -1,8 +1,8 @@
 //! 虚拟文件系统的目录。不需要考虑把数据塞进页里
 //!
 
-use super::File;
 use alloc::{string::String, sync::Arc, vec::Vec};
+use crate::file::{File, Kstat, StMode, normal_file_mode};
 
 /// 目录项
 pub struct DirEntry {
@@ -23,12 +23,16 @@ impl DirEntry {
 /// 虚拟目录。目前暂时不支持更快的查找，仍像普通fs那样按顺序查找
 pub struct VirtDir {
     entry: Vec<DirEntry>,
+    name: String,
 }
 
 impl VirtDir {
     /// 创建目录
-    pub fn new() -> Self {
-        Self { entry: Vec::new() }
+    pub fn new(name: String) -> Self {
+        Self {
+            entry: Vec::new(),
+            name: name,
+        }
     }
     /// 检查文件是否存在，如存在则返回一个 Arc 引用
     pub fn get_file(&self, name: &String) -> Option<Arc<dyn File>> {
@@ -46,5 +50,39 @@ impl VirtDir {
             self.entry.push(DirEntry::new(name.clone(), file));
             true
         }
+    }
+}
+
+impl File for VirtDir {
+    /// 路径本身不可读
+    fn read(&self, _buf: &mut [u8]) -> Option<usize> {
+        None
+    }
+    /// 路径本身不可写
+    fn write(&self, _buf: &[u8]) -> Option<usize> {
+        None
+    }
+    /// 获取路径
+    fn get_dir(&self) -> Option<&str> {
+        Some(self.name.as_str())
+    }
+    /// 文件属性
+    fn get_stat(&self, stat: *mut Kstat) -> bool {
+        unsafe {
+            (*stat).st_dev = 2;
+            (*stat).st_ino = 0;
+            (*stat).st_mode = normal_file_mode(StMode::S_IFDIR).bits();
+            (*stat).st_nlink = 1;
+            (*stat).st_size = 0;
+            (*stat).st_uid = 0;
+            (*stat).st_gid = 0;
+            (*stat).st_atime_sec = 0;
+            (*stat).st_atime_nsec = 0;
+            (*stat).st_mtime_sec = 0;
+            (*stat).st_mtime_nsec = 0;
+            (*stat).st_ctime_sec = 0;
+            (*stat).st_ctime_nsec = 0;
+        }
+        true
     }
 }

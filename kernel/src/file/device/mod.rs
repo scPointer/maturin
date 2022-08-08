@@ -11,7 +11,7 @@ mod open_flags;
 mod stat;
 mod test;
 
-use super::{get_virt_file_if_possible, File};
+use super::{get_virt_file_if_possible, check_virt_dir_exists, File};
 use crate::{
     constants::ROOT_DIR,
     drivers::{new_memory_mapped_fs, MemoryMappedFsIoType},
@@ -77,6 +77,7 @@ pub fn fs_init() {
     mkdir(ROOT_DIR, "tmp");
     mkdir(ROOT_DIR, "dev");
     mkdir(ROOT_DIR, "lib");
+    
     mkdir("dev/", "shm");
     let dso = &"tls_get_new-dtv_dso.so"; // dtv 不会在根目录下找，而是会去 lib 等目录找，所以需要链接
     let libc_so = &"ld-musl-riscv64-sf.so.1";
@@ -87,6 +88,12 @@ pub fn fs_init() {
         "./lib/".into(),
         libc_so
     ));
+    // 一些系统信息文件。todo: 更正确的方式应该是放到 vfs 里而不是直接塞 fat32 这边
+    mkdir(ROOT_DIR, "proc"); // 进程状态信息
+    let _meminfo = open_file("./proc/", "meminfo", OpenFlags::CREATE).unwrap(); // 内存占用信息
+    let _mounts = open_file("./proc/", "mounts", OpenFlags::CREATE).unwrap(); // 所有的文件系统信息
+    mkdir("dev/", "misc");
+    let _rtc = open_file("./dev/misc/", "rtc", OpenFlags::CREATE).unwrap(); // 硬件时钟信息
 }
 
 /// 在 path 后加入 child_path 路径，返回 child_path 中最后一个 '/' 的位置+1。(如没有 '/' 则返回0)
@@ -220,7 +227,7 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
     };
     //println!("dir = {}, name = {}, name_len {}", real_dir, file_name, file_name.len());
     if let Some(dir) = inner_open_dir(root, real_dir.as_str()) {
-        if flags.contains(OpenFlags::DIR) || file_name.len() == 0 {
+        if flags.contains(OpenFlags::DIR) || flags.contains(OpenFlags::DSYNC) || file_name.len() == 0 {
             // 要求打开目录
             // 用户传入 sys_open 的目录名如果是有斜线的，那么 file_path 就是空的了
             // 否则 file_path 是当前目录下的一个子目录的名字
@@ -358,6 +365,9 @@ pub fn check_dir_exists(dir_name: &str) -> bool {
     }
     // info!("dir is {}", dir_name);
     let dir_name = map_path_and_file(dir_name.as_str(), "").unwrap().0;
+    if check_virt_dir_exists(&dir_name) == Some(true) {
+        return true;
+    }
     // 去掉字符串开头的 '.' 或者 "./"
     inner_open_dir(root, dir_name.as_str()).is_some()
 }
