@@ -9,7 +9,7 @@ OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy
 GDB ?= riscv64-unknown-elf-gdb
 
-DISK_DIR ?= judge
+DISK_DIR ?= busybox
 # BOOTLOADER := ../bin/fw_jump.bin
 export PLATFORM
 
