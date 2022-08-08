@@ -11,7 +11,7 @@ pub const TESTCASES: &[&str] = &[
     "busybox sh busybox_testcode.sh", // busybox 测例
     //"busybox ls",
 
-    /* // 很少一点 libc 测例。完整评测见 ./file/test/rs 中，需要把 TESTCASES_ITER 和 TEST_STATUS 的值换掉
+    /* // 很少一点 libc 测例。完整评测见 ./file/test.rs 中，需要把其中 TESTCASES_ITER 和 TEST_STATUS 的值换掉
     //"./runtest.exe -w entry-dynamic.exe argv",
     //"./runtest.exe -w entry-dynamic.exe tls_init",
     //"./runtest.exe -w entry-dynamic.exe tls_local_exec",

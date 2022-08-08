@@ -81,13 +81,13 @@ pub fn fs_init() {
     mkdir("dev/", "shm");
     let dso = &"tls_get_new-dtv_dso.so"; // dtv 不会在根目录下找，而是会去 lib 等目录找，所以需要链接
     let libc_so = &"ld-musl-riscv64-sf.so.1";
-    assert!(try_add_link(ROOT_DIR.into(), dso, "./lib/".into(), dso));
-    assert!(try_add_link(
+    try_add_link(ROOT_DIR.into(), dso, "./lib/".into(), dso);
+    try_add_link(
         ROOT_DIR.into(),
         "libc.so",
         "./lib/".into(),
         libc_so
-    ));
+    );
     // 一些系统信息文件。todo: 更正确的方式应该是放到 vfs 里而不是直接塞 fat32 这边
     mkdir(ROOT_DIR, "proc"); // 进程状态信息
     let _meminfo = open_file("./proc/", "meminfo", OpenFlags::CREATE).unwrap(); // 内存占用信息
