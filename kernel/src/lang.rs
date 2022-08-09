@@ -10,5 +10,5 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     } else {
         eprintln!("[kernel] Panicked: {}", info.message().unwrap());
     }
-    crate::arch::shutdown_failure()
+    crate::arch::shutdown()
 }

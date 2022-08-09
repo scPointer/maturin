@@ -73,7 +73,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     info!("CPU [{cpu_id}] bootstrap");
     for other_cpu in constants::FIRST_CPU_ID..=constants::LAST_CPU_ID {
         if other_cpu != cpu_id {
-            let _entry = arch::secondary_entry as usize;
+            // let _entry = arch::secondary_entry as usize;
             // println!("other_cpu {}", other_cpu);
             // arch::start_hart(other_cpu, memory::virt_to_phys(_entry), 0);
         }

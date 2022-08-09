@@ -5,7 +5,6 @@ use super::{
     page_offset, virt_to_phys, DiffSet, PTEFlags, PageTable, PmArea, PmAreaLazy, VirtAddr, VmArea,
 };
 use crate::{
-    arch,
     constants::{
         CPU_ID_LIMIT, DEVICE_END, DEVICE_START, IS_PRELOADED_FS_IMG, IS_TEST_ENV, MMIO_REGIONS,
         PAGE_SIZE, USER_VIRT_ADDR_LIMIT,
@@ -406,14 +405,13 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
         fn erodata();
         fn sbss();
         fn ebss();
+        fn idle_stack();
+        fn idle_stack_top();
     }
-    let range = arch::kernel_stack();
-    let idle_stack = range.start;
-    let idle_stack_top = range.end;
 
     info!(
         "data end {:x}, stack start {:x}",
-        edata as usize, idle_stack
+        edata as usize, idle_stack as usize
     );
 
     use super::PHYS_VIRT_OFFSET;
@@ -447,8 +445,8 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
     )?)?;
 
     // 插入内核栈映射
-    let kernel_stack = idle_stack;
-    let kernel_stack_top = idle_stack_top;
+    let kernel_stack = idle_stack as usize;
+    let kernel_stack_top = idle_stack_top as usize;
     let size_per_cpu = (kernel_stack_top - kernel_stack) / CPU_ID_LIMIT;
     // 这里默认每个核的栈等长，且依次排列在 kernel_stack 中。且默认栈的开头恰好是页面的开头(entry.S中保证)
     for cpu_id in 0..CPU_ID_LIMIT {
