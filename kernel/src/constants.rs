@@ -54,6 +54,8 @@ pub const ORIGIN_USER_PROC_NAME: &str = "start";
 pub const TID_LIMIT: usize = 4096;
 /// 预设的文件描述符数量限制
 pub const FD_LIMIT_ORIGIN: usize = 64;
+/// 最大允许的文件描述符数量
+pub const FD_LIMIT_HARD: usize = 256;
 /// sys_pipe创建的管道的大小，单位为字节
 pub const PIPE_SIZE: usize = 4000;
 

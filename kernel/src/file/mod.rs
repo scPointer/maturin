@@ -22,6 +22,19 @@ pub trait File: Send + Sync {
     /// 写 buf 中的内容到文件中，返回写入的字节数。
     /// 如文件不可写，返回 None。(相对应地，如果可写但无法继续写入内容，返回 Some(0))
     fn write(&self, buf: &[u8]) -> Option<usize>;
+    /// 已准备好读。对于 pipe 来说，这意味着读端的buffer内有值
+    fn ready_to_read(&self) -> bool {
+        true
+    }
+    /// 已准备好写。对于 pipe 来说，这意味着写端的buffer未满
+    fn ready_to_write(&self) -> bool {
+        true
+    }
+    /// 处于“意外情况”。在 (p)select 和 (p)poll 中会使用到
+    #[allow(unused)]
+    fn in_exceptional_conditions(&self) -> bool {
+        false
+    }
     /// 切换当前指针，返回切换后指针到文件开头的距离
     /// 如果文件本身不支持 seek(如pipe，是FIFO"设备") 则返回 None
     fn seek(&self, _seekfrom: SeekFrom) -> Option<usize> {

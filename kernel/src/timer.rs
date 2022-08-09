@@ -14,6 +14,8 @@ const MSEC_PER_SEC: usize = 1000;
 pub const MSEC_PER_INTERRUPT: usize = MSEC_PER_SEC / INTERRUPT_PER_SEC;
 /// 每秒的纳秒数
 pub const NSEC_PER_SEC: usize = 1_000_000_000;
+/// 每个时钟周期需要多少纳秒(取整)
+pub const NSEC_PER_MACHINE_TICKS: usize = NSEC_PER_SEC / CLOCK_FREQ;
 /// 当 nsec 为这个特殊值时，指示修改时间为现在
 pub const UTIME_NOW: usize = 0x3fffffff;
 /// 当 nsec 为这个特殊值时，指示不修改时间
@@ -81,6 +83,11 @@ impl TimeSpec {
                 *self = *other;
             } // 设为指定时间
         }
+    }
+    /// 获取时钟周期数
+    /// 考虑到 usize 有 64 位，这里应该不会溢出
+    pub fn get_ticks(&self) -> usize {
+        self.tv_sec * CLOCK_FREQ + self.tv_nsec / NSEC_PER_MACHINE_TICKS
     }
 }
 

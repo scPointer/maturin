@@ -15,6 +15,7 @@ mod flags;
 mod fs;
 mod futex;
 mod process;
+mod select;
 mod socket;
 mod syscall_no;
 mod times;
@@ -24,6 +25,7 @@ use flags::*;
 use fs::*;
 use futex::*;
 use process::*;
+use select::*;
 use socket::*;
 use syscall_no::SyscallNo;
 use times::*;
@@ -50,19 +52,25 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     };
 
     // lmbench 会大量调用这两个 syscall 来统计时间，因此需要跳过
-    if syscall_id != SyscallNo::GETRUSAGE && syscall_id != SyscallNo::CLOCK_GET_TIME {
+    if syscall_id != SyscallNo::GETRUSAGE && syscall_id != SyscallNo::CLOCK_GET_TIME && syscall_id != SyscallNo::GETPPID {
         info!("[[kernel syscall {:#?}({})]]", syscall_id, syscall_id as usize);
     }
     if IS_TEST_ENV {
         // libc-test 在某些 syscall 没有正确实现的时候，会不断循环调用 writev
         // 为了避免内核死循环，这种情况下要手动结束进程
-        if syscall_id == SyscallNo::WRITEV {
+        if syscall_id == SyscallNo::READ {
             *WRITEV_COUNT.lock() += 1;
+            if *WRITEV_COUNT.lock() % 100 == 0 {
+                let t = crate::timer::get_time();
+                println!("{t}");
+            }
+            /*
             if *WRITEV_COUNT.lock() >= 50 {
                 sys_exit(-100);
             }
+            */
         } else {
-            *WRITEV_COUNT.lock() = 0;
+            //*WRITEV_COUNT.lock() = 0;
         }
 
         if syscall_id == SyscallNo::MMAP {
@@ -110,6 +118,14 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::WRITEV => sys_writev(args[0], args[1] as *const IoVec, args[2]),
         SyscallNo::PREAD => sys_pread(args[0], args[1] as *mut u8, args[2], args[3]),
         SyscallNo::SENDFILE64 => sys_sendfile64(args[0], args[1], args[2] as *mut usize, args[3]),
+        SyscallNo::PSELECT6 => sys_pselect6(
+            args[0],
+            args[1] as *mut usize,
+            args[2] as *mut usize,
+            args[3] as *mut usize,
+            args[4] as *const TimeSpec,
+            args[5] as *const usize,
+        ),
         SyscallNo::READLINKAT => sys_readlinkat(args[0] as i32, args[1] as *const u8, args[2] as *mut u8, args[3]),
         SyscallNo::FSTATAT => sys_fstatat(args[0] as i32, args[1] as *const u8, args[2] as *mut Kstat),
         SyscallNo::FSTAT => sys_fstat(args[0], args[1] as *mut Kstat),
@@ -222,7 +238,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     };
     match result {
         Ok(a0) => {
-            if syscall_id != SyscallNo::GETRUSAGE && syscall_id != SyscallNo::CLOCK_GET_TIME {
+            if syscall_id != SyscallNo::GETRUSAGE && syscall_id != SyscallNo::CLOCK_GET_TIME && syscall_id != SyscallNo::GETPPID {
                 info!("[[kernel -> return {}  =0x{:x}]]", a0, a0);
             }
             a0 as isize

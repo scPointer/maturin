@@ -31,7 +31,7 @@ numeric_enum_macro::numeric_enum! {
         WRITEV = 66,
         PREAD = 67,
         SENDFILE64 = 71,
-        //PSELECT6 = 72,
+        PSELECT6 = 72,
         PPOLL = 73,
         READLINKAT = 78,
         FSTATAT = 79,

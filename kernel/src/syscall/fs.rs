@@ -58,6 +58,7 @@ pub fn sys_getcwd(buf: *mut u8, len: usize) -> SysResult {
 
 /// 从 fd 代表的文件中读一个字串，最长为 len，放入 buf 中
 pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> SysResult {
+    info!("sys_read fd {fd}");
     let task = get_current_task().unwrap();
     let tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
@@ -93,6 +94,7 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> SysResult {
 
 /// 写一个字串到 fd 代表的文件。这个串放在 buf 中，长为 len
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> SysResult {
+    info!("sys_write fd {fd}");
     let task = get_current_task().unwrap();
     let tcb_inner = task.inner.lock();
     let task_vm = task.vm.lock();

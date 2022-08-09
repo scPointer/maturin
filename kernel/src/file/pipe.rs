@@ -57,6 +57,9 @@ impl PipeBuffer {
         }
         max_len
     }
+    fn get_len(&self) -> usize {
+        self.len
+    }
 }
 
 /// 管道本体，每次创建两份，一个是读端，一个是写端
@@ -131,5 +134,13 @@ impl File for Pipe {
             }
             Some(write_len)
         }
+    }
+    /// 已准备好读。对于 pipe 来说，这意味着读端的buffer内有值
+    fn ready_to_read(&self) -> bool {
+        self.is_read && self.data.lock().get_len() > 0
+    }
+    /// 已准备好写。对于 pipe 来说，这意味着写端的buffer未满
+    fn ready_to_write(&self) -> bool {
+        !self.is_read && self.data.lock().get_len() < PIPE_SIZE
     }
 }

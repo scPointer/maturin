@@ -6,7 +6,7 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use crate::constants::FD_LIMIT_ORIGIN;
+use crate::constants::{FD_LIMIT_ORIGIN, FD_LIMIT_HARD};
 use crate::error::{OSError, OSResult};
 use crate::memory::FdAllocator;
 
@@ -118,6 +118,20 @@ impl FdManager {
             Ok(self.files[fd].as_ref().unwrap().clone())
         }
     }
+    
+    /// 检查是否 vec 里所有 fd 都存在，如果存在则返回它们对应的文件，否则返回 None
+    pub fn get_files_if_all_exists(&self, vec: &Vec<usize>) -> Option<Vec<Arc<dyn File>>> {
+        let mut files: Vec<Arc<dyn File>> = Vec::with_capacity(vec.len());
+        for &fd in vec {
+            if let Ok(file) = self.get_file(fd) {
+                files.push(file);
+            } else {
+                return None
+            }
+        }
+        Some(files)
+    }
+    
     /// 删除一个文件，相当于以 take 语义拿到一个文件的 Arc 指针。
     /// 这个函数还是会检查 fd 是否存在，如不存在，则返回的是 Err
     pub fn remove_file(&mut self, fd: usize) -> OSResult<Arc<dyn File>> {
@@ -144,7 +158,7 @@ impl FdManager {
     /// 修改当前 fd 的上限
     pub fn modify_limit(&mut self, new_limit: usize) {
         // 上限不能超过最初始的设定，因为分配器的实现是固定的
-        let new_limit = new_limit.min(FD_LIMIT_ORIGIN).max(0);
+        let new_limit = new_limit.min(FD_LIMIT_HARD).max(0);
         if new_limit < self.limit {
             self.fd_allocator.shrink_range(new_limit, self.limit);
         } else if new_limit > self.limit {

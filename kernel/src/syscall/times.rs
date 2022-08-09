@@ -59,7 +59,7 @@ pub fn sys_nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> SysResult {
 /// 将进程的运行时间信息传入用户提供的数组。详见 TMS 类型声明
 pub fn sys_times(tms_ptr: *mut TMS) -> SysResult {
     let (utime, stime) = get_current_task().unwrap().time.lock().output_raw();
-    info!("get utime {utime}ms, stime {stime}ms");
+    //info!("times: get utime {utime}ms, stime {stime}ms");
     unsafe {
         (*tms_ptr).tms_utime = utime;
         (*tms_ptr).tms_stime = stime;
@@ -84,7 +84,7 @@ pub fn sys_getrusage(who: i32, utime:*mut TimeVal) -> SysResult {
             // todo: 目前对于所有的 who 都只统计了当前任务，其实应该细化
             unsafe { task_time.output(&mut *utime, &mut *stime) };
             //let (utime, stime) = task_time.output_raw();
-            //info!("get utime {utime}ms, stime {stime}ms");
+            //info!("getrusage: utime {utime}ms, stime {stime}ms");
             Ok(0)
         }
         _ => {
