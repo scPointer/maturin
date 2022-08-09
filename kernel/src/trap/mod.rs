@@ -25,7 +25,14 @@ use crate::{
     arch::get_cpu_id,
     memory::PTEFlags,
     syscall::syscall,
-    task::{exit_current_task, handle_signals, handle_user_page_fault, suspend_current_task},
+    task::{
+        exit_current_task,
+        handle_signals,
+        handle_user_page_fault,
+        suspend_current_task,
+        timer_kernel_to_user,
+        timer_user_to_kernel,
+    },
     timer::set_next_trigger,
 };
 use core::arch::global_asm;
@@ -63,10 +70,13 @@ pub fn enable_timer_interrupt() {
 /// 注意，因为我们的实现没有一个专门的 "trap栈"，所以你可以认为进入该函数时 cx 就在 sp 的"脚底下"。
 /// 所以修改 cx 时一旦越界就可能改掉该函数的 ra/sp，要小心。
 pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
-    match sstatus::read().spp() {
+    timer_user_to_kernel();
+    let cx = match sstatus::read().spp() {
         sstatus::SPP::Supervisor => kernel_trap_handler(cx),
         sstatus::SPP::User => user_trap_handler(cx),
-    }
+    };
+    timer_kernel_to_user();
+    cx
 }
 
 #[no_mangle]

@@ -26,7 +26,7 @@ impl<T> TryFrom<(usize, &mut MutexGuard<'_, MemorySet>)> for UserPtr<T> {
     fn try_from<'a>(
         (ptr, vm): (usize, &mut MutexGuard<'_, MemorySet>),
     ) -> Result<Self, Self::Error> {
-        match vm.manually_alloc_type::<T>(ptr) {
+        match vm.manually_alloc_type(ptr as *const T) {
             Ok(_) => Ok(Self(ptr.into())),
             Err(_) => Err(ErrorNo::EFAULT),
         }

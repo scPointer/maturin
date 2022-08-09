@@ -3,15 +3,14 @@
 
 //#![deny(missing_docs)]
 
-use super::{CloneFlags, KernelStack, TaskContext};
+use super::{CloneFlags, KernelStack, TaskContext, TimeStat};
 use crate::{
     arch::get_cpu_id,
     constants::{NO_PARENT, USER_STACK_OFFSET},
     file::{check_file_exists, FdManager},
     loaders::parse_user_app,
-    memory::{new_memory_set_for_task, MemorySet, PTEFlags, Tid, VirtAddr},
+    memory::{new_memory_set_for_task, phys_to_virt, MemorySet, PTEFlags, Tid, VirtAddr},
     signal::{global_register_signals, SignalHandlers, SignalReceivers, SignalUserContext},
-    timer::get_time,
     trap::TrapContext,
 };
 use alloc::{
@@ -48,6 +47,8 @@ pub struct TaskControlBlock {
     pub vm: Arc<Mutex<MemorySet>>,
     /// 管理进程的所有文件描述符
     pub fd_manager: Arc<Mutex<FdManager>>,
+    /// 任务的运行时间信息
+    pub time: Mutex<TimeStat>,
     /// 任务的状态信息
     pub inner: Arc<Mutex<TaskControlBlockInner>>,
 }
@@ -62,8 +63,6 @@ pub struct TaskControlBlockInner {
     /// - 因为拿到 Pid 代表“拥有”这个 id 且 Drop 时会自动释放，所以此处用 usize 而不是 Pid。
     /// - 又因为它可能会在父进程结束时被修改为初始进程，所以是可变的。
     pub ppid: usize,
-    /// 进程开始运行的时间
-    pub start_tick: usize,
     /// 用户堆的堆顶。
     /// 用户堆和用户栈共用空间，反向增长，即从 USER_STACK_OFFSET 开始往上增加。
     /// 本来不应该由内存记录的，但 brk() 系统调用要用
@@ -128,7 +127,8 @@ impl TaskControlBlock {
                 let kernel_stack = KernelStack::new().unwrap();
                 //kernel_stack.print_info();
                 let tid = Tid::new().unwrap();
-                let pid = tid.0;
+                let tid_raw = tid.0;
+                let pid = tid_raw;
                 let stack_top = kernel_stack
                     .push_first_context(TrapContext::app_init_context(user_entry, user_stack));
                 let signal_handlers = Arc::new(Mutex::new(SignalHandlers::new()));
@@ -144,10 +144,10 @@ impl TaskControlBlock {
                     signal_receivers: signal_receivers,
                     vm: Arc::new(Mutex::new(vm)),
                     fd_manager: Arc::new(Mutex::new(FdManager::new())),
+                    time: Mutex::new(TimeStat::new(tid_raw)),
                     inner: Arc::new(Mutex::new(TaskControlBlockInner {
                         dir: String::from(app_dir),
                         ppid: ppid,
-                        start_tick: get_time(),
                         user_heap_top: USER_STACK_OFFSET,
                         task_cx: TaskContext::goto_restore(stack_top),
                         task_status: TaskStatus::Ready,
@@ -205,6 +205,7 @@ impl TaskControlBlock {
             Arc::new(Mutex::new(self.signal_handlers.lock().clone()))
         };
         let tid = Tid::new().unwrap();
+        let tid_raw = tid.0;
         let pid = if flags.contains(CloneFlags::CLONE_THREAD) {
             self.pid
         } else {
@@ -255,8 +256,11 @@ impl TaskControlBlock {
                 // 否则需要手动查询
                 if vm.lock().manually_alloc_page(ctid).is_ok() {
                     if let Some(paddr) = vm.lock().pt.query(ctid) {
+                        // 此处的 vaddr 是通过内核 KERNEL_MEMORY_SET 的映射访问的
+                        // 因为所有用户程序的内核态看内核的地址(高地址)时都是相同的
+                        let vaddr = phys_to_virt(paddr);
                         unsafe {
-                            *(paddr as *mut i32) = if flags.contains(CloneFlags::CLONE_CHILD_SETTID)
+                            *(vaddr as *mut i32) = if flags.contains(CloneFlags::CLONE_CHILD_SETTID)
                             {
                                 tid.0 as i32
                             } else {
@@ -273,7 +277,6 @@ impl TaskControlBlock {
             //println!("sepc {:x} stack {:x}", trap_context.sepc, trap_context.get_sp());
         }
         let stack_top = kernel_stack.push_first_context(trap_context);
-
         let dir = String::from(&inner.dir[..]);
         let new_tcb = Arc::new(TaskControlBlock {
             pid: pid,
@@ -284,11 +287,11 @@ impl TaskControlBlock {
             signal_receivers: signal_receivers,
             vm: vm,
             fd_manager: fd_manager,
+            time: Mutex::new(TimeStat::new(tid_raw)), // fork 出的任务不继承时间
             inner: {
                 Arc::new(Mutex::new(TaskControlBlockInner {
                     dir: dir,
                     ppid: ppid,
-                    start_tick: get_time(),
                     user_heap_top: USER_STACK_OFFSET,
                     task_cx: TaskContext::goto_restore(stack_top),
                     task_status: TaskStatus::Ready,
@@ -313,7 +316,7 @@ impl TaskControlBlock {
         if !flags.contains(CloneFlags::CLONE_PARENT) {
             inner.children.push(new_tcb.clone());
         }
-        //println!("end clone");
+        //info!("end clone");
         new_tcb
     }
 
@@ -337,6 +340,8 @@ impl TaskControlBlock {
         // 清空信号模块
         self.signal_handlers.lock().clear();
         self.signal_receivers.lock().clear();
+        // 清空时间统计
+        self.time.lock().clear();
         // 处理 fd 中需要在 exec 时关闭的文件
         self.fd_manager.lock().close_cloexec_files();
         // 如果用户程序调用时没有参数，则手动加上程序名作为唯一的参数
@@ -441,10 +446,6 @@ impl TaskControlBlock {
         } else {
             ppid
         }
-    }
-    /// 获取程序开始时间
-    pub fn get_start_tick(&self) -> usize {
-        self.inner.lock().start_tick
     }
     /// 获取用户堆顶地址
     pub fn get_user_heap_top(&self) -> usize {

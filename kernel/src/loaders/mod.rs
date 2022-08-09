@@ -58,7 +58,7 @@ impl<'a> ElfLoader<'a> {
         */
         match elf.header.pt2.machine().as_machine() {
             #[cfg(target_arch = "riscv64")]
-            header::Machine::Other(0xF3) => {}
+            header::Machine::Other(0xF3) => {},
             _ => return Err("invalid ELF arch".into()),
         };
         Ok(Self { elf })
@@ -271,7 +271,11 @@ impl<'a> ElfLoader<'a> {
         // push `ProcInitInfo` to user stack
         let info = InitInfo {
             args,
-            envs: Vec::new(),
+            envs: {
+                vec![
+                    "ENOUGH=500".into(),
+                ]
+            },
             auxv: {
                 use alloc::collections::btree_map::BTreeMap;
                 let mut map = BTreeMap::new();

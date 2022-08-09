@@ -296,3 +296,11 @@ numeric_enum_macro::numeric_enum! {
         F_DUPFD_CLOEXEC = 1030,
     }
 }
+
+// sys_getrusage 用到的选项
+/// 获取当前进程的资源统计
+pub const RUSAGE_SELF: i32 = 0;
+/// 获取当前进程的所有 **已结束并等待资源回收的** 子进程资源统计
+pub const RUSAGE_CHILDREN: i32 = -1;
+/// 获取当前线程的资源统计
+pub const RUSAGE_THREAD: i32 = 1;

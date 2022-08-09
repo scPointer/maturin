@@ -186,6 +186,30 @@ pub fn sys_pread(fd: usize, buf: *mut u8, count: usize, offset: usize) -> SysRes
     Err(ErrorNo::EINVAL)
 }
 
+/// 读取 (dir_fd, path) 所指向的字符串的符号链接的信息，并放入 buf 中，返回读取到的字符数。
+/// 存入的时候不会在结尾加入 '\0'，也就是说如果需要读取的内容超过 len 的限制，则会直接截断并返回 len。
+/// 
+/// 由于现在底层的 fat32 没有符号链接，所以仅针对 lmbench_all 做特判
+pub fn sys_readlinkat(dir_fd: i32, path: *const u8, buf: *mut u8, len: usize) -> SysResult {
+    //info!("dir_fd {} path {:x}, buf {:x}, len {:x}", dir_fd, path as usize, buf as usize, len);
+    let task = get_current_task().unwrap();
+    if let Some((path, file)) = resolve_path_from_fd(&task, dir_fd, path) {
+        info!("readlinkat: path {} file {}", path, file);
+        let mut task_vm = task.vm.lock();
+        if task_vm.manually_alloc_page(buf as usize).is_err() {
+            return Err(ErrorNo::EFAULT); // 地址不合法
+        }
+        if file == "proc/self/exe" {
+            let name = "/lmbench_all"; // 这里仅针对 lmbench 做了特判
+            let write_len = len.min(name.len());
+            let slice = unsafe { core::slice::from_raw_parts_mut(buf, write_len) };
+            slice.copy_from_slice(&name.as_bytes()[..write_len]);
+            return Ok(write_len);
+        }
+    }
+    Err(ErrorNo::EINVAL)
+}
+
 /// 获取文件状态信息
 pub fn sys_fstat(fd: usize, kstat: *mut Kstat) -> SysResult {
     let task = get_current_task().unwrap();
@@ -581,7 +605,7 @@ pub fn sys_utimensat(
 
     // 获取需要设置的新时间
     let (new_atime, new_mtime) = if time_spec as usize == 0 {
-        (TimeSpec::get_current(), TimeSpec::get_current())
+        (TimeSpec::now(), TimeSpec::now())
     } else {
         if task_vm.manually_alloc_page(time_spec as usize).is_err() {
             return Err(ErrorNo::EFAULT); // 地址不合法

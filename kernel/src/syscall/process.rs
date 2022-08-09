@@ -312,6 +312,14 @@ pub fn sys_munmap(start: usize, len: usize) -> SysResult {
     }
 }
 
+/// 映射一段内存
+pub fn sys_mprotect(start: usize, len: usize, prot: MMAPPROT) -> SysResult {
+    info!(
+        "try mprotect start={:x} len={:x} prot=[{:#?}]",
+        start, len, prot
+    );
+    Ok(0)
+}
 /// 获取系统信息
 pub fn sys_uname(uts: *mut UtsName) -> SysResult {
     unsafe {

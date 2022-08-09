@@ -30,8 +30,9 @@ use times::*;
 
 use crate::constants::IS_TEST_ENV;
 use crate::file::{FsStat, Kstat};
+use crate::task::ITimerVal;
 use crate::signal::SigAction;
-use crate::timer::TimeSpec;
+use crate::timer::{TimeSpec, TimeVal};
 use lock::Mutex;
 
 static WRITEV_COUNT: Mutex<usize> = Mutex::new(0);
@@ -47,11 +48,15 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         info!("[[kernel -> return {}  =0x{:x}]]", 0, 0);
         return 0;
     };
-    info!("[[kernel syscall {:#?}({})]]", syscall_id, syscall_id as usize);
+
+    // lmbench 会大量调用这两个 syscall 来统计时间，因此需要跳过
+    if syscall_id != SyscallNo::GETRUSAGE && syscall_id != SyscallNo::CLOCK_GET_TIME {
+        info!("[[kernel syscall {:#?}({})]]", syscall_id, syscall_id as usize);
+    }
     if IS_TEST_ENV {
         // libc-test 在某些 syscall 没有正确实现的时候，会不断循环调用 writev
         // 为了避免内核死循环，这种情况下要手动结束进程
-        if syscall_id == SyscallNo::WAIT4 {
+        if syscall_id == SyscallNo::WRITEV {
             *WRITEV_COUNT.lock() += 1;
             if *WRITEV_COUNT.lock() >= 50 {
                 sys_exit(-100);
@@ -105,6 +110,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::WRITEV => sys_writev(args[0], args[1] as *const IoVec, args[2]),
         SyscallNo::PREAD => sys_pread(args[0], args[1] as *mut u8, args[2], args[3]),
         SyscallNo::SENDFILE64 => sys_sendfile64(args[0], args[1], args[2] as *mut usize, args[3]),
+        SyscallNo::READLINKAT => sys_readlinkat(args[0] as i32, args[1] as *const u8, args[2] as *mut u8, args[3]),
         SyscallNo::FSTATAT => sys_fstatat(args[0] as i32, args[1] as *const u8, args[2] as *mut Kstat),
         SyscallNo::FSTAT => sys_fstat(args[0], args[1] as *mut Kstat),
         SyscallNo::UTIMENSAT => sys_utimensat(
@@ -125,7 +131,9 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[5] as u32,
         ),
         SyscallNo::NANOSLEEP => sys_nanosleep(args[0] as *const TimeSpec, args[1] as *mut TimeSpec),
-        SyscallNo::CLOCK_GET_TIME => sys_get_time_of_day(args[1] as *mut TimeSpec),
+        SyscallNo::GETITIMER => sys_gettimer(args[0], args[1] as *mut ITimerVal),
+        SyscallNo::SETITIMER => sys_settimer(args[0], args[1] as *const ITimerVal, args[2] as *mut ITimerVal),
+        SyscallNo::CLOCK_GET_TIME => sys_clock_gettime(args[0], args[1] as *mut TimeSpec),
         SyscallNo::YIELD => sys_yield(),
         SyscallNo::KILL => sys_kill(args[0] as isize, args[1] as isize),
         SyscallNo::TKILL => sys_tkill(args[0] as isize, args[1] as isize),
@@ -143,7 +151,8 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::SIGRETURN => sys_sigreturn(),
         SyscallNo::TIMES => sys_times(args[0] as *mut TMS),
         SyscallNo::UNAME => sys_uname(args[0] as *mut UtsName),
-        SyscallNo::GET_TIME_OF_DAY => sys_get_time_of_day(args[0] as *mut TimeSpec),
+        SyscallNo::GETRUSAGE => sys_getrusage(args[0] as i32, args[1] as *mut TimeVal),
+        SyscallNo::GET_TIME_OF_DAY => sys_get_time_of_day(args[0] as *mut TimeVal),
         SyscallNo::GETPID => sys_getpid(),
         SyscallNo::GETPPID => sys_getppid(),
         SyscallNo::GETUID => sys_getuid(),
@@ -179,6 +188,11 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[4] as i32,
             args[5],
         ),
+        SyscallNo::MPROTECT => sys_mprotect(
+            args[0],
+            args[1],
+            MMAPPROT::from_bits(args[2] as u32).unwrap()
+        ),
         SyscallNo::EXECVE => sys_execve(
             args[0] as *const u8,
             args[1] as *const usize,
@@ -208,7 +222,9 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     };
     match result {
         Ok(a0) => {
-            info!("[[kernel -> return {}  =0x{:x}]]", a0, a0);
+            if syscall_id != SyscallNo::GETRUSAGE && syscall_id != SyscallNo::CLOCK_GET_TIME {
+                info!("[[kernel -> return {}  =0x{:x}]]", a0, a0);
+            }
             a0 as isize
         },
         Err(num) => {

@@ -5,7 +5,7 @@
 
 //#![deny(missing_docs)]
 
-use super::File;
+use super::{File, Kstat, StMode, normal_file_mode};
 use crate::arch::stdin::getchar;
 
 /// 标准输入流
@@ -36,6 +36,19 @@ impl File for Stdin {
     fn write(&self, _buf: &[u8]) -> Option<usize> {
         None
     }
+    /// 文件属性
+    fn get_stat(&self, stat: *mut Kstat) -> bool {
+        unsafe {
+            (*stat).st_dev = 1;
+            (*stat).st_ino = 1;
+            (*stat).st_nlink = 1;
+            (*stat).st_mode = normal_file_mode(StMode::S_IFCHR).bits();
+            (*stat).st_size = 0;
+            (*stat).st_uid = 0;
+            (*stat).st_gid = 0;
+        }
+        true
+    }
 }
 
 impl File for Stdout {
@@ -51,6 +64,19 @@ impl File for Stdout {
         } else {
             None
         }
+    }
+    /// 文件属性
+    fn get_stat(&self, stat: *mut Kstat) -> bool {
+        unsafe {
+            (*stat).st_dev = 1;
+            (*stat).st_ino = 1;
+            (*stat).st_nlink = 1;
+            (*stat).st_mode = normal_file_mode(StMode::S_IFCHR).bits();
+            (*stat).st_size = 0;
+            (*stat).st_uid = 0;
+            (*stat).st_gid = 0;
+        }
+        true
     }
 }
 
@@ -70,5 +96,18 @@ impl File for Stderr {
             }
             Some(buf.len())
         }
+    }
+    /// 文件属性
+    fn get_stat(&self, stat: *mut Kstat) -> bool {
+        unsafe {
+            (*stat).st_dev = 1;
+            (*stat).st_ino = 1;
+            (*stat).st_nlink = 1;
+            (*stat).st_mode = normal_file_mode(StMode::S_IFCHR).bits();
+            (*stat).st_size = 0;
+            (*stat).st_uid = 0;
+            (*stat).st_gid = 0;
+        }
+        true
     }
 }

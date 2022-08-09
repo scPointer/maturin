@@ -248,7 +248,8 @@ impl MemorySet {
     }
 
     /// 检查一个放在某个地址上的结构是否分配空间，如果未分配则强制分配它
-    pub fn manually_alloc_type<T>(&mut self, vaddr: VirtAddr) -> OSResult {
+    pub fn manually_alloc_type<T>(&mut self, user_obj: *const T) -> OSResult {
+        let vaddr = user_obj as usize;
         if cross_page::<T>(vaddr) {
             for page in addr_to_page_id(vaddr)..addr_to_page_id(vaddr + size_of::<T>() - 1) {
                 self.manually_alloc_page(page)?;

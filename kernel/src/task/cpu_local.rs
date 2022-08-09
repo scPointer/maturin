@@ -31,22 +31,22 @@ pub struct CpuLocal {
 }
 
 impl CpuLocal {
-    ///Create an empty Processor
+    /// 创建一个 cpu 相关的信息
     pub fn new() -> Self {
         Self {
             current: None,
             idle_task_cx: TaskContext::zero_init(),
         }
     }
-    ///Get mutable reference to `idle_task_cx`
+    /// 获取无用户程序状态的内核上下文
     fn get_idle_task_cx_ptr(&mut self) -> *mut TaskContext {
         &mut self.idle_task_cx as *mut _
     }
-    ///Get current task in moving semanteme
+    /// 拿走当前 cpu 正在运行的任务
     pub fn take_current(&mut self) -> Option<Arc<TaskControlBlock>> {
         self.current.take()
     }
-    ///Get current task in cloning semanteme
+    /// 读取当前 cpu 正在运行的任务
     pub fn current(&self) -> Option<Arc<TaskControlBlock>> {
         self.current.as_ref().map(Arc::clone)
     }
@@ -80,23 +80,9 @@ pub fn run_tasks() -> ! {
             unsafe {
                 task.vm.lock().activate();
             }
+            // 标记内核态进入任务的时间
+            task.time.lock().switch_into_task();
             cpu_local.current = Some(task);
-
-            /*
-            unsafe {
-                println!("[cpu {}] idle task ctx ptr {:x}, next {:x}, ra = {:x} pid = {}",
-                    cpu_id,
-                    idle_task_cx_ptr as usize,
-                    next_task_cx_ptr as usize,
-                    (*next_task_cx_ptr).get_ra(),
-                    cpu_local.current.as_ref().unwrap().get_pid_num());
-                let t0 = (0xffff_ffff_8020_1234 as *const usize).read_volatile();
-                let t1 = (0x1000 as *const usize).read_volatile();
-                println!("t0 {:x}, t1 {:x}", t0, t1);
-                //println!("{:#x?}", cpu_local.current.as_ref().unwrap().inner.lock().vm);
-            }
-            */
-
             // 切换前要手动 drop 掉引用
             drop(cpu_local);
             // 切换到用户程序执行
@@ -106,6 +92,8 @@ pub fn run_tasks() -> ! {
             // 在上面的用户程序中，会执行 suspend_current_and_run_next() 或  exit_current_and_run_next(exit_code: i32)
             // 在其中会修改 current.task_status 和 exit_code，但任务本身还在被当前 CPU 占用，需要下面再将其插入队列或
             let mut cpu_local = CPU_CONTEXTS[cpu_id].lock();
+            // 标记内核态退出任务的时间
+            cpu_local.current().unwrap().time.lock().switch_out_task();
             // 切换回只有内核的页表。在此之后就不能再访问该任务用户空间的内容
             enable_kernel_page_table();
             // 此时已切回空闲任务
@@ -282,6 +270,16 @@ pub fn handle_user_page_fault(vaddr: VirtAddr, access_flags: PTEFlags) -> OSResu
 /// 如果当前核没有任务，则返回 None
 pub fn get_current_task() -> Option<Arc<TaskControlBlock>> {
     Some(CPU_CONTEXTS[get_cpu_id()].lock().current.as_ref()?.clone())
+}
+
+///从内核态进入用户态时统计时间
+pub fn timer_kernel_to_user() {
+    get_current_task().unwrap().time.lock().timer_kernel_to_user();
+}
+
+///从用户态进入内核态时统计时间
+pub fn timer_user_to_kernel() {
+    get_current_task().unwrap().time.lock().timer_user_to_kernel();
 }
 
 /// 处理当前线程的信号
