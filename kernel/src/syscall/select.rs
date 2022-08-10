@@ -64,7 +64,7 @@ pub fn sys_pselect6(
     let (efile, efd, eset) = init_fd_sets(exceptfds, nfds, &mut task_vm, &fd_manager)?;
     // 过期时间
     // 注意 pselect 不会修改用户空间中的 timeout，所以需要内核自己记录
-    // 这里用**时钟周期数**来记录，足够精确的同时 usize 也能存下。实际用毫秒或者纳秒应该也没问题。
+    // 这里用**时钟周期数**来记录，足够精确的同时 usize 也能存下。实际用微秒或者纳秒应该也没问题。
     let expire_time = if timeout as usize != 0 {
         if task_vm.manually_alloc_type(timeout).is_err() {
             return Err(ErrorNo::EFAULT); // 无效地址

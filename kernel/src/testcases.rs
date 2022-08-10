@@ -24,5 +24,6 @@ pub const TESTCASES: &[&str] = &[
     //"lmbench_all lat_proc -P 1 exec",
     //"lmbench_all hello",
     //"lmbench_all lat_syscall -P 1 write",
+    //"lmbench_all bw_pipe -P 1",
     //"busybox", // busybox 提示信息    
 ];

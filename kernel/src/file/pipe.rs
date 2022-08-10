@@ -95,7 +95,7 @@ impl File for Pipe {
             let mut read_len = 0;
             // 先读一次，如果一次完成就不用切换进程了
             read_len += self.data.lock().read(&mut buf[read_len..]);
-            //info!("read pipe len {}, require {}", read_len, buf.len());
+            info!("read pipe len {}, require {}", read_len, buf.len());
             // 如果读够了或者写端的 fd 已经被释放了，则退出
             // 注意这里 self.data 的引用一定是自己持有一个，写端持有一个
             // 就算 fd 被复制，也只是复制 Pipe 外包着的 Arc，内部 self.data 的 Arc 不会复制
@@ -121,7 +121,7 @@ impl File for Pipe {
             let mut write_len = 0;
             // 同上，如果一次完成就不用切换进程了
             write_len += self.data.lock().write(&buf[write_len..]);
-            //info!("write pipe len {}", write_len);
+            info!("write pipe len {}", write_len);
             // 同上，参见 read 函数
             let mut cnt = 0;
             while write_len < buf.len() && Arc::strong_count(&self.data) == 2 {

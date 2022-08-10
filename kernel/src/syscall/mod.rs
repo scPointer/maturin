@@ -61,8 +61,8 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         if syscall_id == SyscallNo::READ {
             *WRITEV_COUNT.lock() += 1;
             if *WRITEV_COUNT.lock() % 100 == 0 {
-                let t = crate::timer::get_time();
-                println!("{t}");
+                //let t = crate::timer::get_time();
+                //println!("{t}");
             }
             /*
             if *WRITEV_COUNT.lock() >= 50 {

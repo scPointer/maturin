@@ -57,7 +57,7 @@ pub const FD_LIMIT_ORIGIN: usize = 64;
 /// 最大允许的文件描述符数量
 pub const FD_LIMIT_HARD: usize = 256;
 /// sys_pipe创建的管道的大小，单位为字节
-pub const PIPE_SIZE: usize = 4000;
+pub const PIPE_SIZE: usize = 0x1_000;
 
 /// 一段左闭右开的地址区间，.0 为左端点， .1 为右端点，
 pub struct AddrArea(pub usize, pub usize);

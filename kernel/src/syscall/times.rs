@@ -6,7 +6,7 @@ use super::{ErrorNo, RUSAGE_SELF, RUSAGE_CHILDREN, RUSAGE_THREAD};
 use crate::task::ITimerVal;
 use crate::task::{get_current_task, suspend_current_task};
 use crate::timer::{TimeSpec, TimeVal};
-use crate::timer::{get_time_ms, get_time_f64, MSEC_PER_INTERRUPT};
+use crate::timer::{get_time_us, get_time_f64, USEC_PER_INTERRUPT};
 
 use super::{SysResult, TMS};
 
@@ -20,7 +20,7 @@ pub fn sys_get_time_of_day(time_val: *mut TimeVal) -> SysResult {
     }
     unsafe {
         (*time_val) = TimeVal::now();
-        //info!("sec = {}, msec = {}", (*time_val).sec, (*time_val).msec);
+        //info!("sec = {}, usec = {}", (*time_val).sec, (*time_val).usec);
     }
     Ok(0)
 }
@@ -66,7 +66,7 @@ pub fn sys_times(tms_ptr: *mut TMS) -> SysResult {
         (*tms_ptr).tms_cutime = utime;
         (*tms_ptr).tms_cstime = stime;
     }
-    Ok(get_time_ms() / MSEC_PER_INTERRUPT)
+    Ok(get_time_us() / USEC_PER_INTERRUPT)
 }
 
 
@@ -83,8 +83,10 @@ pub fn sys_getrusage(who: i32, utime:*mut TimeVal) -> SysResult {
         RUSAGE_SELF | RUSAGE_CHILDREN | RUSAGE_THREAD => { 
             // todo: 目前对于所有的 who 都只统计了当前任务，其实应该细化
             unsafe { task_time.output(&mut *utime, &mut *stime) };
+            //unsafe {*utime = get_time_us().into(); *stime = get_time_us().into();}
+            //println!("utime {}",  get_time_us());
             //let (utime, stime) = task_time.output_raw();
-            //info!("getrusage: utime {utime}ms, stime {stime}ms");
+            //println!("getrusage: utime {utime}us, stime {stime}us");
             Ok(0)
         }
         _ => {

@@ -6,12 +6,12 @@ use riscv::register::time;
 
 /// 每秒的时钟中断数
 pub const INTERRUPT_PER_SEC: usize = 10;
-/// 每毫秒的时钟周期数
-pub const MACHINE_TICKS_PER_MSEC: usize = CLOCK_FREQ / MSEC_PER_SEC;
-/// 每秒有多少毫秒
-const MSEC_PER_SEC: usize = 1000;
-/// 每个时钟中断占多少毫秒
-pub const MSEC_PER_INTERRUPT: usize = MSEC_PER_SEC / INTERRUPT_PER_SEC;
+/// 每微秒的时钟周期数
+pub const MACHINE_TICKS_PER_USEC: usize = CLOCK_FREQ / USEC_PER_SEC;
+/// 每秒有多少微秒
+const USEC_PER_SEC: usize = 1_000_000;
+/// 每个时钟中断占多少微秒
+pub const USEC_PER_INTERRUPT: usize = USEC_PER_SEC / INTERRUPT_PER_SEC;
 /// 每秒的纳秒数
 pub const NSEC_PER_SEC: usize = 1_000_000_000;
 /// 每个时钟周期需要多少纳秒(取整)
@@ -26,10 +26,16 @@ pub fn get_time() -> usize {
     time::read()
 }
 
+/*
 /// 获取毫秒格式的时间值。注意这不一定代表进程经过的时间值
 #[allow(dead_code)]
 pub fn get_time_ms() -> usize {
     time::read() / MACHINE_TICKS_PER_MSEC
+}
+*/
+
+pub fn get_time_us() -> usize {
+    time::read() / MACHINE_TICKS_PER_USEC
 }
 
 /// 当前时间为多少秒(浮点数格式)
@@ -70,7 +76,7 @@ impl TimeSpec {
     }
     /// 返回以秒为单位的时间
     pub fn time_in_sec(&self) -> f64 {
-        self.tv_sec as f64 + self.tv_nsec as f64 / 1_000_000_000 as f64
+        self.tv_sec as f64 + self.tv_nsec as f64 / NSEC_PER_SEC as f64
     }
     /// 根据 sys_utimensat 的格式修改当前结构
     pub fn set_as_utime(&mut self, other: &TimeSpec) {
@@ -111,13 +117,13 @@ impl Add for TimeSpec {
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Default)]
 pub struct TimeVal {
     pub sec: usize,
-    pub msec: usize,
+    pub usec: usize,
 }
 
 impl TimeVal {
-    /// 当前的毫秒数
+    /// 当前的微秒数
     pub fn now() -> Self {
-        get_time_ms().into()
+        get_time_us().into()
     }
 }
 
@@ -126,11 +132,11 @@ impl Add for TimeVal {
     fn add(self, other: Self) -> Self {
         let mut new_ts = Self {
             sec: self.sec + other.sec,
-            msec: self.msec + other.msec,
+            usec: self.usec + other.usec,
         };
-        if new_ts.msec >= MSEC_PER_SEC {
+        if new_ts.usec >= USEC_PER_SEC {
             new_ts.sec += 1;
-            new_ts.msec -= MSEC_PER_SEC;
+            new_ts.usec -= USEC_PER_SEC;
         }
         new_ts
     }
@@ -140,24 +146,24 @@ impl From<TimeSpec> for TimeVal {
     fn from(spec: TimeSpec) -> Self {
         Self {
             sec: spec.tv_sec,
-            msec: spec.tv_nsec / 1000000,
+            usec: spec.tv_nsec / USEC_PER_SEC,
         }
     }
 }
 
 impl From<usize> for TimeVal {
-    /// 输入毫秒数，自动转换成秒+毫秒
-    fn from(msec: usize) -> Self {
+    /// 输入微秒数，自动转换成秒+微秒
+    fn from(usec: usize) -> Self {
         Self {
-            sec: msec / 1000,
-            msec: msec % 1000,
+            sec: usec / USEC_PER_SEC,
+            usec: usec % USEC_PER_SEC,
         }
     }
 }
 
 impl Into<usize> for TimeVal {
-    /// 输入毫秒数，自动转换成秒+毫秒
+    /// 输入微秒数，自动转换成秒+微秒
     fn into(self) -> usize {
-        self.sec * 1000 + self.msec
+        self.sec * 1000_000 + self.usec
     }
 }
