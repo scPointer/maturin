@@ -79,7 +79,7 @@ pub fn fs_init() {
     mkdir(ROOT_DIR, "lib");
     
     mkdir("dev/", "shm");
-    let dso = &"tls_get_new-dtv_dso.so"; // dtv 不会在根目录下找，而是会去 lib 等目录找，所以需要链接
+    let dso = &"tls_get_new-dtv_dso.so"; // 该库要去lib等目录找，所以需要链接. 仅用于libc-test
     let libc_so = &"ld-musl-riscv64-sf.so.1";
     try_add_link(ROOT_DIR.into(), dso, "./lib/".into(), dso);
     try_add_link(
