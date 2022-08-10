@@ -164,6 +164,6 @@ impl From<usize> for TimeVal {
 impl Into<usize> for TimeVal {
     /// 输入微秒数，自动转换成秒+微秒
     fn into(self) -> usize {
-        self.sec * 1000_000 + self.usec
+        self.sec * USEC_PER_SEC + self.usec
     }
 }

@@ -116,7 +116,7 @@ fn parse_dir(path: &mut String, child_path: &str) -> usize {
                 // 再加回 '/'
                 path.push('/');
             } else if new_pos == 1 && &child_path[pos..pos + new_pos] == "." {
-            } else {
+            } else if new_pos != 0 {
                 // 加路径的时候要把 '/' 也加上
                 *path += &child_path[pos..=pos + new_pos];
             }
@@ -339,6 +339,10 @@ pub fn mkdir(dir_name: &str, file_path: &str) -> bool {
         .map(|(real_dir, file_name)| {
             inner_open_dir(root, real_dir.as_str())
                 .map(|dir| {
+                    // 说明现在打开的 dir 就是想要创建的目录，那么它已经存在了
+                    if file_name.len() == 0 {
+                        return false;
+                    }
                     // 检查目录或者同名文件是否已存在
                     for entry in dir.iter() {
                         let file = entry.unwrap();

@@ -286,10 +286,13 @@ fn resolve_path_from_fd<'a>(
     path: *const u8,
 ) -> Option<(String, &'a str)> {
     let file_path = unsafe { raw_ptr_to_ref_str(path) };
-    //println!("file_path {}", file_path);
     if file_path.starts_with("/") {
         // 绝对路径
-        Some((String::from("./"), &file_path[1..])) // 需要加上 '.'，因为 os 中约定根目录是以 '.' 开头
+        if file_path.len() > 1 {
+            Some((String::from("./"), &file_path[1..])) // 需要加上 '.'，因为 os 中约定根目录是以 '.' 开头
+        } else {
+            Some((String::from("./"), &file_path))
+        }
     } else {
         // 相对路径
         if let Some(dir) = get_dir_from_fd(task, dir_fd) {
@@ -391,6 +394,8 @@ pub fn sys_mkdir(dir_fd: i32, path: *const u8, _user_mode: u32) -> SysResult {
     if let Some((parent_dir, file_path)) = resolve_path_from_fd(&task, dir_fd, path) {
         if mkdir(parent_dir.as_str(), file_path) {
             return Ok(0);
+        } else {
+            return Err(ErrorNo::EEXIST);
         }
     }
     Err(ErrorNo::EINVAL)
