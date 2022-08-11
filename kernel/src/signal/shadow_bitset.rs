@@ -31,7 +31,7 @@ impl ShadowBitset {
     }
     /// 清空这个 bitset
     pub unsafe fn clear(&self) {
-        for i in 0..=(self.len - 1)/ 64 {
+        for i in 0..=(self.len - 1) / 64 {
             *self.addr.add(i) = 0;
         }
     }

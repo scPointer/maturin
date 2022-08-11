@@ -1,8 +1,8 @@
 //! 与进程相关的系统调用
 
 use super::{
-    resolve_clone_flags_and_signal, SysResult, ErrorNo, MMAPFlags, RLimit, UtsName, WaitFlags, MMAPPROT,
-    RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK,
+    resolve_clone_flags_and_signal, ErrorNo, MMAPFlags, RLimit, SysResult, UtsName, WaitFlags,
+    MMAPPROT, RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK,
 };
 use crate::signal::{send_signal, Bitset, SigAction, SignalNo};
 use crate::{
@@ -65,7 +65,13 @@ pub fn sys_brk(brk: usize) -> SysResult {
 }
 
 /// 创建一个子任务，如成功，返回其 tid
-pub fn sys_clone(flags: usize, user_stack: usize, ptid: usize, tls: usize, ctid: usize) -> SysResult {
+pub fn sys_clone(
+    flags: usize,
+    user_stack: usize,
+    ptid: usize,
+    tls: usize,
+    ctid: usize,
+) -> SysResult {
     let (clone_flags, signal) = resolve_clone_flags_and_signal(flags);
     info!(
         "clone: flags {:#?} signal {} ptid {:x} tls {:x} ctid {:x}",
@@ -154,11 +160,14 @@ fn sys_exec(path: *const u8, args: *const usize) -> SysResult {
 /// 目前只支持 WNOHANG 选项
 pub fn sys_wait4(pid: isize, exit_code_ptr: *mut i32, option: WaitFlags) -> SysResult {
     loop {
-        info!("sys_wait4 {}, {:x}, {:#?}", pid, exit_code_ptr as usize, option);
+        info!(
+            "sys_wait4 {}, {:x}, {:#?}",
+            pid, exit_code_ptr as usize, option
+        );
         let child_pid = waitpid(pid, exit_code_ptr);
         // 找不到子进程，直接返回-1
         if child_pid == -1 {
-            return Err(ErrorNo::EINVAL)
+            return Err(ErrorNo::EINVAL);
         } else if child_pid == -2 {
             if option.contains(WaitFlags::WNOHANG) {
                 return Ok(0);
@@ -396,7 +405,7 @@ pub fn sys_sigprocmask(
     sigsetsize: usize,
 ) -> SysResult {
     if sigsetsize != SIGSET_SIZE_IN_BYTE {
-        return Err(ErrorNo::EINVAL)
+        return Err(ErrorNo::EINVAL);
     }
 
     // 这里仅输出调试信息，与处理无关
@@ -444,7 +453,11 @@ pub fn sys_sigprocmask(
 /// 改变当前进程的信号处理函数。
 ///
 /// 如果 action 为 0，则不设置；如果 old_action 为 0，则不存入。
-pub fn sys_sigaction(signum: usize, action: *const SigAction, old_action: *mut SigAction) -> SysResult {
+pub fn sys_sigaction(
+    signum: usize,
+    action: *const SigAction,
+    old_action: *mut SigAction,
+) -> SysResult {
     if signum == SignalNo::SIGKILL as usize || signum == SignalNo::SIGSTOP as usize {
         return Err(ErrorNo::EINVAL); // 特殊信号不能被覆盖
     }

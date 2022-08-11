@@ -6,14 +6,14 @@
 //#![deny(missing_docs)]
 
 use super::{
-    Dirent64, Dirent64Type, SysResult, ErrorNo, IoVec, UtimensatFlags, Fcntl64Cmd, SEEK_CUR,
+    Dirent64, Dirent64Type, ErrorNo, Fcntl64Cmd, IoVec, SysResult, UtimensatFlags, SEEK_CUR,
     SEEK_END, SEEK_SET,
 };
 use crate::{
     constants::{AT_FDCWD, SENDFILE_BUFFER_SIZE},
     file::{
-        check_dir_exists, check_file_exists, get_dir_entry_iter, mkdir, mount_fat_fs,
-        open_file, origin_fs_stat, try_add_link, try_remove_link, umount_fat_fs,
+        check_dir_exists, check_file_exists, get_dir_entry_iter, mkdir, mount_fat_fs, open_file,
+        origin_fs_stat, try_add_link, try_remove_link, umount_fat_fs,
     },
     file::{FsStat, Kstat, OpenFlags, Pipe, SeekFrom},
     task::{get_current_task, TaskControlBlock},
@@ -134,7 +134,9 @@ pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> SysResult {
         );
         match sys_read(fd, io_vec.base, io_vec.len) {
             Ok(len) => read_len += len,
-            Err(_) => { break; },
+            Err(_) => {
+                break;
+            }
         }
     }
     Ok(read_len)
@@ -152,8 +154,10 @@ pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> SysResult {
             io_vec.base as usize, io_vec.len
         );
         match sys_write(fd, io_vec.base, io_vec.len) {
-            Ok(len) =>  written_len += len,
-            Err(_) => { break; }
+            Ok(len) => written_len += len,
+            Err(_) => {
+                break;
+            }
         }
     }
     Ok(written_len)
@@ -164,7 +168,10 @@ pub fn sys_pread(fd: usize, buf: *mut u8, count: usize, offset: usize) -> SysRes
     let task = get_current_task().unwrap();
     let tcb_inner = task.inner.lock();
     let mut task_vm = task.vm.lock();
-    info!("sys_pread fd {} buf {:x} count {} offset {}", fd, buf as usize, count, offset);
+    info!(
+        "sys_pread fd {} buf {:x} count {} offset {}",
+        fd, buf as usize, count, offset
+    );
     if task_vm.manually_alloc_page(buf as usize).is_err() {
         return Err(ErrorNo::EFAULT); // 地址不合法
     }
@@ -190,7 +197,7 @@ pub fn sys_pread(fd: usize, buf: *mut u8, count: usize, offset: usize) -> SysRes
 
 /// 读取 (dir_fd, path) 所指向的字符串的符号链接的信息，并放入 buf 中，返回读取到的字符数。
 /// 存入的时候不会在结尾加入 '\0'，也就是说如果需要读取的内容超过 len 的限制，则会直接截断并返回 len。
-/// 
+///
 /// 由于现在底层的 fat32 没有符号链接，所以仅针对 lmbench_all 做特判
 pub fn sys_readlinkat(dir_fd: i32, path: *const u8, buf: *mut u8, len: usize) -> SysResult {
     //info!("dir_fd {} path {:x}, buf {:x}, len {:x}", dir_fd, path as usize, buf as usize, len);
@@ -535,15 +542,18 @@ pub fn sys_dup3(old_fd: usize, new_fd: usize) -> SysResult {
 /// 获取目录项信息
 pub fn sys_getdents64(fd: usize, buf: *mut u8, len: usize) -> SysResult {
     let task = get_current_task().unwrap();
-    let entry_id_from = unsafe { (*(buf as *const Dirent64)).d_off};
-    if entry_id_from == -1 { // 说明已经读完了
+    let entry_id_from = unsafe { (*(buf as *const Dirent64)).d_off };
+    if entry_id_from == -1 {
+        // 说明已经读完了
         return Ok(0);
     }
-    if let Some(dir) = get_dir_from_fd(&task, fd as i32) { // 获取实际目录
+    if let Some(dir) = get_dir_from_fd(&task, fd as i32) {
+        // 获取实际目录
         let mut task_vm = task.vm.lock();
-        if task_vm.manually_alloc_page(buf as usize).is_err() ||
-            task_vm.manually_alloc_page(buf as usize + len - 1).is_err() {
-                return Err(ErrorNo::EFAULT); // 检查传入的地址是否合法
+        if task_vm.manually_alloc_page(buf as usize).is_err()
+            || task_vm.manually_alloc_page(buf as usize + len - 1).is_err()
+        {
+            return Err(ErrorNo::EFAULT); // 检查传入的地址是否合法
         }
         if let Some(dir_iter) = get_dir_entry_iter(dir.as_str()) {
             let mut offset = 0; // buf 共有 len 长，当前将 buf.add(offset) 视为一个结构 Dirent64
@@ -561,11 +571,12 @@ pub fn sys_getdents64(fd: usize, buf: *mut u8, len: usize) -> SysResult {
                 if offset + entry_size > len {
                     break;
                 }
-                unsafe { // 下面这一段会直接在用户地址空间操作，因而整体是 unsafe 的
+                unsafe {
+                    // 下面这一段会直接在用户地址空间操作，因而整体是 unsafe 的
                     let dirent64: &mut Dirent64 = &mut *(buf.add(offset) as *mut _);
                     let name_in_buf: &mut [u8] = core::slice::from_raw_parts_mut(
                         buf.add(offset + Dirent64::d_name_offset()) as *mut _,
-                        file_name.len() + 1 // 最后一个位置留给 '\0'
+                        file_name.len() + 1, // 最后一个位置留给 '\0'
                     );
                     offset += entry_size;
                     dirent64.set_info(1, entry_size, file_type);
@@ -678,21 +689,21 @@ pub fn sys_fcntl64(fd: usize, cmd: usize, arg: usize) -> SysResult {
                 } else {
                     Err(ErrorNo::EMFILE)
                 }
-            },
+            }
             Ok(Fcntl64Cmd::F_GETFD) => {
                 if file.get_status().contains(OpenFlags::CLOEXEC) {
                     Ok(1)
                 } else {
                     Ok(0)
                 }
-            },
+            }
             Ok(Fcntl64Cmd::F_SETFD) => {
                 if file.set_close_on_exec((arg & 1) != 0) {
                     Ok(0)
                 } else {
                     Err(ErrorNo::EINVAL)
                 }
-            },
+            }
             Ok(Fcntl64Cmd::F_GETFL) => Ok(file.get_status().bits() as usize),
             Ok(Fcntl64Cmd::F_SETFL) => {
                 if let Some(flags) = OpenFlags::from_bits(arg as u32) {
@@ -701,7 +712,7 @@ pub fn sys_fcntl64(fd: usize, cmd: usize, arg: usize) -> SysResult {
                     }
                 }
                 Err(ErrorNo::EINVAL)
-            },
+            }
             Ok(Fcntl64Cmd::F_DUPFD_CLOEXEC) => {
                 if let Ok(new_fd) = fd_manager.copy_fd_anywhere(fd) {
                     if file.set_close_on_exec((arg & 1) != 0) {
@@ -714,7 +725,7 @@ pub fn sys_fcntl64(fd: usize, cmd: usize, arg: usize) -> SysResult {
                 } else {
                     Err(ErrorNo::EMFILE)
                 }
-            },
+            }
             _ => Err(ErrorNo::EINVAL),
         };
     }
@@ -729,7 +740,10 @@ pub fn sys_sendfile64(out_fd: usize, in_fd: usize, offset: *mut usize, count: us
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
     let fd_manager = task.fd_manager.lock();
-    info!("sendfile out fd {out_fd} in fd {in_fd} offset {:x} count {count}", offset as usize);
+    info!(
+        "sendfile out fd {out_fd} in fd {in_fd} offset {:x} count {count}",
+        offset as usize
+    );
     if let Ok(out_file) = fd_manager.get_file(out_fd) {
         if let Ok(in_file) = fd_manager.get_file(in_fd) {
             let current_pos = if offset as usize == 0 {
@@ -738,9 +752,10 @@ pub fn sys_sendfile64(out_fd: usize, in_fd: usize, offset: *mut usize, count: us
                 if task_vm.manually_alloc_page(offset as usize).is_err() {
                     return Err(ErrorNo::EFAULT); // 地址不合法
                 }
-                if let Some(pos) = in_file.seek(SeekFrom::Start(unsafe {*offset} as u64)) {
+                if let Some(pos) = in_file.seek(SeekFrom::Start(unsafe { *offset } as u64)) {
                     pos
-                } else { // 如果指定的 offset 无法取到，则直接返回
+                } else {
+                    // 如果指定的 offset 无法取到，则直接返回
                     return Err(ErrorNo::ESPIPE);
                 }
             };
@@ -748,16 +763,22 @@ pub fn sys_sendfile64(out_fd: usize, in_fd: usize, offset: *mut usize, count: us
             // 这里目前直接限制了最大读取长度，没有分次读取
             // todo: 使用 buffer 分次读，避免一次读取太多到内存里
             let mut buf = vec![0u8; count.min(SENDFILE_BUFFER_SIZE)];
-            
+
             if let Some(read_len) = in_file.read(&mut buf) {
                 if let Some(write_len) = out_file.write(&buf[..read_len]) {
-                    if offset as usize != 0 { // offset 非零则要求不更新实际文件，更新这个用户给的值
+                    if offset as usize != 0 {
+                        // offset 非零则要求不更新实际文件，更新这个用户给的值
                         unsafe {
                             *offset += write_len;
                         }
-                        in_file.seek(SeekFrom::Start(current_pos as u64)).unwrap_or(0);
-                    } else if write_len != read_len { // 否则更新实际文件，此时如果写不完要退回去
-                        in_file.seek(SeekFrom::Current(write_len as i64 - read_len as i64)).unwrap_or(0);
+                        in_file
+                            .seek(SeekFrom::Start(current_pos as u64))
+                            .unwrap_or(0);
+                    } else if write_len != read_len {
+                        // 否则更新实际文件，此时如果写不完要退回去
+                        in_file
+                            .seek(SeekFrom::Current(write_len as i64 - read_len as i64))
+                            .unwrap_or(0);
                     }
                     return Ok(write_len);
                 }
@@ -769,7 +790,10 @@ pub fn sys_sendfile64(out_fd: usize, in_fd: usize, offset: *mut usize, count: us
 }
 
 pub fn sys_ioctl(fd: usize, request: usize, argp: *mut usize) -> SysResult {
-    info!("ioctl fd = {} request = {:x} argp {:x}", fd, request, argp as usize);
+    info!(
+        "ioctl fd = {} request = {:x} argp {:x}",
+        fd, request, argp as usize
+    );
     info!("unimplemented now, error checks only");
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
@@ -780,5 +804,5 @@ pub fn sys_ioctl(fd: usize, request: usize, argp: *mut usize) -> SysResult {
     if task_vm.manually_alloc_page(argp as usize).is_err() {
         return Err(ErrorNo::EFAULT); // 地址不合法
     }
-    Ok(0)    
+    Ok(0)
 }

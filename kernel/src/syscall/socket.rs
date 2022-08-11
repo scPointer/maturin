@@ -1,6 +1,6 @@
 //! 关于 socket 的 syscall
 
-use super::{SysResult, ErrorNo};
+use super::{ErrorNo, SysResult};
 use crate::{file::Socket, task::get_current_task};
 use alloc::sync::Arc;
 
@@ -39,7 +39,7 @@ pub fn sys_sendto(
     if let Ok(file) = fd_manager.get_file(fd) {
         // 这里不考虑进程切换
         if let Some(write_len) = file.sendto(slice, flags, dest_addr) {
-            return Ok(write_len)
+            return Ok(write_len);
         } else {
             return Err(ErrorNo::EINVAL);
         }

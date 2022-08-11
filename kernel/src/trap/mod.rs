@@ -26,12 +26,8 @@ use crate::{
     memory::PTEFlags,
     syscall::syscall,
     task::{
-        exit_current_task,
-        handle_signals,
-        handle_user_page_fault,
-        suspend_current_task,
-        timer_kernel_to_user,
-        timer_user_to_kernel,
+        exit_current_task, handle_signals, handle_user_page_fault, suspend_current_task,
+        timer_kernel_to_user, timer_user_to_kernel,
     },
     timer::set_next_trigger,
 };

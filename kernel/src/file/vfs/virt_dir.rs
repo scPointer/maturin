@@ -1,8 +1,8 @@
 //! 虚拟文件系统的目录。不需要考虑把数据塞进页里
 //!
 
+use crate::file::{normal_file_mode, File, Kstat, StMode};
 use alloc::{string::String, sync::Arc, vec::Vec};
-use crate::file::{File, Kstat, StMode, normal_file_mode};
 
 /// 目录项
 pub struct DirEntry {

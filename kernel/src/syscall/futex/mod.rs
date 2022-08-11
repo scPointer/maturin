@@ -8,11 +8,8 @@
 
 mod flags;
 
-use super::{sys_gettid, SysResult, ErrorNo};
-use crate::{
-    task::{get_current_task, suspend_current_task},
-    //timer::TimeSpec,
-};
+use super::{sys_gettid, ErrorNo, SysResult};
+use crate::task::{get_current_task, suspend_current_task};
 use flags::{Flags, FutexFlag};
 use lock::Mutex;
 

@@ -5,7 +5,7 @@
 
 //#![deny(missing_docs)]
 
-use super::{File, Kstat, StMode, normal_file_mode};
+use super::{normal_file_mode, File, Kstat, StMode};
 use crate::arch::stdin::getchar;
 
 /// 标准输入流

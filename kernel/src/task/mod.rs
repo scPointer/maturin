@@ -21,14 +21,13 @@ pub use clone_flags::CloneFlags;
 pub use context::TaskContext;
 pub use cpu_local::{
     exec_new_task, exit_current_task, get_current_task, handle_signals, handle_user_page_fault,
-    run_tasks, signal_return, suspend_current_task, timer_kernel_to_user,
-    timer_user_to_kernel,
+    run_tasks, signal_return, suspend_current_task, timer_kernel_to_user, timer_user_to_kernel,
 };
 pub use kernel_stack::KernelStack;
 pub use scheduler::Scheduler;
 pub use scheduler::{fetch_task_from_scheduler, push_task_to_scheduler};
 pub use task::{TaskControlBlock, TaskControlBlockInner, TaskStatus};
-pub use time_stat::{TimeStat, ITimerVal};
+pub use time_stat::{ITimerVal, TimeStat};
 
 lazy_static::lazy_static! {
     /// 第一个用户程序

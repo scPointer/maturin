@@ -55,8 +55,13 @@ pub fn get_virt_dir_if_possible(dir: &String) -> Option<Arc<dyn File>> {
     }
 }
 
-
 /// 检查是否存在对应目录
-pub fn check_virt_dir_exists(dir: &String) -> Option<bool> { // 这里套了 option 是为了方便用问号
-    Some(VFS_DIRS.lock().get(dir.strip_prefix("./")?.strip_suffix("/")?).is_some())
+pub fn check_virt_dir_exists(dir: &String) -> Option<bool> {
+    // 这里套了 option 是为了方便用问号
+    Some(
+        VFS_DIRS
+            .lock()
+            .get(dir.strip_prefix("./")?.strip_suffix("/")?)
+            .is_some(),
+    )
 }

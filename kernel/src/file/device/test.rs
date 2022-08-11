@@ -31,7 +31,7 @@ pub fn load_next_testcase() -> Option<Arc<TaskControlBlock>> {
         |&user_command| {
             let mut argv: Vec<String> = user_command.split(' ').map(|s| s.into()).collect();
             let argv = argv.drain_filter(|s| s != "").collect();
-            println!("User cmd: {:?}", argv);
+            info!("User cmd: {:?}", argv);
             TEST_STATUS.lock().load(&user_command.into());
             Some(Arc::new(
                 TaskControlBlock::from_app_name(ROOT_DIR, NO_PARENT, argv).unwrap(),

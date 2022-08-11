@@ -274,12 +274,20 @@ pub fn get_current_task() -> Option<Arc<TaskControlBlock>> {
 
 ///从内核态进入用户态时统计时间
 pub fn timer_kernel_to_user() {
-    get_current_task().unwrap().time.lock().timer_kernel_to_user();
+    get_current_task()
+        .unwrap()
+        .time
+        .lock()
+        .timer_kernel_to_user();
 }
 
 ///从用户态进入内核态时统计时间
 pub fn timer_user_to_kernel() {
-    get_current_task().unwrap().time.lock().timer_user_to_kernel();
+    get_current_task()
+        .unwrap()
+        .time
+        .lock()
+        .timer_user_to_kernel();
 }
 
 /// 处理当前线程的信号
