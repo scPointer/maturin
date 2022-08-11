@@ -229,4 +229,10 @@ impl File for FatFile {
     fn get_status(&self) -> OpenFlags {
         self.inner.lock().flags
     }
+    /// 清空文件
+    fn clear(&self) {
+        let mut file = self.file.lock();
+        file.seek(SeekFrom::Start(0)).unwrap();
+        file.truncate().unwrap();
+    }
 }

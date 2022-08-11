@@ -35,6 +35,9 @@ pub trait File: Send + Sync {
     fn in_exceptional_conditions(&self) -> bool {
         false
     }
+    /// 清空文件
+    fn clear(&self) {
+    }
     /// 切换当前指针，返回切换后指针到文件开头的距离
     /// 如果文件本身不支持 seek(如pipe，是FIFO"设备") 则返回 None
     fn seek(&self, _seekfrom: SeekFrom) -> Option<usize> {
@@ -120,4 +123,11 @@ pub use fs_stat::FsStat;
 pub use kstat::normal_file_mode;
 pub use kstat::{Kstat, StMode};
 pub use socket::Socket;
-pub use vfs::{get_virt_file_if_possible, check_virt_dir_exists};
+pub use vfs::{
+    get_virt_file_if_possible,
+    get_virt_dir_if_possible,
+    check_virt_dir_exists,
+    check_virt_file_exists,
+    try_make_virt_dir,
+    try_remove_virt_file,
+};

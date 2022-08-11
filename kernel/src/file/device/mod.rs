@@ -11,7 +11,15 @@ mod open_flags;
 mod stat;
 mod test;
 
-use super::{get_virt_file_if_possible, check_virt_dir_exists, File};
+use super::{
+    get_virt_file_if_possible,
+    check_virt_dir_exists,
+    get_virt_dir_if_possible,
+    check_virt_file_exists,
+    try_remove_virt_file,
+    try_make_virt_dir,
+    File
+};
 use crate::{
     constants::ROOT_DIR,
     drivers::{new_memory_mapped_fs, MemoryMappedFsIoType},
@@ -74,7 +82,7 @@ pub fn list_files_at_root() {
 /// 初始化硬盘内容。
 /// 由于它需要调用 MEMORY_FS，所以不能塞进其它初始化过程里
 pub fn fs_init() {
-    mkdir(ROOT_DIR, "tmp");
+    //mkdir(ROOT_DIR, "tmp");
     mkdir(ROOT_DIR, "dev");
     mkdir(ROOT_DIR, "lib");
     
@@ -216,7 +224,7 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
     let (real_dir, file_name) = map_path_and_file(dir_name, file_path)?;
     info!("real_dir {}, file_name {}", real_dir, file_name);
     // 先查询在 vfs 里是否有对应定义的文件
-    let find_in_vfs = get_virt_file_if_possible(&real_dir, &file_name);
+    let find_in_vfs = get_virt_file_if_possible(&real_dir, &file_name, flags);
     if find_in_vfs.is_some() {
         return find_in_vfs;
     }
@@ -308,6 +316,9 @@ pub fn check_file_exists(dir_name: &str, file_path: &str) -> bool {
                 "check file exists: dir = {}, name = {}",
                 real_dir, file_name
             );
+            if let Some(exist) = check_virt_file_exists(&real_dir, &file_name) {
+                return exist;
+            }
             inner_open_dir(root, real_dir.as_str())
                 .map(|dir| {
                     for entry in dir.iter() {
@@ -328,6 +339,10 @@ pub fn check_file_exists(dir_name: &str, file_path: &str) -> bool {
 /// **调用这个函数时默认文件存在，且 path/name 已经过 split_path_and_file 格式化**
 fn remove_file(path: &str, name: &str) {
     let root = MEMORY_FS.root_dir();
+    // 如果在 vfs 里能找到文件，就直接在里面删除
+    if let Some(_) = try_remove_virt_file(&path.into(), &name.into()) {
+        return;
+    }
     let dir = inner_open_dir(root, path).unwrap();
     dir.remove(name).unwrap();
 }
@@ -337,6 +352,9 @@ pub fn mkdir(dir_name: &str, file_path: &str) -> bool {
     let root = MEMORY_FS.root_dir();
     map_path_and_file(dir_name, file_path)
         .map(|(real_dir, file_name)| {
+            if let Some(vdir) = get_virt_dir_if_possible(&real_dir) {
+                return try_make_virt_dir(&vdir, &file_name);
+            }
             inner_open_dir(root, real_dir.as_str())
                 .map(|dir| {
                     // 说明现在打开的 dir 就是想要创建的目录，那么它已经存在了

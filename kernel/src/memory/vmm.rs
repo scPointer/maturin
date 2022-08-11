@@ -2,7 +2,7 @@
 
 use super::{
     addr_to_page_id, align_down, align_up, cross_page, get_phys_memory_regions, page_count,
-    page_offset, virt_to_phys, DiffSet, PTEFlags, PageTable, PmArea, PmAreaLazy, VirtAddr, VmArea,
+    page_offset, page_id_to_addr, virt_to_phys, DiffSet, PTEFlags, PageTable, PmArea, PmAreaLazy, VirtAddr, VmArea,
 };
 use crate::{
     arch,
@@ -251,13 +251,26 @@ impl MemorySet {
     pub fn manually_alloc_type<T>(&mut self, user_obj: *const T) -> OSResult {
         let vaddr = user_obj as usize;
         if cross_page::<T>(vaddr) {
-            for page in addr_to_page_id(vaddr)..addr_to_page_id(vaddr + size_of::<T>() - 1) {
-                self.manually_alloc_page(page)?;
+            for page in addr_to_page_id(vaddr)..=addr_to_page_id(vaddr + size_of::<T>() - 1) {
+                self.manually_alloc_page(page_id_to_addr(page))?;
             }
             Ok(())
         } else {
             self.manually_alloc_page(vaddr)
         }
+    }
+
+    /// 检查一段地址是否每一页都已分配空间，如果未分配则强制分配它
+    pub fn manually_alloc_range(&mut self, start_vaddr: VirtAddr, end_vaddr: VirtAddr) -> OSResult {
+        for page in addr_to_page_id(start_vaddr)..=addr_to_page_id(end_vaddr) {
+            self.manually_alloc_page(page_id_to_addr(page))?;
+        }
+        Ok(())
+    }
+
+    /// 检查一段用户地址空间传来的字符串是否已分配空间，如果未分配则强制分配它
+    pub fn manually_alloc_user_str(&mut self, buf: *const u8, len: usize) -> OSResult {
+        self.manually_alloc_range(buf as VirtAddr, buf as VirtAddr + len - 1)
     }
 
     /// 清空用户段的地址映射

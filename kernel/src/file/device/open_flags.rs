@@ -47,4 +47,12 @@ impl OpenFlags {
             (true, true)
         }
     }
+    /// 获取读权限
+    pub fn readable(&self) -> bool {
+        !self.contains(Self::WRONLY)
+    }
+    /// 获取写权限
+    pub fn writable(&self) -> bool {
+        self.contains(Self::WRONLY) || self.contains(Self::RDWR)
+    }
 }

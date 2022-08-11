@@ -96,8 +96,8 @@ pub fn sys_read(fd: usize, buf: *mut u8, len: usize) -> SysResult {
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> SysResult {
     info!("sys_write fd {fd}");
     let task = get_current_task().unwrap();
-    let tcb_inner = task.inner.lock();
-    let task_vm = task.vm.lock();
+    //let tcb_inner = task.inner.lock();
+    let mut task_vm = task.vm.lock();
     //println!("write pos {:x}", buf as usize);
     /*
     let buf = buf as usize;
@@ -108,12 +108,15 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> SysResult {
         }
     };
     */
+    if task_vm.manually_alloc_user_str(buf, len).is_err() {
+        return Err(ErrorNo::EFAULT); // 地址不合法
+    }
     let slice = unsafe { core::slice::from_raw_parts(buf, len) };
 
     if let Ok(file) = task.fd_manager.lock().get_file(fd) {
         // 写文件也可能触发进程切换
-        drop(tcb_inner);
-        drop(task_vm);
+        //drop(tcb_inner);
+        drop(task_vm); //及时去锁，可能其他程序要用
         if let Some(write_len) = file.write(slice) {
             return Ok(write_len);
         }
@@ -151,6 +154,9 @@ pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> SysResult {
             "sys_writev: io_vec.base {:x}, len {:x}",
             io_vec.base as usize, io_vec.len
         );
+        if io_vec.base as usize == 0 { // busybox 可能会给stdout两个io_vec，第二个是空地址
+            continue;
+        }
         match sys_write(fd, io_vec.base, io_vec.len) {
             Ok(len) =>  written_len += len,
             Err(_) => { break; }

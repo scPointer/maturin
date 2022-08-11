@@ -43,6 +43,11 @@ pub fn addr_to_page_id(addr: usize) -> usize {
     addr / PAGE_SIZE
 }
 
+/// 从页号获取开头地址
+pub fn page_id_to_addr(page_id: usize) -> usize {
+    page_id * PAGE_SIZE
+}
+
 /// 地址转页内偏移
 pub fn page_offset(addr: usize) -> usize {
     addr & (PAGE_SIZE - 1)

@@ -13,6 +13,11 @@ __alltraps:
 
     bgtz sp, __user_trap_start
 
+    # here is prework before kernel trap entry
+    # in "__real_trap_entry", tp will be replaced by 34*8(sp), where we assumed is saved by __restore before.
+    # but in kernel trap, it's NOT real cpu_id, we need to save current tp , and fetch it again in "__real_trap_entry"
+    sd tp, -1*8(sp)
+
     # now:
     # sp = kernel stack
     # sscratch = if trap from user (user stack) else ( if task is idle (0) else (kernel stack))

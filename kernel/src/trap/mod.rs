@@ -70,13 +70,15 @@ pub fn enable_timer_interrupt() {
 /// 注意，因为我们的实现没有一个专门的 "trap栈"，所以你可以认为进入该函数时 cx 就在 sp 的"脚底下"。
 /// 所以修改 cx 时一旦越界就可能改掉该函数的 ra/sp，要小心。
 pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
-    timer_user_to_kernel();
-    let cx = match sstatus::read().spp() {
+    match sstatus::read().spp() {
         sstatus::SPP::Supervisor => kernel_trap_handler(cx),
-        sstatus::SPP::User => user_trap_handler(cx),
-    };
-    timer_kernel_to_user();
-    cx
+        sstatus::SPP::User => {
+            timer_user_to_kernel();
+            let cx = user_trap_handler(cx);
+            timer_kernel_to_user();
+            cx
+        }
+    }
 }
 
 #[no_mangle]
@@ -88,9 +90,9 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     println!("in sp {:x}", sp);
     println!("user sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits());
     */
-
     let scause = scause::read(); // get trap cause
     let stval = stval::read(); // get extra value
+    timer_user_to_kernel();
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
             //let mut pc: usize;
