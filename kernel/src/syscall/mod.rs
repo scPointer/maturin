@@ -46,13 +46,14 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     let syscall_id = if let Ok(id) = SyscallNo::try_from(syscall_id) {
         id
     } else {
-        info!(
+        error!(
             "Unsupported syscall id = {:#?}({})",
             syscall_id, syscall_id as usize
         );
-        info!("[[kernel -> return {}  =0x{:x}]]", 0, 0);
+        error!("[[kernel -> return {}  =0x{:x}]]", 0, 0);
         return 0;
     };
+    debug!("Syscall {:?}, {:x?}", syscall_id, args);
 
     // lmbench 会大量调用这两个 syscall 来统计时间，因此需要跳过
     if syscall_id != SyscallNo::GETRUSAGE
@@ -252,7 +253,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::PPOLL => Ok(1),
         _ => {
             //_ => panic!("Unsupported syscall id = {:#?}()", syscall_id, syscall_id as usize);
-            info!(
+            error!(
                 "Unsupported syscall id = {:#?}({})",
                 syscall_id, syscall_id as usize
             );
@@ -265,12 +266,12 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
                 && syscall_id != SyscallNo::CLOCK_GET_TIME
                 && syscall_id != SyscallNo::GETPPID
             {
-                info!("[[kernel -> return {}  =0x{:x}]]", a0, a0);
+                debug!("Return -> {} = {:#x}", a0, a0);
             }
             a0 as isize
         }
         Err(num) => {
-            info!("[[kernel -> return {:#?}]]", num);
+            error!("[[kernel -> return {:#?}]]", num);
             num as isize
         }
     }
