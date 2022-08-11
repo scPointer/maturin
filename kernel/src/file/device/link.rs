@@ -112,6 +112,10 @@ pub fn try_remove_link(path: String, file: &str) -> bool {
                 remove_file(real_path.as_str(), real_file.as_str());
             }
             return true;
+        } else if check_dir_exists(&[real_path.as_str(), real_file.as_str()].concat()) {
+            // 目录则直接删除，因为目录不能链接，所以不需要处理链接表
+            remove_file(real_path.as_str(), real_file.as_str());
+            return true;
         }
     }
     false

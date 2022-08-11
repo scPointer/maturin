@@ -236,6 +236,8 @@ pub fn sys_fstatat(dir_fd: i32, path: *const u8, kstat: *mut Kstat) -> SysResult
             if file.get_stat(kstat) {
                 return Ok(0);
             }
+        } else {
+            return Err(ErrorNo::ENOENT); // 文件不存在
         }
     }
     Err(ErrorNo::EINVAL)
@@ -392,6 +394,7 @@ pub fn sys_umount(mount_path: *const u8, _flags: u32) -> SysResult {
 pub fn sys_mkdir(dir_fd: i32, path: *const u8, _user_mode: u32) -> SysResult {
     let task = get_current_task().unwrap();
     if let Some((parent_dir, file_path)) = resolve_path_from_fd(&task, dir_fd, path) {
+        //info!("mkdir {parent_dir} {file_path}");
         if mkdir(parent_dir.as_str(), file_path) {
             return Ok(0);
         } else {

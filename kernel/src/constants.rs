@@ -32,7 +32,7 @@ pub const KERNEL_STACK_SIZE: usize = 0x8_000; // 1 MB
 /// 内核堆的大小
 pub const KERNEL_HEAP_SIZE: usize = 0x40_0000; // 4 MB
 /// 用户栈大小
-pub const USER_STACK_SIZE: usize = 0x2_0000; // 128 KB,
+pub const USER_STACK_SIZE: usize = 0x3_0000; // 192 KB // `lmbench_all lat_fs /var/tmp` 会默认访问到 0x3ffdfb08 
 /// 初始用户栈大小，用于存放 argc/argv/envs/auxv
 pub const USER_INIT_STACK_SIZE: usize = 0x4000; // 16 KB,
 /// 用户栈底位置。同时也是最开始的用户堆顶位置

@@ -18,12 +18,14 @@ pub const TESTCASES: &[&str] = &[
     //"./runtest.exe -w entry-dynamic.exe pthread_exit_cancel",
     */ 
 
-    "lmbench_all lat_syscall -P 1 read",
+    //"lmbench_all lat_syscall -P 1 read",
     // "lmbench_all lat_syscall -P 1 null", // lmbench 测
     //"lmbench_all lat_syscall -P 1 write",
     //"lmbench_all lat_proc -P 1 exec",
     //"lmbench_all hello",
-    //"lmbench_all lat_syscall -P 1 write",
+    //"lmbench_all lmdd label=\"File/var/tmp/XXXwritebandwidth:\" of=/var/tmp/XXX move=645m fsync=1 print=3",
+    "lmbench_all lat_fs /var/tmp",
+    //"lmbench_all bw_file_rd -P 1 512k io_only /var/tmp/XXX",
     //"lmbench_all bw_pipe -P 1",
     //"busybox", // busybox 提示信息
 ];
