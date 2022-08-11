@@ -16,7 +16,7 @@ pub const TESTCASES: &[&str] = &[
     "lmbench_all lat_pagefault -P 1 /var/tmp/XXX",
     // "lmbench_all lat_mmap -P 1 512k /var/tmp/XXX",
     // "busybox echo file system latency",
-    "lmbench_all lat_fs /var/tmp",
+    // "lmbench_all lat_fs /var/tmp",
     // "busybox echo Bandwidth measurements",
     // "lmbench_all bw_pipe -P 1",
     // "lmbench_all bw_file_rd -P 1 512k io_only /var/tmp/XXX",

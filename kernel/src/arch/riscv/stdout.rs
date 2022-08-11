@@ -32,7 +32,7 @@ pub static STDERR: Mutex<Stdout> = Mutex::new(Stdout);
 /// 输出到 stdout
 #[inline]
 pub fn stdout_puts(fmt: Arguments) {
-    STDOUT.lock().write_fmt(fmt).unwrap();
+    Stdout.write_fmt(fmt).unwrap();
 }
 
 /// 输出到 stderr
@@ -41,6 +41,6 @@ pub fn stderr_puts(fmt: Arguments) {
     // 使 stdout 不要干扰 stderr 输出
     // 如果能拿到锁，说明此时没有核在输出 STDOUT，那么 STDERR 优先输出，不让其他核打断
     // 如不能，则有可能 STDOUT 已卡死了，此时也直接输出
-    let _stdout = STDOUT.try_lock();
-    STDERR.lock().write_fmt(fmt).unwrap();
+    // let _stdout = STDOUT.try_lock();
+    Stdout.write_fmt(fmt).unwrap();
 }
