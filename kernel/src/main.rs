@@ -3,7 +3,7 @@
 
 #![no_std]
 #![no_main]
-#![deny(warnings)]
+// #![deny(warnings)]
 #![feature(panic_info_message)]
 #![feature(default_alloc_error_handler)]
 #![feature(naked_functions, asm_sym, asm_const)]

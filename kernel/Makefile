@@ -80,3 +80,9 @@ clean:
 
 doc:
 	cargo doc $(build_args)
+
+
+# lmbench_all lat_sig -P 1 catch
+# lmbench_all lat_sig -P 1 prot lat_sig
+# lmbench_all lat_fs /var/tmp
+# lmbench_all lat_ctx -P 1 -s 32 2 4 8 16 24 32 64 96
