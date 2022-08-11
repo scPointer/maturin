@@ -360,10 +360,12 @@ pub fn sys_getegid() -> SysResult {
 /// 目前 2/3/4 未实现。对于 1，仿照 zCore 的设置，认为**当前进程自己或其直接子进程** 是"有权限"或者"同组"的进程。
 pub fn sys_kill(pid: isize, signal_id: isize) -> SysResult {
     info!("kill pid {}, signal id {}", pid, signal_id);
-    if pid > 0 {
+    if pid > 0 && signal_id > 0 {
         send_signal(pid as usize, signal_id as usize);
         Ok(0)
-    } else {
+    } else if pid == 0 {
+        Err(ErrorNo::ESRCH)
+    } else { // 如果 signal_id == 0，则仅为了检查是否存在对应进程，此时应该返回参数错误。是的，用户库是会刻意触发这个错误的
         Err(ErrorNo::EINVAL)
     }
 }
@@ -374,7 +376,7 @@ pub fn sys_kill(pid: isize, signal_id: isize) -> SysResult {
 /// 这需要多加一个 tgid 参数，以防止错误的线程( tid 已被删除后重用)发送信号。
 /// 但 libc 的测例中仍会使用这个 tkill
 pub fn sys_tkill(tid: isize, signal_id: isize) -> SysResult {
-    info!("tkill tid {}, signal id {}", tid, signal_id);
+    println!("tkill tid {}, signal id {}", tid, signal_id);
     if tid > 0 {
         send_signal(tid as usize, signal_id as usize);
         Ok(0)

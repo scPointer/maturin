@@ -212,6 +212,8 @@ pub enum ErrorNo {
     EPERM = -1,
     /// 找不到文件或目录
     ENOENT = -2,
+    /// 找不到对应进程
+    ESRCH = -3,
     /// 错误的文件描述符
     EBADF = -9,
     /// 资源暂时不可用。也可因为 futex_wait 时对应用户地址处的值与给定值不符
