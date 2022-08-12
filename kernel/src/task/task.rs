@@ -478,8 +478,10 @@ impl TaskControlBlock {
     /// 如果当前没有在信号处理函数中，则保存当前用户上下文信息，返回true。
     /// 否则不保存并返回false
     pub fn save_trap_cx_if_not_handling_signals(&self) -> bool {
+        //println!("in sig");
         let mut inner = self.inner.lock();
         if inner.trap_cx_before_signal.is_some() {
+            //println!("has");
             return false;
         }
         inner.trap_cx_before_signal = Some(unsafe {
@@ -495,6 +497,7 @@ impl TaskControlBlock {
     }
     /// 恢复用户上下文信息，返回true。如没有已保存的上下文信息，则返回 false
     pub fn load_trap_cx_if_handling_signals(&self) -> bool {
+        //println!("out sig");
         let mut inner = self.inner.lock();
         if let Some(trap_cx_old) = inner.trap_cx_before_signal.take() {
             //info!("sig returned");

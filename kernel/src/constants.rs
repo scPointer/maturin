@@ -52,8 +52,9 @@ pub const ORIGIN_USER_PROC_NAME: &str = "start";
 
 /// 最小的 tid(进程号) 是 0，最大的 pid 是 TID_LIMIT-1
 pub const TID_LIMIT: usize = 4096;
-/// 预设的文件描述符数量限制
-pub const FD_LIMIT_ORIGIN: usize = 64;
+/// 预设的文件描述符数量限制。
+/// 一般来说应该是 64，但由于 lmbench_all lat_select 要测到 100 个，而且它自己不会用 getrlimit 调，所以需要手动开大
+pub const FD_LIMIT_ORIGIN: usize = 128;
 /// 最大允许的文件描述符数量
 pub const FD_LIMIT_HARD: usize = 256;
 /// sys_pipe创建的管道的大小，单位为字节
@@ -105,5 +106,13 @@ pub const SIGSET_SIZE_IN_BYTE: usize = 8;
 pub const SIGSET_SIZE_IN_BIT: usize = SIGSET_SIZE_IN_BYTE * 8; // =64
 /// SIGINFO 要求把一些信息存在用户栈上，从用户栈开辟一块空间来保存它们
 pub const USER_STACK_RED_ZONE: usize = 0x200; // 512 B
+/// 一个在 Sv39 页表里不合法的地址。
+/// 如果 sigaction 中没有设置 SA_RESTORER，那么需要内核来代替libc库实现"信号执行完成后通过sigreturn返回"的效果
+/// 但是mmap一块地址把"手动调用ecall执行 sigreturn"写进去又显得不够优雅，因为用户地址空间会多出来一块它并不知道的trampoline
+/// 所以现在通过把 ra 写成一个特定地址的方式，让信号处理函数执行完之后，到这里触发 Page Fault，再由内核进行 sigreturn
+/// 
+/// 另外，把触发signal的用户pc写成ra是行不通的，因为 signal 语义上要求信号处理结束时恢复之前的一切寄存器状态
+pub const SIGNAL_RETURN_TRAP: usize = 0xffff_0000_8080_0000;
+
 /// sys_sendfile64 中使用 buffer 的大小
 pub const SENDFILE_BUFFER_SIZE: usize = 0x2000;

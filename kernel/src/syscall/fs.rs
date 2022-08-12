@@ -455,7 +455,7 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, _user_mode: u32) -> Sy
         // 2. './' 开头的相对路径，如 /abc
         // 3. 字母数字开头的相对路径，如 def.txt
         // 而把路径直接写成当前目录的情况比较特殊，不包含在以上三种之内
-        //println!("file path = {}, len = {}, flags = {:x}", file_path, file_path.len(), flags);
+        //println!("parent_dir = {}, file path = {}, len = {}, flags = {:x}", parent_dir, file_path, file_path.len(), flags);
         if file_path == "." {
             file_path.push('/');
         } else if file_path.starts_with(".//") {

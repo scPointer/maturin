@@ -102,6 +102,7 @@ pub fn fs_init() {
     let _mounts = open_file("./proc/", "mounts", OpenFlags::CREATE).unwrap(); // 所有的文件系统信息
     mkdir("dev/", "misc");
     let _rtc = open_file("./dev/misc/", "rtc", OpenFlags::CREATE).unwrap(); // 硬件时钟信息
+    let _lat_sig = open_file(ROOT_DIR, "lat_sig", OpenFlags::CREATE).unwrap(); // lat_sig prot 测例要求的文件。测例只管读这个文件，但又不创建
 }
 
 /// 在 path 后加入 child_path 路径，返回 child_path 中最后一个 '/' 的位置+1。(如没有 '/' 则返回0)

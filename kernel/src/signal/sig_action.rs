@@ -2,13 +2,12 @@
 //!
 
 use super::{Bitset, SignalNo};
+use crate::constants::SIGNAL_RETURN_TRAP;
 use bitflags::*;
 
 /// SigAction::handler 的特殊取值，表示默认处理函数
-#[allow(dead_code)]
 pub const SIG_DFL: usize = 0;
 /// SigAction::handler 的特殊取值，表示忽略这个信号
-#[allow(dead_code)]
 pub const SIG_IGN: usize = 1;
 
 /// 和信号处理函数相关的信息定义
@@ -30,12 +29,24 @@ pub struct SigAction {
     pub handler: usize,
     /// 处理时指定的参数
     pub flags: SigActionFlags,
-    /// 信号处理时的栈，也被视为 `signal trampoline`，由用户给出
-    ///
-    /// 一般来说，需要 flags 里给出 SA_RESTORER 这里才有意义，但这里默认都是这种情况
-    pub restorer: usize,
+    /// 信号处理时的栈，也被视为 `signal trampoline`，由用户给出，但一般是pthread库使用。
+    /// (如果指定)，这个值需要被写入用户程序上下文的 ra 中
+    /// 
+    /// 只有制定了 SA_RESTORER 参数才需要设置，请通过 get_restorer 调用
+    restorer: usize,
     /// 信号的掩码
     pub mask: Bitset,
+}
+
+impl SigAction {
+    /// 获取 restorer，如果没有 SA_RESTORER 参数，则设置为OS指定的magic number
+    pub fn get_restorer(&self) -> usize {
+        if self.flags.contains(SigActionFlags::SA_RESTORER) {
+            self.restorer
+        } else {
+            SIGNAL_RETURN_TRAP
+        }
+    }
 }
 
 bitflags! {

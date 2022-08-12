@@ -361,6 +361,7 @@ pub fn sys_getegid() -> SysResult {
 pub fn sys_kill(pid: isize, signal_id: isize) -> SysResult {
     info!("kill pid {}, signal id {}", pid, signal_id);
     if pid > 0 && signal_id > 0 {
+        //println!("kill pid {}, signal id {}", pid, signal_id);
         send_signal(pid as usize, signal_id as usize);
         Ok(0)
     } else if pid == 0 {

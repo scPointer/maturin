@@ -23,6 +23,7 @@ mod context;
 
 use crate::{
     arch::get_cpu_id,
+    constants::SIGNAL_RETURN_TRAP,
     memory::PTEFlags,
     signal::{SignalNo, send_signal},
     syscall::syscall,
@@ -33,6 +34,7 @@ use crate::{
         get_current_task,
         timer_kernel_to_user,
         timer_user_to_kernel,
+        signal_return,
     },
     timer::set_next_trigger,
 };
@@ -116,6 +118,11 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         }
         Trap::Exception(Exception::InstructionPageFault) => {
             info!("[cpu {}] InstructionPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
+            if stval == SIGNAL_RETURN_TRAP {
+                // 当作调用了 sigreturn 一样
+                cx.x[10] = signal_return() as usize;
+                return cx;
+            }
             if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::EXECUTE) {
                 info!("{:#?}", e);
                 send_signal(get_current_task().unwrap().get_tid_num(), SignalNo::SIGSEGV as usize);

@@ -296,12 +296,14 @@ pub fn handle_signals() {
         if task.save_trap_cx_if_not_handling_signals() {
             // 如果有，则调取处理函数
             if let Some(action) = handler.get_action_ref(signum) {
+                //println!("flags: {:#?}", action.flags);
                 if action.handler == SIG_IGN {
                     return;
                 }
                 // 保存后开始操作准备修改上下文，跳转到用户的信号处理函数
                 let trap_cx = unsafe { &mut *task.kernel_stack.get_first_context() };
-                trap_cx.set_ra(action.restorer);
+                trap_cx.set_ra(action.get_restorer());
+                //println!("restorer {}", action.get_restorer());
                 // 这里假设了用户栈没有溢出
                 info!("sp now {:x}", trap_cx.get_sp());
                 let mut sp = trap_cx.get_sp() - USER_STACK_RED_ZONE;
@@ -336,7 +338,7 @@ pub fn handle_signals() {
                     info!("val {}", unsafe { *((tp - 151) as *const u8) });
                 }
                 trap_cx.set_sp(sp);
-                info!("into signal handler, sp = {:x} old_pc = {:x}", sp, old_pc);
+                //info!("into signal handler, sp = {:x} old_pc = {:x}", sp, old_pc);
             } else {
                 // 否则，查找默认处理方式
                 match SigActionDefault::of_signal(signal) {
@@ -350,6 +352,7 @@ pub fn handle_signals() {
                 }
             }
         } else if signal == SignalNo::SIGSEGV || signal == SignalNo::SIGBUS {
+            
             //在处理信号的过程中又触发 SIGSEGV 或 SIGBUS，那么说明该直接结束了，否则会无限递归触发
             exit_current_task(-1);
         }
