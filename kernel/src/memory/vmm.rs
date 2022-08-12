@@ -440,7 +440,7 @@ fn init_kernel_memory_set(ms: &mut MemorySet) -> OSResult {
     )?)?;
     ms.push(VmArea::from_fixed_pma(
         virt_to_phys(sdata as usize),
-        virt_to_phys(edata as usize),
+        virt_to_phys(edata as usize + PAGE_SIZE),
         PHYS_VIRT_OFFSET,
         PTEFlags::READ | PTEFlags::WRITE,
         "kdata",
