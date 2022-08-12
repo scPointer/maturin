@@ -273,7 +273,7 @@ impl<'a> ElfLoader<'a> {
             args,
             envs: {
                 vec![
-                    "ENOUGH=50000".into(),
+                    "ENOUGH=500".into(),
                     //"TMPDIR=/tmp".into(),
                 ]
             },
