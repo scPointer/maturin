@@ -291,7 +291,7 @@ pub fn handle_signals() {
     let handler = task.signal_handlers.lock();
     if let Some(signum) = sig_inner.get_one_signal() {
         let signal = SignalNo::from(signum);
-        info!("tid {} handling signal: {:#?}", task.get_tid_num(), signal);
+        //println!("tid {} handling signal: {:#?}", task.get_tid_num(), signal);
         // 保存成功说明当前没有在处理其他信号
         if task.save_trap_cx_if_not_handling_signals() {
             // 如果有，则调取处理函数
@@ -349,6 +349,9 @@ pub fn handle_signals() {
                     SigActionDefault::Ignore => {}
                 }
             }
+        } else if signal == SignalNo::SIGSEGV || signal == SignalNo::SIGBUS {
+            //在处理信号的过程中又触发 SIGSEGV 或 SIGBUS，那么说明该直接结束了，否则会无限递归触发
+            exit_current_task(-1);
         }
     }
     //info!("signal handler finish");
