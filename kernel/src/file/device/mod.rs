@@ -345,6 +345,11 @@ fn remove_file(path: &str, name: &str) {
     }
     let dir = inner_open_dir(root, path).unwrap();
     dir.remove(name).unwrap();
+    /*
+    dir.remove(name).unwrap_or_else(|_| {
+        println!("path [{}] name [{}]", path, name);
+    });
+    */
 }
 
 /// 创建目录，返回是否成功
