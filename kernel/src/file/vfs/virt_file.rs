@@ -20,7 +20,7 @@ pub struct VirtFileInner {
     /// 当前文件指针位置
     pos: usize,
     /// 打开时的选项。
-    flags: OpenFlags,
+    _flags: OpenFlags,
 }
 
 impl VirtFile {
@@ -30,7 +30,7 @@ impl VirtFile {
                 frames: Vec::new(),
                 size: 0,
                 pos: 0,
-                flags: flags,
+                _flags: flags,
             })
         }
     }
@@ -77,6 +77,9 @@ impl VirtFileInner {
     pub fn write_inner(&mut self, buf: &[u8]) -> Option<usize> {
         if buf.len() == 0 { // 特判没有实际写入的情况
             return Some(0);
+        }
+        if (self.size & (0x100_0000 - 1)) == 0 {
+            //println!("write {} size {}", buf.len(), self.size);
         }
         // 需要用到多少页才够
         let page_needed = addr_to_page_id(self.pos + buf.len() - 1);
@@ -153,21 +156,11 @@ impl VirtFileInner {
 impl File for VirtFile {
     /// 读取文件
     fn read(&self, buf: &mut [u8]) -> Option<usize> {
-        let mut inner = self.inner.lock();
-        if inner.flags.readable() {
-            inner.read_inner(buf)
-        } else {
-            None
-        }
+        self.inner.lock().read_inner(buf)
     }
     /// 写入文件
     fn write(&self, buf: &[u8]) -> Option<usize> {
-        let mut inner = self.inner.lock();
-        if inner.flags.writable() {
-            inner.write_inner(buf)
-        } else {
-            None
-        }
+        self.inner.lock().write_inner(buf)
     }
     /// 文件属性
     fn get_stat(&self, stat: *mut Kstat) -> bool {

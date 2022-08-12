@@ -18,22 +18,56 @@ pub const TESTCASES: &[&str] = &[
     //"./runtest.exe -w entry-dynamic.exe pthread_exit_cancel",
     */ 
 
-    //"lmbench_all lat_syscall -P 1 read",
-    // "lmbench_all lat_syscall -P 1 null", // lmbench 测
-    //"lmbench_all lat_syscall -P 1 write",
-    //"lmbench_all lat_proc -P 1 exec",
-    //"lmbench_all hello",
+    /* //lmbench 1
+    "lmbench_all lat_syscall -P 1 null",
+    "lmbench_all lat_syscall -P 1 read",
+    "lmbench_all lat_syscall -P 1 write",
+    */
+    
+    /* //lmbench 2
+    "busybox mkdir -p /var/tmp",
+    "busybox touch /var/tmp/lmbench",
+    "lmbench_all lat_syscall -P 1 stat /var/tmp/lmbench",
+    "lmbench_all lat_syscall -P 1 fstat /var/tmp/lmbench",
+    "lmbench_all lat_syscall -P 1 open /var/tmp/lmbench",
+    */
+
+    /* //lmbench 3
     //"lmbench_all lat_select -n 100 -P 1 file",
-    //"lmbench_all lat_sig -P 1 install",
+    "lmbench_all lat_sig -P 1 install",
     //"lmbench_all lat_sig -P 1 catch",
     //"lmbench_all lat_sig -P 1 prot lat_sig",
-    // "lmbench_all lmdd label=\"File/var/tmp/XXXwritebandwidth:\" of=/var/tmp/XXX move=645m fsync=1 print=3",
-    // "lmbench_all lat_pagefault -P 1 /var/tmp/XXX",
-    //"lmbench_all lat_mmap -P 1 512k /var/tmp/XXX",
+    */
+
+    /* //lmbench 4
+    "lmbench_all lat_pipe -P 1",
+    "lmbench_all lat_proc -P 1 fork",
+    "lmbench_all lat_proc -P 1 exec",
+    "busybox cp hello /tmp",
+    "lmbench_all lat_proc -P 1 shell",
+    */
+    
+    /* //lmbench 5
+    "lmbench_all lmdd label=\"File/var/tmp/XXXwritebandwidth:\" of=/var/tmp/XXX move=8m fsync=1 print=3",
+    //"lmbench_all lat_pagefault -P 1 /var/tmp/XXX",
+    "lmbench_all lat_mmap -P 1 512k /var/tmp/XXX",
+    */
+
+    /* //lmbench 6
+    "busybox echo file system latency",
     "lmbench_all lat_fs /var/tmp",
-    //"lmbench_all lat_ctx -P 1 -s 32 2 4 8 16 24 32 64 96",
-    //"lmbench_all bw_file_rd -P 1 512k io_only /var/tmp/XXX",
-    //"lmbench_all bw_mmap_rd -P 1 512k mmap_only /var/tmp/XXX",
+    */
+    /* //lmbench 5.2
+    "busybox echo Bandwidth measurements",
     //"lmbench_all bw_pipe -P 1",
+    "lmbench_all bw_file_rd -P 1 512k io_only /var/tmp/XXX",
+    "lmbench_all bw_file_rd -P 1 512k open2close /var/tmp/XXX",
+    "lmbench_all bw_mmap_rd -P 1 512k mmap_only /var/tmp/XXX",
+    "lmbench_all bw_mmap_rd -P 1 512k open2close /var/tmp/XXX",
+    */
+    /* //lmbench 7
+    "busybox echo context switch overhead",
+    //"lmbench_all lat_ctx -P 1 -s 32 2 4 8 16 24 32 64 96",
+    */
     //"busybox", // busybox 提示信息
 ];
