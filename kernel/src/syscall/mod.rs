@@ -50,7 +50,6 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             "Unsupported syscall id = {:#?}({})",
             syscall_id, syscall_id as usize
         );
-        error!("[[kernel -> return {}  =0x{:x}]]", 0, 0);
         return 0;
     };
     debug!("Syscall {:?}, {:x?}", syscall_id, args);
@@ -271,7 +270,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             a0 as isize
         }
         Err(num) => {
-            error!("[[kernel -> return {:#?}]]", num);
+            warn!("Return -> {:?}", num);
             num as isize
         }
     }

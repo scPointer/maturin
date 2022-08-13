@@ -11,7 +11,7 @@ use crate::error::{OSError, OSResult};
 use crate::memory::FdAllocator;
 
 use super::{File, OpenFlags};
-use super::{Stderr, Stdin, Stdout};
+use super::stdio::{Stderr, Stdin, Stdout};
 
 /// 文件描述符管理，每个进程应该有一个
 /// 这个结构 Drop 时会自动释放文件的 Arc
