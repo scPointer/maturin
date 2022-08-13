@@ -11,7 +11,7 @@ extern crate alloc;
 extern crate log;
 
 //#[cfg(not(feature = "std"))]
-use core2::io as io;
+use core2::io;
 
 /*
 #[cfg(feature = "std")]
@@ -24,5 +24,5 @@ mod buf_stream;
 mod stream_slice;
 
 pub use buf_stream::*;
+pub use io::{Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
 pub use stream_slice::*;
-pub use io::{Read, Write, Seek, SeekFrom, Result, Error, ErrorKind};

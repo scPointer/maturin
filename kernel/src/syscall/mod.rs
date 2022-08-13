@@ -32,8 +32,8 @@ use times::*;
 
 use crate::constants::IS_TEST_ENV;
 use crate::file::{FsStat, Kstat};
-use crate::task::ITimerVal;
 use crate::signal::SigAction;
+use crate::task::ITimerVal;
 use crate::timer::{TimeSpec, TimeVal};
 use lock::Mutex;
 
@@ -46,14 +46,24 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     let syscall_id = if let Ok(id) = SyscallNo::try_from(syscall_id) {
         id
     } else {
-        info!("Unsupported syscall id = {:#?}({})", syscall_id, syscall_id as usize);
-        info!("[[kernel -> return {}  =0x{:x}]]", 0, 0);
+        error!(
+            "Unsupported syscall id = {:#?}({})",
+            syscall_id, syscall_id as usize
+        );
+        error!("[[kernel -> return {}  =0x{:x}]]", 0, 0);
         return 0;
     };
+    debug!("Syscall {:?}, {:x?}", syscall_id, args);
 
     // lmbench 会大量调用这两个 syscall 来统计时间，因此需要跳过
-    if syscall_id != SyscallNo::GETRUSAGE && syscall_id != SyscallNo::CLOCK_GET_TIME && syscall_id != SyscallNo::GETPPID {
-        info!("[[kernel syscall {:#?}({})]]", syscall_id, syscall_id as usize);
+    if syscall_id != SyscallNo::GETRUSAGE
+        && syscall_id != SyscallNo::CLOCK_GET_TIME
+        && syscall_id != SyscallNo::GETPPID
+    {
+        info!(
+            "[[kernel syscall {:#?}({})]]",
+            syscall_id, syscall_id as usize
+        );
     }
     if IS_TEST_ENV {
         // libc-test 在某些 syscall 没有正确实现的时候，会不断循环调用 writev
@@ -126,8 +136,15 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[4] as *const TimeSpec,
             args[5] as *const usize,
         ),
-        SyscallNo::READLINKAT => sys_readlinkat(args[0] as i32, args[1] as *const u8, args[2] as *mut u8, args[3]),
-        SyscallNo::FSTATAT => sys_fstatat(args[0] as i32, args[1] as *const u8, args[2] as *mut Kstat),
+        SyscallNo::READLINKAT => sys_readlinkat(
+            args[0] as i32,
+            args[1] as *const u8,
+            args[2] as *mut u8,
+            args[3],
+        ),
+        SyscallNo::FSTATAT => {
+            sys_fstatat(args[0] as i32, args[1] as *const u8, args[2] as *mut Kstat)
+        }
         SyscallNo::FSTAT => sys_fstat(args[0], args[1] as *mut Kstat),
         SyscallNo::UTIMENSAT => sys_utimensat(
             args[0] as i32,
@@ -148,7 +165,11 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         ),
         SyscallNo::NANOSLEEP => sys_nanosleep(args[0] as *const TimeSpec, args[1] as *mut TimeSpec),
         SyscallNo::GETITIMER => sys_gettimer(args[0], args[1] as *mut ITimerVal),
-        SyscallNo::SETITIMER => sys_settimer(args[0], args[1] as *const ITimerVal, args[2] as *mut ITimerVal),
+        SyscallNo::SETITIMER => sys_settimer(
+            args[0],
+            args[1] as *const ITimerVal,
+            args[2] as *mut ITimerVal,
+        ),
         SyscallNo::CLOCK_GET_TIME => sys_clock_gettime(args[0], args[1] as *mut TimeSpec),
         SyscallNo::YIELD => sys_yield(),
         SyscallNo::KILL => sys_kill(args[0] as isize, args[1] as isize),
@@ -207,7 +228,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::MPROTECT => sys_mprotect(
             args[0],
             args[1],
-            MMAPPROT::from_bits(args[2] as u32).unwrap()
+            MMAPPROT::from_bits(args[2] as u32).unwrap(),
         ),
         SyscallNo::EXECVE => sys_execve(
             args[0] as *const u8,
@@ -232,19 +253,25 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::PPOLL => Ok(1),
         _ => {
             //_ => panic!("Unsupported syscall id = {:#?}()", syscall_id, syscall_id as usize);
-            info!("Unsupported syscall id = {:#?}({})", syscall_id, syscall_id as usize);
+            error!(
+                "Unsupported syscall id = {:#?}({})",
+                syscall_id, syscall_id as usize
+            );
             Ok(0)
         }
     };
     match result {
         Ok(a0) => {
-            if syscall_id != SyscallNo::GETRUSAGE && syscall_id != SyscallNo::CLOCK_GET_TIME && syscall_id != SyscallNo::GETPPID {
-                info!("[[kernel -> return {}  =0x{:x}]]", a0, a0);
+            if syscall_id != SyscallNo::GETRUSAGE
+                && syscall_id != SyscallNo::CLOCK_GET_TIME
+                && syscall_id != SyscallNo::GETPPID
+            {
+                debug!("Return -> {} = {:#x}", a0, a0);
             }
             a0 as isize
-        },
+        }
         Err(num) => {
-            info!("[[kernel -> return {:#?}]]", num);
+            error!("[[kernel -> return {:#?}]]", num);
             num as isize
         }
     }

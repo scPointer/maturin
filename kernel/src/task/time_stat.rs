@@ -1,16 +1,16 @@
 //! 统计进程的用户态和内核态时间
-//! 
+//!
 //! 统计的时间以毫秒为单位，用于 sys_getrusage 和 sys_times
-//! 
+//!
 //! 目前这个模块的逻辑如下：
 //! - 在 `cpu_local.rs: run_tasks()` 中切换进入/切出用户程序上下文处，开始/停止统计内核态时间
 //! - 在 `trap/mod.rs: trap_handler()` 中进入/退出异常中断处理时，开始/停止统计内核态时间，停止/开始统计用户态时间
-//! 
+//!
 //! > 如果在 trap 的过程中，通过其他方式退出了进程，那么内核时间统计会在 `run_tasks()` 切出时中断。
 //! > 这样统计的时间仍然是对的
 
-use crate::timer::{TimeVal, get_time_us};
-use crate::signal::{SignalNo, send_signal};
+use crate::signal::{send_signal, SignalNo};
+use crate::timer::{get_time_us, TimeVal};
 
 /// 进程的时间统计，基于 lmbench 需要，主要用于 sys_getrusage
 pub struct TimeStat {
@@ -29,12 +29,12 @@ pub struct TimeStat {
     /// 计时器类型
     timer_type: TimerType,
     /// 设置下一次触发计时器的区间
-    /// 
+    ///
     /// 当 timer_remained_us 归零时，**如果 timer_interval_us 非零 **，则将其重置为 timer_interval_us 的值；
     /// 否则，则这个计时器不再触发
     timer_interval_us: usize,
     /// 当前计时器还剩下多少时间。
-    /// 
+    ///
     /// 根据 timer_type 的规则不断减少，当归零时触发信号
     timer_remained_us: usize,
 }
@@ -66,7 +66,7 @@ impl From<usize> for TimerType {
 }
 
 /// sys_gettimer / sys_settimer 指定的类型，用户输入输出计时器
-pub struct ITimerVal{
+pub struct ITimerVal {
     it_interval: TimeVal,
     it_value: TimeVal,
 }
@@ -151,13 +151,15 @@ impl TimeStat {
     /// 从计时器中尝试减少一段时间，如果时间归零，则发送信号
     /// (**内部需要获取对应线程的 SignalReceivers，注意死锁，注意保证发送的线程仍存在**)。
     /// 然后根据 timer_interval_us 更新寄存器
-    /// 
+    ///
     /// 返回是否触发信号
     pub fn update_timer_and_send_signal(&mut self, delta: usize) -> bool {
-        if self.timer_remained_us == 0 { // 等于0说明没有计时器，或者 one-shot 计时器已结束
+        if self.timer_remained_us == 0 {
+            // 等于0说明没有计时器，或者 one-shot 计时器已结束
             return false;
         }
-        if self.timer_remained_us > delta { // 时辰未到，减少寄存器计数
+        if self.timer_remained_us > delta {
+            // 时辰未到，减少寄存器计数
             self.timer_remained_us -= delta;
             return false;
         }
@@ -168,7 +170,7 @@ impl TimeStat {
             TimerType::REAL => send_signal(self.tid, SignalNo::SIGALRM as usize),
             TimerType::VIRTUAL => send_signal(self.tid, SignalNo::SIGVTALRM as usize),
             TimerType::PROF => send_signal(self.tid, SignalNo::SIGPROF as usize),
-            _ => {},
+            _ => {}
         };
         true
     }

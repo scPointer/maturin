@@ -58,7 +58,7 @@ impl<'a> ElfLoader<'a> {
         */
         match elf.header.pt2.machine().as_machine() {
             #[cfg(target_arch = "riscv64")]
-            header::Machine::Other(0xF3) => {},
+            header::Machine::Other(0xF3) => {}
             _ => return Err("invalid ELF arch".into()),
         };
         Ok(Self { elf })
@@ -333,7 +333,7 @@ impl From<Flags> for PTEFlags {
 /// 执行用户程序并选择解释器：
 /// - 如果程序以 .sh 结尾，则使用 busybox sh 执行
 /// - 否则，将用户程序视为根据名字获取二进制串形式的用户程序
-/// 
+///
 /// 如找不到，则返回某种 OSError
 pub fn parse_user_app(
     app_dir: &str,
@@ -341,16 +341,20 @@ pub fn parse_user_app(
     mut vm: &mut MemorySet,
     args: Vec<String>,
 ) -> OSResult<(VirtAddr, VirtAddr)> {
-    let (app_dir, app_name, args) = if app_name.ends_with(".sh") {// .sh 文件统一用 busybox 解析
+    let (app_dir, app_name, args) = if app_name.ends_with(".sh") {
+        // .sh 文件统一用 busybox 解析
         (
             ROOT_DIR,
-            "busybox", 
+            "busybox",
             [
-                vec![String::from("busybox"),
-                String::from("sh"),
-                String::from(app_dir) + &args[0]], 
-                Vec::from(&args[1..])
-            ].concat()
+                vec![
+                    String::from("busybox"),
+                    String::from("sh"),
+                    String::from(app_dir) + &args[0],
+                ],
+                Vec::from(&args[1..]),
+            ]
+            .concat(),
         )
     } else {
         (app_dir, app_name, args)

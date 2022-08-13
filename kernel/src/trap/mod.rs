@@ -281,5 +281,5 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             );
         }
     }
-    panic!("kernel trap");
+    panic!("kernel trap: {:#x?}", cx);
 }

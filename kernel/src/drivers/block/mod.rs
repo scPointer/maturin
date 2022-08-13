@@ -1,10 +1,10 @@
 use super::BlockDeviceImpl;
 use alloc::sync::Arc;
 
-mod virtio_block;
 mod block_device;
-pub use virtio_block::VirtIOBlock;
+mod virtio_block;
 pub use block_device::BlockDevice;
+pub use virtio_block::VirtIOBlock;
 
 lazy_static::lazy_static! {
     pub static ref BLOCK_DEVICE: Arc<dyn BlockDevice> = Arc::new(BlockDeviceImpl::new());

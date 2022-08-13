@@ -98,9 +98,6 @@ pub trait File: Send + Sync {
     }
 }
 
-pub use fd_manager::FdManager;
-pub use pipe::Pipe;
-pub use stdio::{Stderr, Stdin, Stdout};
 pub use device::{
     check_dir_exists,
     check_file_exists,
@@ -119,9 +116,11 @@ pub use device::{
     umount_fat_fs,
 };
 pub use device::{FileDisc, OpenFlags};
+pub use fd_manager::FdManager;
 pub use fs_stat::FsStat;
 pub use kstat::normal_file_mode;
 pub use kstat::{Kstat, StMode};
+pub use pipe::Pipe;
 pub use socket::Socket;
 pub use vfs::{
     get_virt_file_if_possible,
