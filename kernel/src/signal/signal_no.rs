@@ -1,6 +1,5 @@
 //! 信号的编号
 
-
 numeric_enum_macro::numeric_enum! {
     #[repr(u8)]
     #[allow(missing_docs)]

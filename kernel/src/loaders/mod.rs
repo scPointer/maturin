@@ -58,7 +58,7 @@ impl<'a> ElfLoader<'a> {
         */
         match elf.header.pt2.machine().as_machine() {
             #[cfg(target_arch = "riscv64")]
-            header::Machine::Other(0xF3) => {},
+            header::Machine::Other(0xF3) => {}
             _ => return Err("invalid ELF arch".into()),
         };
         Ok(Self { elf })
@@ -99,9 +99,6 @@ impl<'a> ElfLoader<'a> {
             } else {
                 parse_user_app(ROOT_DIR, path, vm, new_args)
             };
-        }
-        if args[1] == "lat_sig" && args[4] == "prot" {
-            return Err(OSError::Loader_Skipped); // 这个测例会导致内核崩溃，还没处理好，先跳过
         }
         //println!("args {:#?}", args);
         // 动态程序在加载时用到的地址。如果是静态程序，则这里是 0
@@ -338,7 +335,7 @@ impl From<Flags> for PTEFlags {
 /// 执行用户程序并选择解释器：
 /// - 如果程序以 .sh 结尾，则使用 busybox sh 执行
 /// - 否则，将用户程序视为根据名字获取二进制串形式的用户程序
-/// 
+///
 /// 如找不到，则返回某种 OSError
 pub fn parse_user_app(
     app_dir: &str,
@@ -346,16 +343,20 @@ pub fn parse_user_app(
     mut vm: &mut MemorySet,
     args: Vec<String>,
 ) -> OSResult<(VirtAddr, VirtAddr)> {
-    let (app_dir, app_name, args) = if app_name.ends_with(".sh") {// .sh 文件统一用 busybox 解析
+    let (app_dir, app_name, args) = if app_name.ends_with(".sh") {
+        // .sh 文件统一用 busybox 解析
         (
             ROOT_DIR,
-            "busybox", 
+            "busybox",
             [
-                vec![String::from("busybox"),
-                String::from("sh"),
-                String::from(app_dir) + &args[0]], 
-                Vec::from(&args[1..])
-            ].concat()
+                vec![
+                    String::from("busybox"),
+                    String::from("sh"),
+                    String::from(app_dir) + &args[0],
+                ],
+                Vec::from(&args[1..]),
+            ]
+            .concat(),
         )
     } else {
         (app_dir, app_name, args)

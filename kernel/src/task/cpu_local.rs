@@ -14,6 +14,7 @@ use crate::{
         global_logoff_signals, send_signal, SigActionDefault, SigActionFlags, SigInfo, SignalNo,
         SignalUserContext, SIG_IGN,
     },
+    syscall::clear_loop_checker,
 };
 use alloc::{sync::Arc, vec::Vec};
 use core::mem::size_of;
@@ -83,6 +84,8 @@ pub fn run_tasks() -> ! {
             // 标记内核态进入任务的时间
             task.time.lock().switch_into_task();
             cpu_local.current = Some(task);
+            // 清空计数器
+            clear_loop_checker();
             // 切换前要手动 drop 掉引用
             drop(cpu_local);
             // 切换到用户程序执行
@@ -254,8 +257,9 @@ fn handle_zombie_task(_cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
     // 如果这里不释放，等僵尸进程被回收时 MemorySet 被 Drop，也可以释放这些页面
 
     // <- 之前是那么考虑的，但内存压力大的情况下好像可能不够用，还是提前gc吧
-    task.vm.lock().clear_user();
-    
+    if Arc::strong_count(&task.vm) == 1 {
+        task.vm.lock().clear_user();
+    }
 }
 
 /// 处理用户程序的缺页异常
@@ -277,12 +281,20 @@ pub fn get_current_task() -> Option<Arc<TaskControlBlock>> {
 
 ///从内核态进入用户态时统计时间
 pub fn timer_kernel_to_user() {
-    get_current_task().unwrap().time.lock().timer_kernel_to_user();
+    get_current_task()
+        .unwrap()
+        .time
+        .lock()
+        .timer_kernel_to_user();
 }
 
 ///从用户态进入内核态时统计时间
 pub fn timer_user_to_kernel() {
-    get_current_task().unwrap().time.lock().timer_user_to_kernel();
+    get_current_task()
+        .unwrap()
+        .time
+        .lock()
+        .timer_user_to_kernel();
 }
 
 /// 处理当前线程的信号

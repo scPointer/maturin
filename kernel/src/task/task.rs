@@ -484,16 +484,14 @@ impl TaskControlBlock {
             //println!("has");
             return false;
         }
-        inner.trap_cx_before_signal = Some(unsafe {
-            *self.kernel_stack.get_first_context()
-        });
+        inner.trap_cx_before_signal = Some(unsafe { *self.kernel_stack.get_first_context() });
         // 默认没有 SIGINFO，如果有则需要用 save_if_set_siginfo 设置
         inner.signal_set_siginfo = false;
         true
     }
     /// 记录信号处理函数是否设置了 SIGINFO
     pub fn save_if_set_siginfo(&self, signal_set_siginfo: bool) {
-        self.inner.lock().signal_set_siginfo = signal_set_siginfo;   
+        self.inner.lock().signal_set_siginfo = signal_set_siginfo;
     }
     /// 恢复用户上下文信息，返回true。如没有已保存的上下文信息，则返回 false
     pub fn load_trap_cx_if_handling_signals(&self) -> bool {
@@ -509,7 +507,8 @@ impl TaskControlBlock {
                 // 获取可能被修改的 pc
                 let pc = (*(sp as *const SignalUserContext)).get_pc();
                 *trap_cx_now = trap_cx_old;
-                if inner.signal_set_siginfo { // 更新用户修改的 pc
+                if inner.signal_set_siginfo {
+                    // 更新用户修改的 pc
                     (*trap_cx_now).set_sepc(pc);
                     info!("sig return sp = {:x} pc = {:x}", sp, pc);
                 }

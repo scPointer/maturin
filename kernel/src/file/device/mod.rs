@@ -85,9 +85,9 @@ pub fn fs_init() {
     //mkdir(ROOT_DIR, "tmp");
     mkdir(ROOT_DIR, "dev");
     mkdir(ROOT_DIR, "lib");
-    
+
     mkdir("dev/", "shm");
-    let dso = &"tls_get_new-dtv_dso.so"; // dtv 不会在根目录下找，而是会去 lib 等目录找，所以需要链接
+    let dso = &"tls_get_new-dtv_dso.so"; // 该库要去lib等目录找，所以需要链接. 仅用于libc-test
     let libc_so = &"ld-musl-riscv64-sf.so.1";
     try_add_link(ROOT_DIR.into(), dso, "./lib/".into(), dso);
     try_add_link(
@@ -239,7 +239,10 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
     };
     //println!("dir = {}, name = {}, name_len {}", real_dir, file_name, file_name.len());
     if let Some(dir) = inner_open_dir(root, real_dir.as_str()) {
-        if flags.contains(OpenFlags::DIR) || flags.contains(OpenFlags::DSYNC) || file_name.len() == 0 {
+        if flags.contains(OpenFlags::DIR)
+            || flags.contains(OpenFlags::DSYNC)
+            || file_name.len() == 0
+        {
             // 要求打开目录
             // 用户传入 sys_open 的目录名如果是有斜线的，那么 file_path 就是空的了
             // 否则 file_path 是当前目录下的一个子目录的名字
@@ -438,6 +441,5 @@ pub fn get_dir_entry_iter<'a>(dir_name: &str) -> Option<FsDirIter<'a>> {
     let root = MEMORY_FS.root_dir();
     let dir_name = map_path_and_file(dir_name, "").unwrap().0;
     info!("get dir: dir = {}", dir_name);
-    inner_open_dir(root, dir_name.as_str()).map(|dir| {dir.iter()})
+    inner_open_dir(root, dir_name.as_str()).map(|dir| dir.iter())
 }
-

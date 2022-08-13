@@ -9,7 +9,7 @@
 use riscv::register::sstatus::{self, Sstatus, SPP};
 /// 异常/中断上下文
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct TrapContext {
     /// 普通寄存器。
     /// 异常/中断发生的的时候不一定是系统调用，也可能是时钟中断、缺页等，所以不能认为它是一种"函数调用"。

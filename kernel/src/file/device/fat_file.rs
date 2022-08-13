@@ -46,7 +46,14 @@ pub struct FatFileInnner {
 
 impl FatFile {
     /// 构造一个带权限的 FatFile
-    pub fn new(readable: bool, writable: bool, dir: String, name: String, fs_file: FsFile, flags: OpenFlags) -> Self {
+    pub fn new(
+        readable: bool,
+        writable: bool,
+        dir: String,
+        name: String,
+        fs_file: FsFile,
+        flags: OpenFlags,
+    ) -> Self {
         Self {
             readable: readable,
             writable: writable,

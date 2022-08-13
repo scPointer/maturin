@@ -1,6 +1,5 @@
 //! 系统调用编号
 
-
 numeric_enum_macro::numeric_enum! {
     #[repr(usize)]
     #[derive(Debug, PartialEq, Clone, Copy)]
@@ -9,6 +8,7 @@ numeric_enum_macro::numeric_enum! {
     pub enum SyscallNo {
         UNKNOWN = usize::MAX, // 未识别的系统调用
         GETCWD = 17,
+        EPOLL_WAIT = 22,
         DUP = 23,
         DUP3 = 24,
         FCNTL64 = 25,

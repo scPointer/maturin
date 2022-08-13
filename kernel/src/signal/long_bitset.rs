@@ -1,9 +1,9 @@
 //! 可以存超过 64bit 的扩展版 bitset
-//! 
+//!
 //! 或许它应该和 bitset 一起放到新的模块
 
-use alloc::vec::Vec;
 use super::Bitset;
+use alloc::vec::Vec;
 
 // 由 64bit 的 bitset 组成的长 bitset
 #[allow(unused)]
@@ -23,7 +23,7 @@ impl LongBitset {
                 vec.resize((len + 0x3f) & 0x3f, Bitset(0));
                 vec
             },
-            len: len
+            len: len,
         }
     }
     /// 在第 pos 位 + 1。

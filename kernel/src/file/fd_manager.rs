@@ -6,12 +6,12 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use crate::constants::{FD_LIMIT_ORIGIN, FD_LIMIT_HARD};
+use crate::constants::{FD_LIMIT_HARD, FD_LIMIT_ORIGIN};
 use crate::error::{OSError, OSResult};
 use crate::memory::FdAllocator;
 
 use super::{File, OpenFlags};
-use super::{Stderr, Stdin, Stdout};
+use super::stdio::{Stderr, Stdin, Stdout};
 
 /// 文件描述符管理，每个进程应该有一个
 /// 这个结构 Drop 时会自动释放文件的 Arc
@@ -118,7 +118,7 @@ impl FdManager {
             Ok(self.files[fd].as_ref().unwrap().clone())
         }
     }
-    
+
     /// 检查是否 vec 里所有 fd 都存在，如果存在则返回它们对应的文件，否则返回 None
     pub fn get_files_if_all_exists(&self, vec: &Vec<usize>) -> Option<Vec<Arc<dyn File>>> {
         let mut files: Vec<Arc<dyn File>> = Vec::with_capacity(vec.len());
@@ -126,12 +126,12 @@ impl FdManager {
             if let Ok(file) = self.get_file(fd) {
                 files.push(file);
             } else {
-                return None
+                return None;
             }
         }
         Some(files)
     }
-    
+
     /// 删除一个文件，相当于以 take 语义拿到一个文件的 Arc 指针。
     /// 这个函数还是会检查 fd 是否存在，如不存在，则返回的是 Err
     pub fn remove_file(&mut self, fd: usize) -> OSResult<Arc<dyn File>> {
@@ -170,7 +170,13 @@ impl FdManager {
     pub fn close_cloexec_files(&mut self) {
         // 这里希望删除文件后其他文件顺序不变，所以用枚举 fd 而不是迭代器之类的方法
         for fd in 0..self.files.len() {
-            if self.files[fd].is_some() && self.files[fd].as_ref().unwrap().get_status().contains(OpenFlags::CLOEXEC) {
+            if self.files[fd].is_some()
+                && self.files[fd]
+                    .as_ref()
+                    .unwrap()
+                    .get_status()
+                    .contains(OpenFlags::CLOEXEC)
+            {
                 self.files[fd].take();
             }
         }
