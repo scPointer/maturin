@@ -16,7 +16,8 @@ use super::{File, Kstat, OpenFlags};
 use alloc::collections::BTreeMap;
 use null::NullFile;
 use virt_dir::VirtDir;
-use virt_file::VirtFile;
+use virt_file::{VirtFile, VirtFileInner};
+pub type BufferFile = VirtFileInner;
 use zero::ZeroFile;
 
 lazy_static::lazy_static! {

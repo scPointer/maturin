@@ -32,7 +32,7 @@ pub const KERNEL_STACK_SIZE: usize = 0x80_000; // 512 KB
 /// 内核堆的大小
 pub const KERNEL_HEAP_SIZE: usize = 0xc0_0000; // 12 MB
 /// 用户栈大小
-pub const USER_STACK_SIZE: usize = 0x80_0000; // 1 MB // `lmbench_all lat_fs /var/tmp` 会默认访问到 0x3ffdfb08 
+pub const USER_STACK_SIZE: usize = 0x20_0000; // 2 MB // `lmbench_all lat_fs /var/tmp` 会默认访问到 0x3ffdfb08 
 /// 初始用户栈大小，用于存放 argc/argv/envs/auxv
 pub const USER_INIT_STACK_SIZE: usize = 0x4000; // 16 KB,
 /// 用户栈底位置。同时也是最开始的用户堆顶位置
@@ -52,13 +52,12 @@ pub const ORIGIN_USER_PROC_NAME: &str = "start";
 
 /// 最小的 tid(进程号) 是 0，最大的 pid 是 TID_LIMIT-1
 pub const TID_LIMIT: usize = 4096;
-/// 预设的文件描述符数量限制。
-/// 一般来说应该是 64，但由于 lmbench_all lat_select 要测到 100 个，而且它自己不会用 getrlimit 调，所以需要手动开大
-pub const FD_LIMIT_ORIGIN: usize = 128;
+/// 预设的文件描述符数量限制
+pub const FD_LIMIT_ORIGIN: usize = 64;
 /// 最大允许的文件描述符数量
 pub const FD_LIMIT_HARD: usize = 256;
 /// sys_pipe创建的管道的大小，单位为字节
-pub const PIPE_SIZE: usize = 0x1_000;
+pub const PIPE_SIZE_LIMIT: usize = 0x40_000; // 64 KB
 
 /// 一段左闭右开的地址区间，.0 为左端点， .1 为右端点，
 pub struct AddrArea(pub usize, pub usize);
@@ -107,6 +106,7 @@ pub const SIGSET_SIZE_IN_BIT: usize = SIGSET_SIZE_IN_BYTE * 8; // =64
 /// SIGINFO 要求把一些信息存在用户栈上，从用户栈开辟一块空间来保存它们
 pub const USER_STACK_RED_ZONE: usize = 0x200; // 512 B
 /// 一个在 Sv39 页表里不合法的地址。
+/// 
 /// 如果 sigaction 中没有设置 SA_RESTORER，那么需要内核来代替libc库实现"信号执行完成后通过sigreturn返回"的效果
 /// 但是mmap一块地址把"手动调用ecall执行 sigreturn"写进去又显得不够优雅，因为用户地址空间会多出来一块它并不知道的trampoline
 /// 所以现在通过把 ra 写成一个特定地址的方式，让信号处理函数执行完之后，到这里触发 Page Fault，再由内核进行 sigreturn

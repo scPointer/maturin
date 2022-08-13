@@ -6,7 +6,7 @@ use super::{
 };
 use crate::signal::{send_signal, Bitset, SigAction, SignalNo};
 use crate::{
-    constants::{MMAP_LEN_LIMIT, SIGSET_SIZE_IN_BYTE, USER_STACK_SIZE, USER_VIRT_ADDR_LIMIT},
+    constants::{MMAP_LEN_LIMIT, SIGSET_SIZE_IN_BYTE, USER_STACK_SIZE, USER_VIRT_ADDR_LIMIT, FD_LIMIT_HARD},
     file::SeekFrom,
     task::{
         exec_new_task, exit_current_task, get_current_task, push_task_to_scheduler, signal_return,
@@ -91,6 +91,8 @@ pub fn sys_clone(flags: usize, user_stack: usize, ptid: usize, tls: usize, ctid:
     let new_task_tid = new_task.get_tid_num();
     // 将新任务加入调度器
     push_task_to_scheduler(new_task);
+    //println!("new task {new_task_tid}");
+    //println!("create time {}", crate::timer::get_time());
     Ok(new_task_tid)
     /*
     if signal == SignalNo::SIGCHLD { // 子进程
@@ -377,7 +379,7 @@ pub fn sys_kill(pid: isize, signal_id: isize) -> SysResult {
 /// 这需要多加一个 tgid 参数，以防止错误的线程( tid 已被删除后重用)发送信号。
 /// 但 libc 的测例中仍会使用这个 tkill
 pub fn sys_tkill(tid: isize, signal_id: isize) -> SysResult {
-    println!("tkill tid {}, signal id {}", tid, signal_id);
+    //info!("tkill tid {}, signal id {}", tid, signal_id);
     if tid > 0 {
         send_signal(tid as usize, signal_id as usize);
         Ok(0)
@@ -548,7 +550,7 @@ pub fn sys_prlimt64(
                     unsafe {
                         *old_limit = RLimit {
                             rlim_cur: limit as u64,
-                            rlim_max: limit as u64,
+                            rlim_max: FD_LIMIT_HARD as u64,
                         };
                     }
                 }

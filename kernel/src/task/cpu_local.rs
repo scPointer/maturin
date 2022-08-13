@@ -242,6 +242,8 @@ fn handle_zombie_task(_cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
     if IS_TEST_ENV && task.pid == task.tid.0 {
         show_testcase_result(tcb_inner.exit_code);
     }
+    //println!("tid {} is dead", task.tid.0);
+    //println!("dead time {}", crate::timer::get_time());
     // 退出时向父进程发送信号，其中选项可被 sys_clone 控制
     if task.send_sigchld_when_exit || task.pid == task.tid.0 {
         send_signal(tcb_inner.ppid, SignalNo::SIGCHLD as usize);
@@ -348,7 +350,10 @@ pub fn handle_signals() {
                         drop(sig_inner);
                         exit_current_task(0);
                     }
-                    SigActionDefault::Ignore => {}
+                    SigActionDefault::Ignore => {
+                        // 忽略信号时，要将已保存的上下文删除
+                        task.load_trap_cx_if_handling_signals();
+                    }
                 }
             }
         } else if signal == SignalNo::SIGSEGV || signal == SignalNo::SIGBUS {

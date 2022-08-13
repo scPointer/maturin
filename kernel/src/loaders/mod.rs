@@ -273,7 +273,8 @@ impl<'a> ElfLoader<'a> {
             args,
             envs: {
                 vec![
-                    //"ENOUGH=50000".into(),
+                    "ENOUGH=50000".into(),
+                    //"LMBENCH_SCHED=DEFAULT".into(),
                     //"TMPDIR=/tmp".into(),
                 ]
             },

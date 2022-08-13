@@ -84,9 +84,10 @@ pub fn sys_getrusage(who: i32, utime:*mut TimeVal) -> SysResult {
             // todo: 目前对于所有的 who 都只统计了当前任务，其实应该细化
             unsafe { task_time.output(&mut *utime, &mut *stime) };
             //unsafe {*utime = get_time_us().into(); *stime = get_time_us().into();}
+            //unsafe { if task.get_tid_num() == 4  {*utime = (get_time_us() * 10).into();} }
             //println!("utime {}",  get_time_us());
             //let (utime, stime) = task_time.output_raw();
-            //println!("getrusage: utime {utime}us, stime {stime}us");
+            //println!("tid {} who {who} getrusage: utime {utime}us, stime {stime}us", task.get_tid_num());
             Ok(0)
         }
         _ => {

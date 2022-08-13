@@ -26,17 +26,20 @@ pub struct VirtFileInner {
 impl VirtFile {
     pub fn new(flags: OpenFlags) -> Self {
         Self {
-            inner: Mutex::new(VirtFileInner {
-                frames: Vec::new(),
-                size: 0,
-                pos: 0,
-                _flags: flags,
-            })
+            inner: Mutex::new(VirtFileInner::new(flags))
         }
     }
 }
 
 impl VirtFileInner {
+    pub fn new(flags: OpenFlags) -> Self {
+        Self {
+            frames: Vec::new(),
+            size: 0,
+            pos: 0,
+            _flags: flags,
+        }
+    }
     /// 内部对读文件的实现
     pub fn read_inner(&mut self, buf: &mut [u8]) -> Option<usize> {
         // 读到的实际长度
@@ -51,6 +54,7 @@ impl VirtFileInner {
         // 如果一个页内可以解决，就简化处理
         if off + read_len <= PAGE_SIZE {
             buf[..read_len].copy_from_slice(&self.frames[page_now].as_slice()[off..off + read_len]);
+            self.pos += read_len;
             return Some(read_len);
         }
         // 否则，需要每页分别处理
@@ -95,6 +99,9 @@ impl VirtFileInner {
         // 如果一个页内可以解决，就简化处理
         if off + buf.len() <= PAGE_SIZE {
             self.frames[page_now].as_slice_mut()[off..off+buf.len()].copy_from_slice(buf);
+            // 更新文件指针和文件大小
+            self.pos += buf.len();
+            self.size = self.size.max(self.pos);
             return Some(buf.len());
         }
         // 否则先读第一页
@@ -144,6 +151,10 @@ impl VirtFileInner {
             }
         };
         Some(self.pos)
+    }
+    /// 设置位置。其实和 seek 相同，但是更简化，且不做检查
+    pub unsafe fn set_pos(&mut self, pos: usize) {
+        self.pos = pos;
     }
     /// 清空文件
     fn clear(&mut self) {

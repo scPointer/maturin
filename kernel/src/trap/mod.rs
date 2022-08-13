@@ -87,12 +87,14 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
 #[no_mangle]
 /// 处理来自用户程序的异常/中断
 pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
-    /*
-    let mut sp: usize;
-    unsafe { core::arch::asm!("mv {0}, sp", out(reg) sp) };
-    println!("in sp {:x}", sp);
-    println!("user sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits());
-    */
+    
+    //if get_current_task().unwrap().get_tid_num() == 2 {
+    //let mut fs1: f64;
+    //unsafe { core::arch::asm!("fmv.d.x {0}, fs1", out(reg) fs1) };
+    //println!("in fs1 {}", fs1);
+    //unsafe { core::arch::asm!("fsd fs1, 0(sp)") };
+    //println!("user sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits());
+    //}
     let scause = scause::read(); // get trap cause
     let stval = stval::read(); // get extra value
     timer_user_to_kernel();

@@ -124,6 +124,7 @@ pub use kstat::normal_file_mode;
 pub use kstat::{Kstat, StMode};
 pub use socket::Socket;
 pub use vfs::{
+    BufferFile,
     get_virt_file_if_possible,
     get_virt_dir_if_possible,
     check_virt_dir_exists,
