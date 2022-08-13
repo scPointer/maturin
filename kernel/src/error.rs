@@ -58,6 +58,7 @@ pub enum OSError {
     Loader_AppNotFound,
     Loader_CanNotParseInterpreter,
     Loader_PhdrNotFound,
+    Loader_Skipped,
 
     Task_NoTrapHandler,
     // 申请 physical memory 中的物理页面失败

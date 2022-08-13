@@ -96,6 +96,9 @@ pub fn fs_init() {
         "./lib/".into(),
         libc_so
     );
+    mkdir(ROOT_DIR, "sbin");
+    try_add_link(ROOT_DIR.into(), "lmbench_all".into(), "./sbin/".into(), "lmbench_all".into()); // busybox会去这里找
+    try_add_link(ROOT_DIR.into(), "busybox".into(), "./sbin/".into(), "busybox".into());
     // 一些系统信息文件。todo: 更正确的方式应该是放到 vfs 里而不是直接塞 fat32 这边
     mkdir(ROOT_DIR, "proc"); // 进程状态信息
     let _meminfo = open_file("./proc/", "meminfo", OpenFlags::CREATE).unwrap(); // 内存占用信息

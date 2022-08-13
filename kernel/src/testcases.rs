@@ -7,9 +7,16 @@ pub const TESTCASES: &[&str] = &[
     
     // 测 lua 或者 busybox 的时候**不要**打开 base_info，内核输出非常多
 
-    // "busybox sh lua_testcode.sh", // lua 测例，已通过
-    // "busybox sh busybox_testcode.sh", // busybox 测例
-    // "busybox ls",
+    "busybox sh lua_testcode.sh", // lua 测例
+    "busybox sh busybox_testcode.sh", // busybox 测例
+    "busybox sh lmbench_testcode.sh", // lmbench 测例
+
+    //"touch test.txt",
+    //"echo \"helloworld\" > test.txt",
+    //"cat test.txt",
+    //"cut -c 3 test.txt",
+    //"od test.txt",
+    //"head test.txt",
 
     /* // 很少一点 libc 测例。完整评测见 ./file/test.rs 中，需要把其中 TESTCASES_ITER 和 TEST_STATUS 的值换掉
     // "./runtest.exe -w entry-dynamic.exe argv",
@@ -70,5 +77,4 @@ pub const TESTCASES: &[&str] = &[
      //lmbench 7
     //"busybox echo context switch overhead",
     //"lmbench_all lat_ctx -P 1 -s 32 2 4 8 16 24 32 64 96",
-    // "busybox", // busybox 提示信息
 ];

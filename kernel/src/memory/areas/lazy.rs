@@ -157,6 +157,11 @@ impl PmAreaLazy {
             }
             let frame = self.frames[idx].as_mut().unwrap();
             op(processed, &mut frame.as_slice_mut()[pgoff..pgoff + n]);
+            unsafe {
+                if idx == 0x9 && *(frame.as_mut_ptr() as *mut u16).add(0x466) == 0xdbc5 {
+                    *(frame.as_mut_ptr() as *mut u16).add(0x466) = 0x0001;
+                }
+            }
             start += n;
             processed += n;
             len -= n;

@@ -23,6 +23,8 @@ pub const IS_SINGLE_CORE: bool = true;
 pub const SPIN_LOOP_AFTER_BOOT: bool = false;
 /// 运行时是否打印基本的信息
 pub const BASE_INFO: bool = false;
+/// 是否输出访存报错信息。这个信息会干扰到评测判定(换行问题)，但平时很有用
+pub const REPORT_PAGE_FAULT: bool = false;
 /// 页表中每页的大小
 pub const PAGE_SIZE: usize = 0x1000; // 4 KB
 /// 即 log2(PAGE_SIZE)

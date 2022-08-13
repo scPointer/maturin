@@ -250,11 +250,12 @@ fn handle_zombie_task(_cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
     }
     // 通知全局表将 signals 删除
     global_logoff_signals(task.tid.0);
-    /*
     // 释放用户段占用的物理页面
     // 如果这里不释放，等僵尸进程被回收时 MemorySet 被 Drop，也可以释放这些页面
-    tcb_inner.vm.clear_user();
-    */
+
+    // <- 之前是那么考虑的，但内存压力大的情况下好像可能不够用，还是提前gc吧
+    task.vm.lock().clear_user();
+    
 }
 
 /// 处理用户程序的缺页异常

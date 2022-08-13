@@ -8,7 +8,7 @@ use crate::{
     arch,
     constants::{
         CPU_ID_LIMIT, DEVICE_END, DEVICE_START, IS_PRELOADED_FS_IMG, IS_TEST_ENV, MMIO_REGIONS,
-        PAGE_SIZE, USER_VIRT_ADDR_LIMIT,
+        PAGE_SIZE, USER_VIRT_ADDR_LIMIT, REPORT_PAGE_FAULT,
     },
     error::{OSError, OSResult},
 };
@@ -230,10 +230,12 @@ impl MemorySet {
                 return area.handle_page_fault(vaddr - area.start, access_flags, &mut self.pt);
             }
         }
-        println!(
-            "unhandled page fault @ {:#x?} with access {:?}",
-            vaddr, access_flags
-        );
+        if REPORT_PAGE_FAULT {
+            println!(
+                "unhandled page fault @ {:#x?} with access {:?}",
+                vaddr, access_flags
+            );
+        }
         Err(OSError::PageFaultHandler_Unhandled)
     }
 

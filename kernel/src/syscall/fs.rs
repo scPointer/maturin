@@ -127,14 +127,10 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> SysResult {
 /// 从同一个 fd 中读取一组字符串。
 /// 目前这个 syscall 借用 sys_read 来实现
 pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> SysResult {
-    info!("sys_readv fd {}", fd);
+    //info!("sys_readv fd {}", fd);
     let mut read_len = 0;
     for i in 0..iov_cnt {
         let io_vec: &IoVec = unsafe { &*iov.add(i) };
-        info!(
-            "sys_readv: io_vec.base {:x}, len {:x}",
-            io_vec.base as usize, io_vec.len
-        );
         match sys_read(fd, io_vec.base, io_vec.len) {
             Ok(len) => read_len += len,
             Err(_) => { break; },
@@ -146,14 +142,10 @@ pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> SysResult {
 /// 写入一组字符串到同一个 fd 中。
 /// 目前这个 syscall 借用 sys_write 来实现
 pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> SysResult {
-    info!("sys_writev fd {}", fd);
+    //info!("sys_writev fd {}", fd);
     let mut written_len = 0;
     for i in 0..iov_cnt {
         let io_vec: &IoVec = unsafe { &*iov.add(i) };
-        info!(
-            "sys_writev: io_vec.base {:x}, len {:x}",
-            io_vec.base as usize, io_vec.len
-        );
         if io_vec.base as usize == 0 { // busybox 可能会给stdout两个io_vec，第二个是空地址
             continue;
         }
@@ -473,10 +465,10 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, _user_mode: u32) -> Sy
                 if let Ok(fd) = task_fd_manager.push(node) {
                     info!("return fd {}", fd);
                     return Ok(fd);
-                } else if open_flags.contains(OpenFlags::EXCL) {
-                    // 要求创建文件却打开失败，说明是文件已存在
-                    return Err(ErrorNo::EEXIST);
                 }
+            } else if open_flags.contains(OpenFlags::EXCL) {
+                // 要求创建文件却打开失败，说明是文件已存在
+                return Err(ErrorNo::EEXIST);
             } else if check_dir_exists(&[parent_dir.as_str(), file_path.as_str()].concat()) {
                 return Err(ErrorNo::EISDIR);
             }

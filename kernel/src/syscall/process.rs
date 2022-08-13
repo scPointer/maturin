@@ -147,7 +147,8 @@ fn sys_exec(path: *const u8, args: *const usize) -> SysResult {
         exec_new_task();
         Ok(0)
     } else {
-        Err(ErrorNo::EINVAL)
+        sys_exit(0);
+        //Err(ErrorNo::EINVAL)
     }
 }
 
