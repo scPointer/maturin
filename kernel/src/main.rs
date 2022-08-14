@@ -59,7 +59,8 @@ core::arch::global_asm!(include_str!("fs.S"));
 #[no_mangle]
 /// 主核启动OS
 pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
-    memory::clear_bss(); // 清空 bss 段
+    //memory::clear_bss(); // 清空 bss 段
+    arch::clear_bss();
     console::init_logger(crate::constants::BASE_INFO).unwrap();
     memory::allocator_init(); // 初始化堆分配器和页帧分配器
     memory::enable_kernel_page_table(); // 构造并切换到内核态页表与 MemorySet

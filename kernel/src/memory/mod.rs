@@ -37,6 +37,7 @@ pub use vmm::{
 
 pub use user::{UserPtr, UserPtrUnchecked};
 
+#[allow(dead_code)]
 pub fn clear_bss() {
     extern "C" {
         fn sbss();
