@@ -5,10 +5,10 @@
 use super::{ErrorNo, RUSAGE_CHILDREN, RUSAGE_SELF, RUSAGE_THREAD};
 use crate::task::ITimerVal;
 use crate::task::{get_current_task, suspend_current_task};
-use crate::timer::{get_time_f64, get_time_us, USEC_PER_INTERRUPT};
+use crate::timer::{get_time_f64, get_time_us, get_time_sec, USEC_PER_INTERRUPT};
 use crate::timer::{TimeSpec, TimeVal};
 
-use super::{SysResult, TMS};
+use super::{SysResult, SysInfo, TMS};
 
 /// 获取系统时间并存放在参数提供的数组里
 pub fn sys_get_time_of_day(time_val: *mut TimeVal) -> SysResult {
@@ -126,4 +126,18 @@ pub fn sys_settimer(
     } else {
         Err(ErrorNo::EFAULT) // 设置不成功，说明参数 which 错误
     }
+}
+
+/// 获取系统的启动时间和内存信息。
+/// 目前只支持启动时间
+pub fn sys_sysinfo(info: *mut SysInfo) -> SysResult {
+    let task = get_current_task().unwrap();
+    let mut task_vm = task.vm.lock();
+    if task_vm.manually_alloc_type(info).is_err() {
+        return Err(ErrorNo::EFAULT);
+    }
+    unsafe {
+        (*info).uptime = get_time_sec() as isize;
+    }
+    Ok(0)
 }

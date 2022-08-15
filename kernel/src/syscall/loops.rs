@@ -47,7 +47,7 @@ pub fn check_dead_loop(syscall_id: usize) {
     };
     // 把 kill_proc 单独拆出来是为了不锁住 LoopCounter
     if kill_proc {
-        error!("user proc cause an endless loop of syscall. kernel killed by it.");
+        error!("user proc caused an endless loop of syscall. kernel killed it.");
         sys_exit(LOOP_EXIT_CODE)
     }
 }

@@ -306,3 +306,35 @@ pub const RUSAGE_SELF: i32 = 0;
 pub const RUSAGE_CHILDREN: i32 = -1;
 /// 获取当前线程的资源统计
 pub const RUSAGE_THREAD: i32 = 1;
+
+/// sys_sysinfo 用到的类型，详见 `https://man7.org/linux/man-pages/man2/sysinfo.2.html`
+#[repr(C)]
+#[derive(Debug, Default)]
+pub struct SysInfo {
+    /// 启动时间(以秒计)
+    uptime: isize,
+    /// 1 / 5 / 15 分钟平均负载
+    loads: [usize; 3],
+    /// 内存总量，单位为 mem_unit Byte(见下)
+    totalram: usize,
+    /// 当前可用内存，单位为 mem_unit Byte(见下)
+    freeram: usize,
+    /// 共享内存大小，单位为 mem_unit Byte(见下)
+    sharedram: usize,
+    /// 用于缓存的内存大小，单位为 mem_unit Byte(见下)
+    bufferram: usize,
+    /// swap空间大小，即主存上用于替换内存中非活跃部分的空间大小，单位为 mem_unit Byte(见下)
+    totalswap: usize,
+    /// 可用的swap空间大小，单位为 mem_unit Byte(见下)
+    freeswap: usize,
+    /// 当前进程数，单位为 mem_unit Byte(见下)
+    procs: u16,
+    /// 高地址段的内存大小，单位为 mem_unit Byte(见下)
+    totalhigh: usize,
+    /// 可用的高地址段的内存大小，单位为 mem_unit Byte(见下)
+    freehigh: usize,
+    /// 指定 sys_info 的结构中用到的内存值的单位。
+    /// 如 mem_unit = 1024, totalram = 100, 则指示总内存为 100K
+    mem_unit: u32,
+}
+

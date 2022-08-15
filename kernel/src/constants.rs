@@ -22,7 +22,7 @@ pub const IS_SINGLE_CORE: bool = true;
 /// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序
 pub const SPIN_LOOP_AFTER_BOOT: bool = false;
 /// 运行时是否打印基本的信息
-pub const BASE_INFO: bool = false;
+pub const BASE_INFO: bool = true;
 /// 是否输出访存报错信息。这个信息会干扰到评测判定(换行问题)，但平时很有用
 pub const REPORT_PAGE_FAULT: bool = false;
 /// 页表中每页的大小

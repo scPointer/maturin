@@ -34,6 +34,10 @@ pub fn get_time_ms() -> usize {
 }
 */
 
+pub fn get_time_sec() -> usize {
+    time::read() / CLOCK_FREQ
+}
+
 pub fn get_time_us() -> usize {
     time::read() / MACHINE_TICKS_PER_USEC
 }

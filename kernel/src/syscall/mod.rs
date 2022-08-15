@@ -55,6 +55,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     debug!("Syscall {:?}, {:x?}", syscall_id, args);
 
     // lmbench 会大量调用这两个 syscall 来统计时间，因此需要跳过
+    /*
     if syscall_id != SyscallNo::GETRUSAGE
         && syscall_id != SyscallNo::CLOCK_GET_TIME
     {
@@ -63,7 +64,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             syscall_id, syscall_id as usize
         );
     }
-
+    */
     let result = match syscall_id {
         SyscallNo::GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
         SyscallNo::DUP => sys_dup(args[0]),
@@ -173,6 +174,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::GETGID => sys_getgid(),
         SyscallNo::GETEGID => sys_getegid(),
         SyscallNo::GETTID => sys_gettid(),
+        SyscallNo::SYSINFO => sys_sysinfo(args[0] as *mut SysInfo),
         SyscallNo::SOCKET => sys_socket(args[0], args[1], args[2]),
         SyscallNo::SENDTO => sys_sendto(
             args[0],
