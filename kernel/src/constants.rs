@@ -21,8 +21,10 @@ pub const CLOCK_FREQ: usize = if PLATFORM_SIFIVE { 100_0000 } else { 1250_0000 }
 pub const IS_SINGLE_CORE: bool = true;
 /// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序
 pub const SPIN_LOOP_AFTER_BOOT: bool = false;
-/// 运行时是否打印基本的信息
-pub const BASE_INFO: bool = true;
+/// 运行时有多少内核输出
+pub const LOG_LEVEL: crate::console::LogLevel = crate::console::LogLevel::Warn;
+//pub const LOG_LEVEL: crate::console::LogLevel = crate::console::LogLevel::Off; // 评测时使用这个等级
+
 /// 是否输出访存报错信息。这个信息会干扰到评测判定(换行问题)，但平时很有用
 pub const REPORT_PAGE_FAULT: bool = false;
 /// 页表中每页的大小

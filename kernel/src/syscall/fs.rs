@@ -800,7 +800,7 @@ pub fn sys_ioctl(fd: usize, request: usize, argp: *mut usize) -> SysResult {
         "ioctl fd = {} request = {:x} argp {:x}",
         fd, request, argp as usize
     );
-    warn!("ioctl unimplemented now, error checks only");
+    info!("ioctl unimplemented now, error checks only");
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
     let fd_manager = task.fd_manager.lock();

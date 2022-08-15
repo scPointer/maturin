@@ -1,31 +1,16 @@
 use core::fmt::Arguments;
 use log::*;
 
+pub type LogLevel = log::LevelFilter;
+
 #[inline]
 pub fn print(args: Arguments) {
     crate::arch::stdout::stdout_puts(args);
 }
 
 #[inline]
-pub fn info(args: Arguments) {
-    if crate::constants::BASE_INFO {
-        crate::arch::stdout::stdout_puts(args);
-    }
-}
-
-#[inline]
 pub fn error_print(args: Arguments) {
     crate::arch::stdout::stderr_puts(args);
-}
-
-/// 仅在开启信息输出时，打印格式字串
-#[macro_export]
-macro_rules! base_info {
-    () => ($crate::console::info(core::format_args!("\n")););
-    ($($arg:tt)*) => {
-        $crate::console::info(core::format_args!($($arg)*));
-        $crate::base_info!();
-    }
 }
 
 /// 打印格式字串，无换行
@@ -66,14 +51,10 @@ macro_rules! eprintln {
 
 static LOGGER: SimpleLogger = SimpleLogger;
 
-pub fn init_logger(on: bool) -> Result<(), SetLoggerError> {
-    let level = if on {
-        LevelFilter::Debug
-    } else {
-        LevelFilter::Warn
-    };
+pub fn init_logger(level: LogLevel) -> Result<(), SetLoggerError> {
     set_logger(&LOGGER).map(|()| set_max_level(level))
 }
+
 struct SimpleLogger;
 impl Log for SimpleLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
