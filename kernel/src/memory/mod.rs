@@ -37,22 +37,6 @@ pub use vmm::{
 
 pub use user::{UserPtr, UserPtrUnchecked};
 
-#[allow(dead_code)]
-pub fn clear_bss() {
-    extern "C" {
-        fn sbss();
-        fn ebss();
-    }
-    let start = sbss as usize;
-    let end = ebss as usize;
-    //println!("clear bss {:x} {:x}", start, end);
-    let step = core::mem::size_of::<usize>();
-    for i in (start..end).step_by(step) {
-        unsafe { (i as *mut usize).write(0) };
-    }
-    //println!("clear bss end");
-}
-
 /// 获取从kernel_end的下一页起，至物理内存最后一页的物理页号
 pub fn get_phys_memory_regions() -> Vec<Range<usize>> {
     extern "C" {
