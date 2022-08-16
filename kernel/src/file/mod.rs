@@ -1,5 +1,6 @@
 //! 文件类抽象，包含文件系统、stdin/stdout、管道等
 
+mod backend;
 mod device;
 mod fd_manager;
 mod fs_stat;
@@ -22,6 +23,26 @@ pub trait File: Send + Sync {
     /// 写 buf 中的内容到文件中，返回写入的字节数。
     /// 如文件不可写，返回 None。(相对应地，如果可写但无法继续写入内容，返回 Some(0))
     fn write(&self, buf: &[u8]) -> Option<usize>;
+    /// 从某个位置读文件内容到 buf 中，返回读到的字节数。如果文件不可读，返回 None。
+    /// 
+    /// **需要支持 seek，但不改变指针位置；需要保证文件满足对同一个位置反复读/写是有效的，也即对于pipe、流等不适用**
+    fn read_from_offset(&self, pos: usize, buf: &mut [u8]) -> Option<usize> {
+        let old_pos = self.seek(SeekFrom::Current(0))?;
+        let _ = self.seek(SeekFrom::Start(pos as u64))?;
+        let read_len = self.read(buf);
+        let _ = self.seek(SeekFrom::Current(old_pos as i64)).unwrap(); // 不管有没有读取，都要返回原来的位置
+        read_len
+    }
+    /// 将 buf 写入文件中的某个位置，返回写入的字节数。如果文件不可写，返回 None。
+    /// 
+    /// **需要支持 seek，但不改变指针位置；需要保证文件满足对同一个位置反复读/写是有效的，也即对于pipe、流等不适用**
+    fn write_to_offset(&self, pos: usize, buf: &[u8]) -> Option<usize> {
+        let old_pos = self.seek(SeekFrom::Current(0))?;
+        let _ = self.seek(SeekFrom::Start(pos as u64))?;
+        let write_len = self.write(buf);
+        let _ = self.seek(SeekFrom::Current(old_pos as i64)).unwrap(); // 不管有没有写入，都要返回原来的位置
+        write_len
+    }
     /// 已准备好读。对于 pipe 来说，这意味着读端的buffer内有值
     fn ready_to_read(&self) -> bool {
         true
@@ -115,6 +136,8 @@ pub use device::{
     try_remove_link,
     umount_fat_fs,
 };
+
+pub use backend::{BackEndFile, SyncPolicy};
 pub use device::{FileDisc, OpenFlags};
 pub use fd_manager::FdManager;
 pub use fs_stat::FsStat;

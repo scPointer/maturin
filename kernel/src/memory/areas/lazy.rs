@@ -9,6 +9,7 @@ use lock::Mutex;
 
 use super::{PmArea, VmArea};
 use crate::error::{OSError, OSResult};
+use crate::file::{File, BackEndFile};
 use crate::memory::{
     addr::{self, addr_to_page_id, align_down},
     Frame, PTEFlags, PhysAddr, VirtAddr, PAGE_SIZE, USER_VIRT_ADDR_LIMIT,
@@ -17,6 +18,7 @@ use crate::memory::{
 /// lazy 分配的物理地址段。当 page fault 发生时会由 VmArea 负责调用这段 PmAreaLazy 进行实际分配
 pub struct PmAreaLazy {
     frames: Vec<Option<Frame>>,
+    backend: Option<BackEndFile>,
 }
 
 impl PmArea for PmAreaLazy {
@@ -24,10 +26,23 @@ impl PmArea for PmAreaLazy {
         self.frames.len() * PAGE_SIZE
     }
 
+    fn clone_as_fork(&self) -> OSResult<Arc<Mutex<dyn PmArea>>> {
+        let new_backend = self.backend.as_ref().map(|b| b.clone_as_fork());
+        Ok(Arc::new(Mutex::new(Self::new(self.frames.len(), new_backend)?)))
+    }
+
     fn get_frame(&mut self, idx: usize, need_alloc: bool) -> OSResult<Option<PhysAddr>> {
         if need_alloc && self.frames[idx].is_none() {
             if let Some(mut frame) = Frame::new() {
-                frame.zero();
+                if let Some(backend) = &self.backend {
+                    // 无法读取则直接置零
+                    if backend.read_from_offset(idx * PAGE_SIZE, frame.as_slice_mut()).is_none() {
+                        warn!("PmAreaLazy: cannot read from backend file");
+                        frame.zero();
+                    }
+                } else {
+                    frame.zero();
+                }
                 self.frames[idx] = Some(frame);
             } else {
                 return Err(OSError::Memory_RunOutOfMemory);
@@ -37,19 +52,21 @@ impl PmArea for PmAreaLazy {
     }
 
     fn release_frame(&mut self, idx: usize) -> OSResult {
-        self.frames[idx]
-            .take()
-            .ok_or(OSError::PmAreaLazy_ReleaseNotAllocatedPage)?;
+        let frame = self.frames[idx].take().ok_or(OSError::PmAreaLazy_ReleaseNotAllocatedPage)?;
+        if let Some(backend) = &self.backend {
+            // 无法写回也无所谓，当前区域仍可使用
+            backend.write_to_offset(idx * PAGE_SIZE, frame.as_slice()).unwrap_or(0);
+        }
         Ok(())
     }
-
+    /// 目前读写没有处理后端
     fn read(&mut self, offset: usize, dst: &mut [u8]) -> OSResult<usize> {
         //info!("pma read");
         self.for_each_frame(offset, dst.len(), |processed: usize, frame: &mut [u8]| {
             dst[processed..processed + frame.len()].copy_from_slice(frame);
         })
     }
-
+    /// 目前读写没有处理
     fn write(&mut self, offset: usize, src: &[u8]) -> OSResult<usize> {
         //info!("pma write");
         self.for_each_frame(offset, src.len(), |processed: usize, frame: &mut [u8]| {
@@ -61,6 +78,9 @@ impl PmArea for PmAreaLazy {
         if new_start < self.size() {
             // 被删除的页帧会在 drop 时自动释放
             self.frames.drain(..addr_to_page_id(new_start));
+            if let Some(backend) = &mut self.backend {
+                backend.modify_offset(new_start);
+            }
             Ok(())
         } else {
             Err(OSError::PmArea_ShrinkFailed)
@@ -78,12 +98,13 @@ impl PmArea for PmAreaLazy {
     }
 
     fn split(&mut self, left_end: usize, right_start: usize) -> OSResult<Arc<Mutex<dyn PmArea>>> {
-        if left_end < right_start && right_start < self.size() {
+        if left_end <= right_start && right_start < self.size() {
             let new_frames = self.frames.drain(addr_to_page_id(right_start)..).collect();
             // 被删除的页帧会在 drop 时自动释放
             self.frames.drain(addr_to_page_id(left_end)..);
             Ok(Arc::new(Mutex::new(PmAreaLazy::new_from_frames(
                 new_frames,
+                self.backend.as_ref().map(|file| file.split(right_start)),
             ))))
         } else {
             Err(OSError::PmArea_SplitFailed)
@@ -93,32 +114,32 @@ impl PmArea for PmAreaLazy {
 
 impl PmAreaLazy {
     /// 生成新的pma，给定空间大小但不立即分配物理页
-    pub fn new(page_count: usize) -> OSResult<Self> {
+    pub fn new(page_count: usize, backend: Option<BackEndFile>) -> OSResult<Self> {
         if page_count == 0 {
-            println!(
-                "page_count cannot be 0 in PmAreaLazy::new(): {:#x?}",
-                page_count
-            );
+            error!("page_count is 0 in PmAreaLazy");
             return Err(OSError::PmArea_InvalidRange);
         }
         if page_count > addr::page_count(USER_VIRT_ADDR_LIMIT) {
-            println!(
-                "page_count is too large in PmAreaLazy::new(): {:#x?}",
-                page_count
-            );
+            error!("page_count {:x} is too large in PmAreaLazy: ", page_count);
             return Err(OSError::Memory_RunOutOfMemory);
         }
         let mut frames = Vec::with_capacity(page_count);
         for _ in 0..page_count {
             frames.push(None);
         }
-        Ok(Self { frames })
+        Ok(Self {
+            frames: frames,
+            backend: backend,
+        })
     }
     /// 用给定页帧生成pma
-    pub fn new_from_frames(frames: Vec<Option<Frame>>) -> Self {
-        Self { frames: frames }
+    pub fn new_from_frames(frames: Vec<Option<Frame>>, backend: Option<BackEndFile>) -> Self {
+        Self {
+            frames: frames,
+            backend: backend,
+        }
     }
-
+    /// 对整体区间读写
     fn for_each_frame(
         &mut self,
         offset: usize,
@@ -189,7 +210,7 @@ impl VmArea {
             start_vaddr,
             start_vaddr + size,
             flags,
-            Arc::new(Mutex::new(PmAreaLazy::new(size)?)),
+            Arc::new(Mutex::new(PmAreaLazy::new(size, None)?)),
             name,
         )
     }

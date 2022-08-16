@@ -203,6 +203,22 @@ impl PageTable {
             Err(OSError::PageTable_FrameAllocFailed)
         }
     }
+    /// 修改一个页表项的权限
+    #[allow(unused)]
+    pub fn set_flags(&mut self, vaddr: VirtAddr, flags: PTEFlags) -> OSResult {
+        if let Some(pte) = self.find_pte_create(vaddr) {
+            // 有效时才写入
+            if pte.is_valid() {
+                // 因为 U740 板子不支持处理器设置 A/D，所以需手动设置
+                pte.set_flags(flags | PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY);
+                Ok(())
+            } else {
+                Err(OSError::PageTable_PageNotMapped)
+            }
+        } else {
+            Err(OSError::PageTable_FrameAllocFailed)
+        }
+    }
     /// 取消映射
     #[allow(unused)]
     pub fn unmap(&mut self, vaddr: VirtAddr) -> OSResult {

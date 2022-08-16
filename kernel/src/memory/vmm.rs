@@ -2,10 +2,12 @@
 
 use super::{
     addr_to_page_id, align_down, align_up, cross_page, get_phys_memory_regions, page_count,
-    page_offset, page_id_to_addr, virt_to_phys, DiffSet, PTEFlags, PageTable, PmArea, PmAreaLazy, VirtAddr, VmArea,
+    page_id_to_addr, virt_to_phys,
+    DiffSet, CutSet, PTEFlags, PageTable, PmAreaLazy, VirtAddr, VmArea,
 };
 use crate::{
     arch,
+    file::BackEndFile,
     constants::{
         CPU_ID_LIMIT, DEVICE_END, DEVICE_START, IS_PRELOADED_FS_IMG, IS_TEST_ENV, MMIO_REGIONS,
         PAGE_SIZE, USER_VIRT_ADDR_LIMIT, REPORT_PAGE_FAULT,
@@ -13,7 +15,7 @@ use crate::{
     error::{OSError, OSResult},
 };
 use alloc::{
-    collections::{btree_map::Entry, BTreeMap},
+    collections::BTreeMap,
     sync::Arc,
     vec::Vec,
 };
@@ -90,8 +92,11 @@ impl MemorySet {
         true
     }
 
-    /// 调整所有和已知(一般是即将要插入的)区间相交的区间，空出 [start, end) 段。
-    fn modify_overlap_areas(&mut self, start: VirtAddr, end: VirtAddr) -> OSResult {
+    /// 调整所有和已知区间相交的区间，空出 [start, end) 段。
+    /// 它可以直接当作 munmap 使用，也可以当作 mmap 的前置操作
+    pub fn modify_overlap_areas(&mut self, start: VirtAddr, end: VirtAddr) -> OSResult {
+        // 注意，这里把相交的区间直接从 self.areas 里取出来了
+        // 所以如果仅相交而不需要删除，就需要放回 self.areas
         let areas_to_be_modified: Vec<VmArea> = self
             .areas
             .drain_filter(|_, area| area.is_overlap_with(start, end))
@@ -112,17 +117,53 @@ impl MemorySet {
         }
         Ok(())
     }
+
+    /// 调整所有和已知区间相交的区间，修改 [start, end) 段的权限。
+    /// 它可以直接当作 mprotect 使用
+    pub fn modify_overlap_areas_with_new_flags(&mut self, start: VirtAddr, end: VirtAddr, new_flags: PTEFlags) -> OSResult {
+        // 注意，这里把相交的区间直接从 self.areas 里取出来了
+        // 所以如果仅相交而不需要删除，就需要放回 self.areas
+        let areas_to_be_modified: Vec<VmArea> = self
+            .areas
+            .drain_filter(|_, area| area.is_overlap_with(start, end))
+            .map(|(_, v)| v)
+            .collect();
+        for mut area in areas_to_be_modified {
+            match area.split_and_modify_if_overlap(&mut self.pt, start, end, new_flags)? {
+                CutSet::WholeModified => {
+                    //info!("mprotect: modified {:x}, {:x}", area.start, area.end);
+                    self.areas.insert(area.start, area);
+                }
+                CutSet::ModifiedLeft(left, right) | CutSet::ModifiedRight(left, right) => {
+                    // 在 split_and_modify_if_overlap 内部已经处理过了修改 flags 的部分
+                    // 所以如果有半边相交，可以直接把切出的区间塞回 self.areas
+                    //info!("mprotect: cut and modified one-side {:x}, {:x}", area.start, area.end);
+                    self.areas.insert(left.start, left);
+                    self.areas.insert(right.start, right);
+                }
+                CutSet::ModifiedMiddle(left, mid, right) => {
+                    //info!("mprotect: cut and modified middle {:x}, {:x}", area.start, area.end);
+                    self.areas.insert(left.start, left);
+                    self.areas.insert(mid.start, mid);
+                    self.areas.insert(right.start, right);
+                }
+                _ => {} // 未相交时，就不需要再管了
+            }
+        }
+        Ok(())
+    }
+
     /// 尝试插入一段数据。如插入成功，返回插入后的起始地址
     ///
     /// 如果指定参数 anywhere，则任意找一段地址 mmap; 否则必须在 [start, end) 尝试插入。
     ///
     /// 输入时默认已保证 start + data.len() == end
-    pub fn push_with_data(
+    pub fn push_with_backend(
         &mut self,
         start: VirtAddr,
         end: VirtAddr,
         flags: PTEFlags,
-        data: &[u8],
+        backend: Option<BackEndFile>,
         anywhere: bool,
     ) -> OSResult<usize> {
         let (start, end) = if anywhere {
@@ -139,11 +180,9 @@ impl MemorySet {
             (start, end)
         };
         //info!("origin start {:x} end {:x}", start, end);
-        // 起始地址在页内的偏移量
-        let off = page_offset(start);
         // 注意实际占用的页数不仅看 data.len()，还要看请求的地址跨越了几页
-        let mut pma = PmAreaLazy::new(page_count(off + end - start))?;
-        pma.write(off, data)?;
+        let pma = PmAreaLazy::new(page_count(end - start), backend)?;
+        //pma.write(0, data)?;
         //info!("before align: start {:x}, end {:x}", start, end);
         let start = align_down(start);
         let end = align_up(end);
@@ -165,62 +204,6 @@ impl MemorySet {
         vma.map_area(&mut self.pt)?;
         self.areas.insert(vma.start, vma);
         Ok(())
-    }
-    /*
-    pub fn init_a_kernel_region(
-        &mut self,
-        start_vaddr: VirtAddr,
-        end_vaddr: VirtAddr,
-        offset: usize,
-        flags: PTEFlags,
-        name: &'static str,
-    ) -> OSResult {
-        self.push(VmArea::from_fixed_pma(
-            start_vaddr,
-            end_vaddr,
-            offset,
-            flags,
-            name,
-        )?)?;
-
-        self.push(VmArea::from_identical_pma(
-            start_vaddr,
-            end_vaddr,
-            flags,
-            name,
-        )?)?;
-
-        Ok(())
-    }
-    */
-    /// 删除区间 [start_addr, end_addr)
-    pub fn pop(&mut self, start: VirtAddr, end: VirtAddr) -> OSResult {
-        if start >= end {
-            info!("invalid memory region: [{:#x?}, {:#x?})", start, end);
-            return Err(OSError::MemorySet_InvalidRange);
-        }
-        let start = align_down(start);
-        let end = align_up(end);
-        if let Entry::Occupied(e) = self.areas.entry(start) {
-            if e.get().end == end {
-                e.get().unmap_area(&mut self.pt)?;
-                e.remove();
-                return Ok(());
-            }
-        }
-        if self.test_free_area(start, end) {
-            info!(
-                "no matched VMA found for memory region: [{:#x?}, {:#x?})",
-                start, end
-            );
-            Err(OSError::MemorySet_UnmapAreaNotFound)
-        } else {
-            info!(
-                "partially unmap memory region [{:#x?}, {:#x?}) is not supported",
-                start, end
-            );
-            Err(OSError::MemorySet_PartialUnmap)
-        }
     }
 
     /// 处理这个映射表对应的错误

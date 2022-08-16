@@ -7,19 +7,27 @@ use crate::{
 use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use lock::Mutex;
 
-/*
-/// 加载用户程序。
-/// 因为是调度器 GLOBAL_TASK_SCHEDULER 初始化时就加载，所以不能用 task::push_task_to_scheduler
-pub fn load_testcases(scheduler: &mut Scheduler) {
-    info!("read testcases");
-    let iter = TESTCASES.into_iter();
-    for user_prog in TESTCASES {
-        info!("{}", user_prog);
-        let tcb = TaskControlBlock::from_app_name(ROOT_DIR, user_prog, NO_PARENT).unwrap();
-        scheduler.push(Arc::new(tcb));
+/// 分隔 argv 参数，处理带引号的情况
+pub fn split_argv(s: &[u8]) -> Vec<String> {
+    let mut argv: Vec<String> = Vec::new();
+    let mut in_quotation = false; // 当前是否在引号中
+    let mut start = 0; // 从何处开始
+    // 因为需要特判引号，所以这里用一种 c style 的方式处理
+    for pos in 0..s.len() {
+        if s[pos] == '\"' as u8 {
+            in_quotation = !in_quotation;
+        } else if s[pos] == ' ' as u8 && !in_quotation {
+            if pos > start { // 避免塞入空串
+                argv.push(core::str::from_utf8(&s[start..pos]).unwrap().into());
+            }
+            start = pos + 1;
+        }
     }
+    if start < s.len() {
+        argv.push(core::str::from_utf8(&s[start..]).unwrap().into());
+    }
+    argv
 }
-*/
 
 /// 加载下一个用户程序。
 pub fn load_next_testcase() -> Option<Arc<TaskControlBlock>> {
@@ -29,9 +37,9 @@ pub fn load_next_testcase() -> Option<Arc<TaskControlBlock>> {
             None
         },
         |&user_command| {
-            let mut argv: Vec<String> = user_command.split(' ').map(|s| s.into()).collect();
-            let argv = argv.drain_filter(|s| s != "").collect();
-            info!("User cmd: {:?}", argv);
+            //let mut argv: Vec<String> = user_command.split(' ').map(|s| s.into()).collect();
+            //let argv = argv.drain_filter(|s| s != "").collect();
+            let argv = split_argv(user_command.as_bytes());
             TEST_STATUS.lock().load(&user_command.into());
             Some(Arc::new(
                 TaskControlBlock::from_app_name(ROOT_DIR, NO_PARENT, argv).unwrap(),
