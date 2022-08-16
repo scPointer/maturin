@@ -7,7 +7,7 @@ use super::{CloneFlags, KernelStack, TaskContext, TimeStat};
 use crate::{
     arch::get_cpu_id,
     constants::{NO_PARENT, USER_STACK_OFFSET},
-    file::{check_file_exists, FdManager},
+    file::{check_file_exists, FdManager, BackEndFile},
     loaders::parse_user_app,
     memory::{new_memory_set_for_task, phys_to_virt, MemorySet, PTEFlags, Tid, VirtAddr},
     signal::{global_register_signals, SignalHandlers, SignalReceivers, SignalUserContext},
@@ -393,22 +393,22 @@ impl TaskControlBlock {
         start: VirtAddr,
         end: VirtAddr,
         flags: PTEFlags,
-        data: &[u8],
+        backend: Option<BackEndFile>,
         anywhere: bool,
     ) -> Option<usize> {
-        //info!("start {} , end {}, data.len {}", start, end, data.len());
-        if end - start < data.len() {
-            None
-        } else {
-            self.vm
-                .lock()
-                .push_with_data(start, end, flags, data, anywhere)
-                .ok()
-        }
+        //info!("start {} , end {}", start, end);
+        self.vm
+            .lock()
+            .push_with_backend(start, end, flags, backend, anywhere)
+            .ok()
     }
     /// 取消一段内存地址映射
     pub fn munmap(&self, start: VirtAddr, end: VirtAddr) -> bool {
-        self.vm.lock().pop(start, end).is_ok()
+        self.vm.lock().modify_overlap_areas(start, end).is_ok()
+    }
+    /// 修改一段内存映射的权限
+    pub fn mprotect(&self, start: VirtAddr, end: VirtAddr, new_flags: PTEFlags) -> bool {
+        self.vm.lock().modify_overlap_areas_with_new_flags(start, end, new_flags).is_ok()
     }
     /// 修改任务状态
     pub fn set_status(&self, new_status: TaskStatus) {

@@ -7,6 +7,7 @@
 use bitflags::*;
 use core::mem::size_of;
 
+use crate::file::SyncPolicy;
 use crate::memory::PTEFlags;
 use crate::signal::SignalNo;
 use crate::task::CloneFlags;
@@ -49,6 +50,19 @@ impl Into<PTEFlags> for MMAPPROT {
             flag |= PTEFlags::EXECUTE;
         }
         flag
+    }
+}
+
+impl Into<SyncPolicy> for MMAPPROT {
+    fn into(self) -> SyncPolicy {
+        if self.contains(MMAPPROT::PROT_READ) && self.contains(MMAPPROT::PROT_WRITE) {
+            SyncPolicy::SyncReadWrite
+        } else if self.contains(MMAPPROT::PROT_WRITE) {
+            SyncPolicy::SyncWrite
+        } else {
+            // 其他情况默认为读。此时如果实际上是不可读的，那么页表+VmArea 可以直接判断出来，不需要操作到 backend 文件
+            SyncPolicy::SyncRead
+        }
     }
 }
 

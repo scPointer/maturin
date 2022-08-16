@@ -137,7 +137,7 @@ impl<'a> ElfLoader<'a> {
 
             let pgoff = page_offset(ph.virtual_addr() as usize);
             let page_count = page_count(ph.mem_size() as usize + pgoff);
-            let mut pma = PmAreaLazy::new(page_count)?;
+            let mut pma = PmAreaLazy::new(page_count, None)?;
             //let data = &self.elf.input[ph.offset() as usize..(ph.offset() + ph.file_size()) as usize];
             //let d0 = &self.elf.input;
 
@@ -267,7 +267,7 @@ impl<'a> ElfLoader<'a> {
         let user_entry = self.elf.header.pt2.entry_point() as usize;
         let stack_bottom = USER_STACK_OFFSET;
         let mut stack_top = stack_bottom + USER_STACK_SIZE;
-        let mut stack_pma = PmAreaLazy::new(page_count(USER_STACK_SIZE))?;
+        let mut stack_pma = PmAreaLazy::new(page_count(USER_STACK_SIZE), None)?;
 
         // push `ProcInitInfo` to user stack
         let info = InitInfo {

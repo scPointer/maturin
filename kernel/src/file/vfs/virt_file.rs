@@ -125,6 +125,22 @@ impl VirtFileInner {
         self.size = self.size.max(self.pos);
         Some(buf.len())
     }
+    /// 从某个位置读文件内容到 buf 中，返回读到的字节数，但不改变指针位置
+    fn read_from_offset(&mut self, pos: usize, buf: &mut [u8]) -> Option<usize> {
+        let old_pos = self.pos;
+        self.pos = pos;
+        let read_len = self.read_inner(buf);
+        self.pos = old_pos;
+        read_len
+    }
+    /// 将 buf 写入文件中的某个位置，返回读到的字节数，但不改变指针位置
+    fn write_to_offset(&mut self, pos: usize, buf: &[u8]) -> Option<usize> {
+        let old_pos = self.pos;
+        self.pos = pos;
+        let write_len = self.write_inner(buf);
+        self.pos = old_pos;
+        write_len
+    }
     /// 读取文件大小
     pub fn get_size(&self) -> usize {
         self.size
@@ -201,5 +217,13 @@ impl File for VirtFile {
     /// 清空文件
     fn clear(&self) {
         self.inner.lock().clear();
+    }
+    /// 从某个位置读文件内容到 buf 中，返回读到的字节数，但不改变指针位置
+    fn read_from_offset(&self, pos: usize, buf: &mut [u8]) -> Option<usize> {
+        self.inner.lock().read_from_offset(pos, buf)
+    }
+    /// 将 buf 写入文件中的某个位置，返回读到的字节数，但不改变指针位置
+    fn write_to_offset(&self, pos: usize, buf: &[u8]) -> Option<usize> {
+        self.inner.lock().write_to_offset(pos, buf)
     }
 }

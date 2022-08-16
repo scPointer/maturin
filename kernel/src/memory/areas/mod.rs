@@ -2,7 +2,7 @@
 
 //#![deny(missing_docs)]
 
-mod diff_set;
+mod set;
 mod fixed;
 mod lazy;
 
@@ -18,7 +18,7 @@ use alloc::sync::Arc;
 use core::slice;
 use lock::Mutex;
 
-pub use diff_set::DiffSet;
+pub use set::{DiffSet, CutSet};
 pub use fixed::PmAreaFixed;
 pub use lazy::PmAreaLazy;
 
@@ -28,6 +28,8 @@ pub use lazy::PmAreaLazy;
 pub trait PmArea: core::fmt::Debug + Send + Sync {
     /// 地址段总长度
     fn size(&self) -> usize;
+    /// 复制一份区间，新区间结构暂不分配任何实际页帧。一般是 fork 要求的
+    fn clone_as_fork(&self) -> OSResult<Arc<Mutex<dyn PmArea>>>;
     /// 获取 idx 所在页的页帧。
     ///
     /// 如果有 need_alloc，则会在 idx 所在页未分配时尝试分配
@@ -42,7 +44,8 @@ pub trait PmArea: core::fmt::Debug + Send + Sync {
     fn shrink_left(&mut self, new_start: usize) -> OSResult;
     /// 从右侧缩短一段(new_end是相对于地址段开头的偏移)
     fn shrink_right(&mut self, new_end: usize) -> OSResult;
-    /// 分成两个区间(输入参数都是相对于地址段开头的偏移)
+    /// 分成三段区间(输入参数都是相对于地址段开头的偏移)
+    /// 自己保留[start, left_end), 删除 [left_end, right_start)，返回 [right_start, end)
     fn split(&mut self, left_end: usize, right_start: usize) -> OSResult<Arc<Mutex<dyn PmArea>>>;
 }
 
@@ -119,15 +122,12 @@ impl VmArea {
         start: VirtAddr,
         end: VirtAddr,
     ) -> OSResult<DiffSet> {
-        if end <= self.start || self.end <= start {
-            // 不相交
+        if end <= self.start || self.end <= start { // 不相交
             Ok(DiffSet::Unchanged)
-        } else if start <= self.start && self.end <= end {
-            // 被包含
+        } else if start <= self.start && self.end <= end { // 被包含
             self.unmap_area(pt)?;
             Ok(DiffSet::Removed)
-        } else if self.start < start && end < self.end {
-            // 需要分割
+        } else if self.start < start && end < self.end { // 需要分割
             let offset_start = start - self.start; // 相对起始位置
             let offset_end = end - self.start; // 相对结束位置
             self.unmap_area_partial(pt, start, end)?;
@@ -148,15 +148,13 @@ impl VmArea {
                     &self.name,
                 )?,
             ))
-        } else if end < self.end {
-            // 需要删除前半段
+        } else if end < self.end { // 需要删除前半段
             let offset_start = end - self.start; // 相对结束位置，也即新的开始位置
             self.unmap_area_partial(pt, self.start, end)?;
             self.pma.lock().shrink_left(offset_start)?;
             self.start = end;
             Ok(DiffSet::Shrinked)
-        } else {
-            // 删除后半段
+        } else { // 删除后半段
             assert_eq!(self.start < start, true); // 最后一种情况一定是后半段重叠
             let offset_end = start - self.start; // 相对开始位置，也即新的结束位置
             self.unmap_area_partial(pt, start, self.end)?;
@@ -166,11 +164,109 @@ impl VmArea {
         }
     }
 
+    /// 尝试修改与 [start, end) 区间相交的部分的权限。
+    /// 如果这一修改导致区间分裂，则分别返回分出的每个区间。
+    pub fn split_and_modify_if_overlap(
+        &mut self,
+        pt: &mut PageTable,
+        start: VirtAddr,
+        end: VirtAddr,
+        new_flags: PTEFlags,
+    ) -> OSResult<CutSet> {
+        if end <= self.start || self.end <= start { // 不相交
+            Ok(CutSet::Unchanged)
+        } else if start <= self.start && self.end <= end { // 被包含
+            self.flags = new_flags;
+            // 重新映射页表
+            self.modify_area_flags(pt)?;
+            Ok(CutSet::WholeModified)
+        }  else if self.start < start && end < self.end { // 包含区间，需要分割三段
+            let cut_point_left = start - self.start; // 第一个裁剪点
+            let cut_point_right = end - self.start; // 第二个裁剪点
+            let right_pma = self.pma.lock().split(cut_point_right, cut_point_right)?;
+            let right_vma = VmArea::new(
+                end,
+                self.end,
+                PTEFlags::from_bits(self.flags.bits()).unwrap(),
+                right_pma,
+                &self.name,
+            )?;
+            let mid_pma = self.pma.lock().split(cut_point_left, cut_point_left)?;
+            let mid_vma = VmArea::new(
+                start,
+                end,
+                new_flags, // 记得更新 flags
+                mid_pma,
+                &self.name,
+            )?;
+            mid_vma.modify_area_flags(pt)?; // 在页表中更新这一段
+            let left_vma = VmArea::new(
+                self.start,
+                start,
+                PTEFlags::from_bits(self.flags.bits()).unwrap(),
+                self.pma.clone(),
+                &self.name,
+            )?;
+            Ok(CutSet::ModifiedMiddle(left_vma, mid_vma, right_vma))
+        } else if end < self.end { // 前半段相交
+            let cut_point = end - self.start;
+            let right_pma = self.pma.lock().split(cut_point, cut_point)?;
+            let right_vma = VmArea::new(
+                end,
+                self.end,
+                PTEFlags::from_bits(self.flags.bits()).unwrap(),
+                right_pma,
+                &self.name,
+            )?;
+            let left_vma = VmArea::new(
+                self.start,
+                end,
+                new_flags, // 记得更新 flags
+                self.pma.clone(),
+                &self.name,
+            )?;
+            left_vma.modify_area_flags(pt)?; // 在页表中更新这一段
+            Ok(CutSet::ModifiedLeft(left_vma, right_vma))
+        } else { // 后半段相交
+            assert_eq!(self.start < start, true); // 最后一种情况一定是后半段重叠
+            let cut_point = start - self.start;
+            let right_pma = self.pma.lock().split(cut_point, cut_point)?;
+            let right_vma = VmArea::new(
+                start,
+                self.end,
+                new_flags, // 记得更新 flags
+                right_pma,
+                &self.name,
+            )?;
+            let left_vma = VmArea::new(
+                self.start,
+                start,
+                PTEFlags::from_bits(self.flags.bits()).unwrap(),
+                self.pma.clone(),
+                &self.name,
+            )?;
+            right_vma.modify_area_flags(pt)?; // 在页表中更新这一段
+            Ok(CutSet::ModifiedRight(left_vma, right_vma))
+        }
+    }
+
+    /// 修改这段区间的访问权限。一般由 mprotect 触发
+    pub fn modify_area_flags(&self, pt: &mut PageTable) -> OSResult {
+        let mut pma = self.pma.lock();
+        for vaddr in (self.start..self.end).step_by(PAGE_SIZE) {
+            if pma.get_frame((vaddr - self.start) / PAGE_SIZE, false)?.is_some() {
+                // 因为 pma 中拿到了页帧，所以这里一定是会成功的，可以 unwrap
+                // 不成功说明 OS 有问题
+                pt.set_flags(vaddr, self.flags).unwrap();
+            }
+        }
+        Ok(())
+    }
+
     /// 把虚拟地址段和对应的物理地址段的映射写入页表。
     ///
     /// 如果是 lazy 分配的，或者说还没有对应页帧时，则不分配，等到 page fault 时再分配
     pub fn map_area(&self, pt: &mut PageTable) -> OSResult {
-        //println!("create mapping: {:#x?}", self);
         let mut pma = self.pma.lock();
         for vaddr in (self.start..self.end).step_by(PAGE_SIZE) {
             let page = pma.get_frame((vaddr - self.start) / PAGE_SIZE, false)?;
@@ -228,12 +324,11 @@ impl VmArea {
 
     /// 从已有 VmArea 复制一个新的 VmArea ，其中虚拟地址段和权限相同，但没有实际分配物理页
     pub fn copy_to_new_area_empty(&self) -> OSResult<VmArea> {
-        let page_count = (self.end - self.start) / PAGE_SIZE;
         Ok(VmArea {
             start: self.start,
             end: self.end,
             flags: self.flags,
-            pma: Arc::new(Mutex::new(PmAreaLazy::new(page_count)?)),
+            pma: self.pma.lock().clone_as_fork()?,
             name: self.name,
         })
     }

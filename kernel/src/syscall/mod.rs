@@ -232,6 +232,8 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         //SyscallNo::MPROTECT => 0,
         SyscallNo::SIGTIMEDWAIT => Ok(0),
         SyscallNo::MEMBARRIER => Ok(0),
+        SyscallNo::MSYNC => Ok(0),
+        SyscallNo::FSYNC => Ok(0),
         SyscallNo::PPOLL => Ok(1),
         _ => {
             //_ => panic!("Unsupported syscall id = {:#?}()", syscall_id, syscall_id as usize);

@@ -98,8 +98,6 @@ pub const NO_PARENT: usize = usize::MAX;
 /// 临时文件的大小限制
 pub const TMP_SIZE_LIMIT: usize = 0x8_000; // 1 MB
 
-/// 限制 mmap 的最长长度
-pub const MMAP_LEN_LIMIT: usize = 0x100_0000; // 16 MB
 /// 如果 elf 的 phdr 指示 base 是 0(如 libc-test 的 libc.so)，则需要找一个非0的位置放置
 pub const ELF_BASE_RELOCATE: usize = 0x400_0000;
 

@@ -9,7 +9,8 @@ pub const TESTCASES: &[&str] = &[
     "busybox sh",
     //"busybox sh lua_testcode.sh", // lua 测例
     //"busybox sh busybox_testcode.sh", // busybox 测例
-    //"busybox sh lmbench_testcode.sh", // lmbench 测例
+    //"busybox sh lmbench_testcode.sh", // lmbench 测例(见下)
+
 
     /* // 很少一点 libc 测例。完整评测见 ./file/test.rs 中，需要把其中 TESTCASES_ITER 和 TEST_STATUS 的值换掉
     // "./runtest.exe -w entry-dynamic.exe argv",
@@ -36,7 +37,7 @@ pub const TESTCASES: &[&str] = &[
     "lmbench_all lat_select -n 100 -P 1 file",
     "lmbench_all lat_sig -P 1 install",
     "lmbench_all lat_sig -P 1 catch",
-    //"lmbench_all lat_sig -P 1 prot lat_sig",
+    "lmbench_all lat_sig -P 1 prot lat_sig",
     */
 
     /* //lmbench 4
@@ -48,7 +49,7 @@ pub const TESTCASES: &[&str] = &[
     */
     
     /* //lmbench 5
-    "lmbench_all lmdd label=\"File/var/tmp/XXXwritebandwidth:\" of=/var/tmp/XXX move=1m fsync=1 print=3",
+    "lmbench_all lmdd label=\"File /var/tmp/XXX write bandwidth:\" of=/var/tmp/XXX move=1m fsync=1 print=3",
     "lmbench_all lat_pagefault -P 1 /var/tmp/XXX",
     "lmbench_all lat_mmap -P 1 512k /var/tmp/XXX",
     */
@@ -67,7 +68,8 @@ pub const TESTCASES: &[&str] = &[
     "lmbench_all bw_mmap_rd -P 1 512k open2close /var/tmp/XXX",
     */
 
-     //lmbench 7
+    /* //lmbench 7
     //"busybox echo context switch overhead",
     //"lmbench_all lat_ctx -P 1 -s 32 2 4 8 16 24 32 64 96",
+    */
 ];

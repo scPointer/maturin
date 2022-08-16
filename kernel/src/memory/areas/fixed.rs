@@ -26,6 +26,13 @@ impl PmArea for PmAreaFixed {
         self.end - self.start
     }
 
+    fn clone_as_fork(&self) -> OSResult<Arc<Mutex<dyn PmArea>>> {
+        Ok(Arc::new(Mutex::new(Self {
+            start: self.start,
+            end: self.end
+        })))
+    }
+
     fn get_frame(&mut self, idx: usize, _need_alloc: bool) -> OSResult<Option<PhysAddr>> {
         let paddr = self.start + idx * PAGE_SIZE;
         debug_assert!(paddr < self.end);
@@ -83,7 +90,7 @@ impl PmArea for PmAreaFixed {
     }
 
     fn split(&mut self, left_end: usize, right_start: usize) -> OSResult<Arc<Mutex<dyn PmArea>>> {
-        if left_end < right_start && right_start < self.end - self.start {
+        if left_end <= right_start && right_start < self.end - self.start {
             let old_end = self.end;
             self.end = self.start + left_end;
             Ok(Arc::new(Mutex::new(

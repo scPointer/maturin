@@ -4,17 +4,17 @@ use super::{
     resolve_clone_flags_and_signal, ErrorNo, MMAPFlags, RLimit, SysResult, UtsName, WaitFlags,
     MMAPPROT, RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK,
 };
-use crate::signal::{send_signal, Bitset, SigAction, SignalNo};
 use crate::{
-    constants::{MMAP_LEN_LIMIT, SIGSET_SIZE_IN_BYTE, USER_STACK_SIZE, USER_VIRT_ADDR_LIMIT, FD_LIMIT_HARD},
-    file::SeekFrom,
+    constants::{SIGSET_SIZE_IN_BYTE, USER_STACK_SIZE, USER_VIRT_ADDR_LIMIT, FD_LIMIT_HARD},
+    file::{SeekFrom, BackEndFile},
+    signal::{send_signal, Bitset, SigAction, SignalNo},
+    memory::page_offset,
     task::{
         exec_new_task, exit_current_task, get_current_task, push_task_to_scheduler, signal_return,
         suspend_current_task,
     },
     utils::{raw_ptr_to_string, str_ptr_array_to_vec_string},
 };
-use alloc::vec::Vec;
 use core::mem::size_of;
 
 /// 进程退出，并提供 exit_code 供 wait 等 syscall 拿取
@@ -267,8 +267,9 @@ pub fn sys_mmap(
         "try mmap start={:x} len={:x} prot=[{:#?}] flags=[{:#?}] fd={} offset={:x}",
         start, len, prot, flags, fd, offset
     );
-    let prot = MMAPPROT::PROT_READ | MMAPPROT::PROT_WRITE | MMAPPROT::PROT_EXEC;
-    if len > MMAP_LEN_LIMIT {
+    //let prot = MMAPPROT::PROT_READ | MMAPPROT::PROT_WRITE | MMAPPROT::PROT_EXEC;
+    // 检查是否区间不是按页aligned的
+    if page_offset(start) != 0 || page_offset(start + len) != 0 {
         return Err(ErrorNo::EINVAL);
     }
     // start == 0 表明需要OS为其找一段内存，而 MAP_FIXED 表明必须 mmap 在固定位置。两者是冲突的
@@ -283,31 +284,23 @@ pub fn sys_mmap(
     //不实际映射到文件
     if flags.contains(MMAPFlags::MAP_ANONYMOUS) {
         drop(tcb_inner);
-        // 根据linuz规范需要 fd 设为 -1 且 offset 设为 0
+        // 根据linux规范需要 fd 设为 -1 且 offset 设为 0
         if fd == -1 && offset == 0 {
-            if let Some(start) = task.mmap(start, start + len, prot.into(), &[], anywhere) {
+            if let Some(start) = task.mmap(start, start + len, prot.into(), None, anywhere) {
                 return Ok(start);
             }
         }
     } else if let Ok(file) = task.fd_manager.lock().get_file(fd as usize) {
-        //info!("get file");
+        //确认可以seek才获取文件，否则后续 lazy alloc 时不好处理
         if let Some(_off) = file.seek(SeekFrom::Start(offset as u64)) {
-            // 读文件可能触发进程切换
+            // file 在从 fd 中拿的时候已经是 clone 了，所以这里可以直接传给 backend
+            let backend = BackEndFile::new(file, offset, prot.into());
             drop(tcb_inner);
-            let mut data = Vec::new();
-            data.resize(len, 0);
-            if let Some(read_len) = file.read(&mut data[..]) {
-                //println!("try mmap {} {} {} {} {}", start, len, fd, read_len, len);
-                if read_len <= len {
-                    // 至此才从文件中拿到了需要的数据，准备 mmap
-                    // 重新拿锁
-                    if let Some(start) =
-                        task.mmap(start, start + len, prot.into(), &data[..read_len], anywhere)
-                    {
-                        //println!("start {:x}", start);
-                        return Ok(start);
-                    }
-                }
+            // mmap 内部需要拿 inner 锁
+            if let Some(start) =
+                task.mmap(start, start + len, prot.into(), Some(backend), anywhere)
+            {
+                return Ok(start);
             }
         }
     }
@@ -317,6 +310,7 @@ pub fn sys_mmap(
 /// 取消映射一段内存
 pub fn sys_munmap(start: usize, len: usize) -> SysResult {
     info!("start {:x}, len {}", start, len);
+    // 从语义上说， munmap 是一定成功的，即使没有删除到任何区间
     if get_current_task().unwrap().munmap(start, start + len) {
         Ok(0)
     } else {
@@ -330,8 +324,13 @@ pub fn sys_mprotect(start: usize, len: usize, prot: MMAPPROT) -> SysResult {
         "try mprotect start={:x} len={:x} prot=[{:#?}]",
         start, len, prot
     );
-    Ok(0)
+    if get_current_task().unwrap().mprotect(start, start + len, prot.into()) {
+        Ok(0)
+    } else {
+        Err(ErrorNo::EINVAL)
+    }
 }
+
 /// 获取系统信息
 pub fn sys_uname(uts: *mut UtsName) -> SysResult {
     unsafe {

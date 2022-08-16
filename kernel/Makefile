@@ -1,5 +1,5 @@
 ARCH ?= riscv64
-MODE ?= debug
+MODE ?= release
 PLATFORM ?= qemu
 SMP ?= 4
 MACHINE ?= virt
