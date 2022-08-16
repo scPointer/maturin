@@ -94,7 +94,7 @@ numeric_enum_macro::numeric_enum! {
         MSYNC = 227,
         WAIT4 = 260,
         PRLIMIT64 = 261,
-        RENAME = 276,
+        RENAMEAT2 = 276,
         MEMBARRIER = 283,
     }
 }

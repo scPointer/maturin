@@ -118,3 +118,6 @@ pub const SIGNAL_RETURN_TRAP: usize = 0xffff_0000_8080_0000;
 
 /// sys_sendfile64 中使用 buffer 的大小
 pub const SENDFILE_BUFFER_SIZE: usize = 0x2000;
+/// 标记是否使用 msync。不做实际的检查效率更高，
+/// 但如果它影响了用户程序的正确性，需要还是打开的
+pub const USE_MSYNC: bool = true;

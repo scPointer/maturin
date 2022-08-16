@@ -135,6 +135,7 @@ pub use device::{
     try_add_link,
     try_remove_link,
     umount_fat_fs,
+    rename_or_move,
 };
 
 pub use backend::{BackEndFile, SyncPolicy};

@@ -22,6 +22,7 @@ use super::{
 };
 use crate::{
     constants::ROOT_DIR,
+    syscall::ErrorNo,
     drivers::{new_memory_mapped_fs, MemoryMappedFsIoType},
 };
 use alloc::{string::String, sync::Arc};
@@ -386,6 +387,33 @@ pub fn mkdir(dir_name: &str, file_path: &str) -> bool {
                 .map_or(false, |r| r)
         })
         .map_or(false, |r| r)
+}
+
+/// 移动文件，如果 new_dir == old_dir 则表现为重命名
+/// 只检查 FAT32，不考虑 vfs。不考虑符号链接，因为实现是在 fs 里实现的，而链接在内核里
+/// 
+/// replace 的语义为，如果目标位置的文件已存在，是否替换它
+pub fn rename_or_move(old_dir: &str, old_file: &str, new_dir: &str, new_file: &str, replace: bool) -> Result<(), ErrorNo> {
+    if let Some(old_dir) = inner_open_dir(MEMORY_FS.root_dir(), old_dir) {
+        if let Some(new_dir) = inner_open_dir(MEMORY_FS.root_dir(), new_dir) {
+            return match old_dir.rename(old_file, &new_dir, new_file) {
+                Ok(_) => Ok(()),
+                // 如果文件已存在，检查
+                Err(Error::AlreadyExists) => {
+                    if replace {
+                        new_dir.remove(new_file).unwrap();
+                        old_dir.rename(old_file, &new_dir, new_file).map_err(|_| ErrorNo::EINVAL)
+                    } else {
+                        Err(ErrorNo::EEXIST)
+                    }
+                },
+                Err(Error::NotFound) => Err(ErrorNo::ENOENT),
+                // 其他错误返回 rename 失败 
+                _ => Err(ErrorNo::EINVAL),
+            };
+        }
+    }
+    Err(ErrorNo::EINVAL)
 }
 
 /// 检查目录是否存在

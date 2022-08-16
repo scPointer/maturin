@@ -39,6 +39,10 @@ impl PmArea for PmAreaFixed {
         Ok(Some(paddr))
     }
 
+    fn sync_frame_with_file(&mut self, _idx: usize) -> OSResult {
+        Ok(())
+    }
+
     fn release_frame(&mut self, _idx: usize) -> OSResult {
         Ok(())
     }

@@ -52,7 +52,6 @@ pub const TESTCASES: &[&str] = &[
     "lmbench_all lmdd label=\"File /var/tmp/XXX write bandwidth:\" of=/var/tmp/XXX move=1m fsync=1 print=3",
     "lmbench_all lat_pagefault -P 1 /var/tmp/XXX",
     "lmbench_all lat_mmap -P 1 512k /var/tmp/XXX",
-    */
 
     /* //lmbench 6
     "busybox echo file system latency",

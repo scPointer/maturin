@@ -34,6 +34,8 @@ pub trait PmArea: core::fmt::Debug + Send + Sync {
     ///
     /// 如果有 need_alloc，则会在 idx 所在页未分配时尝试分配
     fn get_frame(&mut self, idx: usize, need_alloc: bool) -> OSResult<Option<PhysAddr>>;
+    /// 同步页的信息到后端文件中
+    fn sync_frame_with_file(&mut self, idx: usize) -> OSResult;
     /// 释放 idx 地址对应的物理页
     fn release_frame(&mut self, idx: usize) -> OSResult;
     /// 读从 offset 开头的一段数据，成功时返回读取长度
@@ -248,6 +250,17 @@ impl VmArea {
             right_vma.modify_area_flags(pt)?; // 在页表中更新这一段
             Ok(CutSet::ModifiedRight(left_vma, right_vma))
         }
+    }
+
+    /// 把区间中的数据同步到后端文件上(如果有的话)
+    pub fn msync(&self, start: VirtAddr, end: VirtAddr) -> OSResult {
+        let mut pma = self.pma.lock();
+        let start = start.max(self.start);
+        let end = end.min(self.end);
+        for vaddr in (start..end).step_by(PAGE_SIZE) {
+            pma.sync_frame_with_file((vaddr - self.start) / PAGE_SIZE)?;
+        }
+        Ok(())
     }
 
     /// 修改这段区间的访问权限。一般由 mprotect 触发

@@ -6,14 +6,14 @@
 //#![deny(missing_docs)]
 
 use super::{
-    Dirent64, Dirent64Type, ErrorNo, Fcntl64Cmd, IoVec, SysResult, UtimensatFlags, SEEK_CUR,
-    SEEK_END, SEEK_SET,
+    Dirent64, Dirent64Type, ErrorNo, Fcntl64Cmd, IoVec, SysResult, UtimensatFlags, RenameFlags, 
+    SEEK_CUR, SEEK_END, SEEK_SET,
 };
 use crate::{
     constants::{AT_FDCWD, SENDFILE_BUFFER_SIZE},
     file::{
         check_dir_exists, check_file_exists, get_dir_entry_iter, mkdir, mount_fat_fs, open_file,
-        origin_fs_stat, try_add_link, try_remove_link, umount_fat_fs,
+        origin_fs_stat, try_add_link, try_remove_link, umount_fat_fs, rename_or_move,
     },
     file::{FsStat, Kstat, OpenFlags, Pipe, SeekFrom},
     task::{get_current_task, TaskControlBlock},
@@ -216,6 +216,29 @@ pub fn sys_readlinkat(dir_fd: i32, path: *const u8, buf: *mut u8, len: usize) ->
     }
     Err(ErrorNo::EINVAL)
 }
+
+/// 检查文件是否存在，并检查是否某个用户是否有权限访问对应位置。
+/// 由于目前没有用户权限的那一套东西，所以只检查文件本身是否存在
+pub fn sys_access(dir_fd: i32, path: *const u8, _mode: usize) -> SysResult {
+    let task = get_current_task().unwrap();
+    let mut task_vm = task.vm.lock();
+    if task_vm.manually_alloc_page(path as usize).is_err() {
+        return Err(ErrorNo::EFAULT); // 地址不合法
+    }
+    if let Some((path, file)) = resolve_path_from_fd(&task, dir_fd, path) {
+        info!("access : path {} file {}", path, file);
+        if check_file_exists(path.as_str(), file) {
+            Ok(0)
+        } else if check_dir_exists((path + file).as_str()) {
+            Err(ErrorNo::EISDIR)
+        } else {
+            Err(ErrorNo::ENOENT)
+        }
+    } else {
+        Err(ErrorNo::EINVAL)
+    }
+}
+
 
 /// 获取文件状态信息
 pub fn sys_fstat(fd: usize, kstat: *mut Kstat) -> SysResult {
@@ -795,6 +818,26 @@ pub fn sys_sendfile64(out_fd: usize, in_fd: usize, offset: *mut usize, count: us
     Err(ErrorNo::EBADF)
 }
 
+/// 重命名文件，也可以作为 move 使用。
+/// 目前只支持实际 FAT32 中做 move，其他的文件类型(如vfs)不支持，它们与 FAT32 之间的 move 也不支持。
+pub fn sys_renameat2(old_dir_fd: i32, old_path: *const u8, new_dir_fd: i32, new_path: *const u8, flags: RenameFlags) -> SysResult {
+    let task = get_current_task().unwrap();
+    let mut task_vm = task.vm.lock();
+    if task_vm.manually_alloc_page(old_path as usize).is_err() 
+    || task_vm.manually_alloc_page(new_path as usize).is_err() {
+        return Err(ErrorNo::EFAULT); // 地址不合法
+    }
+    if let Some((old_path, old_file)) = resolve_path_from_fd(&task, old_dir_fd, old_path) {
+        if let Some((new_path, new_file)) = resolve_path_from_fd(&task, new_dir_fd, new_path) {
+            warn!("rename {old_path} {old_file} {new_path} {new_file}");
+            return rename_or_move(old_path.as_str(), old_file, new_path.as_str(), new_file, !flags.contains(RenameFlags::NOREPLACE))
+                .map(|_| 0);
+        }
+    }
+    Err(ErrorNo::EINVAL)
+}
+
+/// 一些规则很混乱的 io 控制
 pub fn sys_ioctl(fd: usize, request: usize, argp: *mut usize) -> SysResult {
     info!(
         "ioctl fd = {} request = {:x} argp {:x}",

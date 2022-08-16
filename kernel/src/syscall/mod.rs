@@ -87,6 +87,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[4] as *const u8,
         ),
         SyscallNo::STATFS => sys_statfs(args[0] as *const u8, args[1] as *mut FsStat),
+        SyscallNo::ACCESS => sys_access(args[0] as i32, args[1] as *const u8, args[2]),
         SyscallNo::MKDIR => sys_mkdir(args[0] as i32, args[1] as *const u8, args[2] as u32),
         SyscallNo::CHDIR => sys_chdir(args[0] as *const u8),
         SyscallNo::OPEN => sys_open(
@@ -208,6 +209,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[1],
             MMAPPROT::from_bits(args[2] as u32).unwrap(),
         ),
+        SyscallNo::MSYNC => sys_msync(args[0], args[1], MSyncFlags::from_bits(args[2] as u32).unwrap()),
         SyscallNo::EXECVE => sys_execve(
             args[0] as *const u8,
             args[1] as *const usize,
@@ -224,11 +226,17 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[2] as *const RLimit,
             args[3] as *mut RLimit,
         ),
+        SyscallNo::RENAMEAT2 => sys_renameat2(
+            args[0] as i32,
+            args[1] as *const u8,
+            args[2] as i32,
+            args[3] as *const u8,
+            RenameFlags::from_bits(args[4] as u32).unwrap()
+        ),
         SyscallNo::IOCTL => sys_ioctl(args[0], args[1], args[2] as *mut usize),
         //SyscallNo::MPROTECT => 0,
         SyscallNo::SIGTIMEDWAIT => Ok(0),
         SyscallNo::MEMBARRIER => Ok(0),
-        SyscallNo::MSYNC => Ok(0),
         SyscallNo::FSYNC => Ok(0),
         SyscallNo::PPOLL => Ok(1),
         _ => {

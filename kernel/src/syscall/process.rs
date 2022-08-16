@@ -2,13 +2,13 @@
 
 use super::{
     resolve_clone_flags_and_signal, ErrorNo, MMAPFlags, RLimit, SysResult, UtsName, WaitFlags,
-    MMAPPROT, RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK,
+    MMAPPROT, MSyncFlags, RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK,
 };
 use crate::{
-    constants::{SIGSET_SIZE_IN_BYTE, USER_STACK_SIZE, USER_VIRT_ADDR_LIMIT, FD_LIMIT_HARD},
+    constants::{SIGSET_SIZE_IN_BYTE, USER_STACK_SIZE, USER_VIRT_ADDR_LIMIT, FD_LIMIT_HARD, USE_MSYNC},
     file::{SeekFrom, BackEndFile},
     signal::{send_signal, Bitset, SigAction, SignalNo},
-    memory::page_offset,
+    memory::{page_offset, align_up, align_down},
     task::{
         exec_new_task, exit_current_task, get_current_task, push_task_to_scheduler, signal_return,
         suspend_current_task,
@@ -267,11 +267,15 @@ pub fn sys_mmap(
         "try mmap start={:x} len={:x} prot=[{:#?}] flags=[{:#?}] fd={} offset={:x}",
         start, len, prot, flags, fd, offset
     );
-    //let prot = MMAPPROT::PROT_READ | MMAPPROT::PROT_WRITE | MMAPPROT::PROT_EXEC;
+    /*
     // 检查是否区间不是按页aligned的
     if page_offset(start) != 0 || page_offset(start + len) != 0 {
         return Err(ErrorNo::EINVAL);
-    }
+    }*/
+    // redis 似乎会调用非按页 aligned 的 mmap，也可能是之前给它的参数没有传对
+    // 所以现在这两个参数由内核手动对齐到页，不报错
+    let len = align_up(start + len) - align_down(start);
+    let start = align_down(start);
     // start == 0 表明需要OS为其找一段内存，而 MAP_FIXED 表明必须 mmap 在固定位置。两者是冲突的
     if start == 0 && flags.contains(MMAPFlags::MAP_FIXED) {
         return Err(ErrorNo::EINVAL);
@@ -328,6 +332,31 @@ pub fn sys_mprotect(start: usize, len: usize, prot: MMAPPROT) -> SysResult {
         Ok(0)
     } else {
         Err(ErrorNo::EINVAL)
+    }
+}
+
+/// 映射一段内存
+pub fn sys_msync(
+    start: usize,
+    len: usize,
+    flags: MSyncFlags,
+) -> SysResult {
+    if !USE_MSYNC {
+        return Ok(0);
+    }
+    info!("try msync start={:x} len={:x} flags=[{:#?}]", start, len, flags);
+    // 检查是否区间不是按页aligned的
+    if page_offset(start) != 0 || page_offset(start + len) != 0 {
+        return Err(ErrorNo::EINVAL);
+    }
+    if flags.contains(MSyncFlags::INVALIDATE) {
+        error!("MSyncFlags::INVALIDATE is unsupported!");
+        return Ok(0);
+    }
+    if get_current_task().unwrap().msync(start, start + len) {
+        Ok(0)
+    } else {
+        Err(ErrorNo::ENOMEM)
     }
 }
 

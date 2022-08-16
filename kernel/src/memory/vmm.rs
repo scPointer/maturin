@@ -153,6 +153,22 @@ impl MemorySet {
         Ok(())
     }
 
+    /// 将一段区域中的数据同步到和其对应的文件中
+    pub fn msync_areas(&mut self, start: VirtAddr, end: VirtAddr) -> OSResult {
+        let areas = self.areas.iter().filter(|(_, area)| area.is_overlap_with(start, end));
+        // 如果没找到区间， msync 需要报错 ENOMEM，所以需要确认是否至少有一个区间相交
+        let mut area_found = false;
+        for (_, area) in areas {
+            area_found = true;
+            // VmArea 内部会自行判断相交区间
+            area.msync(start, end)?;
+        }
+        if area_found {
+            Ok(())
+        } else {
+            Err(OSError::MemorySet_AreaNotMapped)
+        }
+    }
     /// 尝试插入一段数据。如插入成功，返回插入后的起始地址
     ///
     /// 如果指定参数 anywhere，则任意找一段地址 mmap; 否则必须在 [start, end) 尝试插入。

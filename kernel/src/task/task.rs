@@ -410,6 +410,10 @@ impl TaskControlBlock {
     pub fn mprotect(&self, start: VirtAddr, end: VirtAddr, new_flags: PTEFlags) -> bool {
         self.vm.lock().modify_overlap_areas_with_new_flags(start, end, new_flags).is_ok()
     }
+    /// 将一段区域中的数据同步到和其对应的文件中，返回给定区间是否至少和一个mmap的区间相交
+    pub fn msync(&self, start: VirtAddr, end: VirtAddr) -> bool {
+        self.vm.lock().msync_areas(start, end).is_ok()
+    }
     /// 修改任务状态
     pub fn set_status(&self, new_status: TaskStatus) {
         let mut inner = self.inner.lock();

@@ -232,6 +232,8 @@ pub enum ErrorNo {
     EBADF = -9,
     /// 资源暂时不可用。也可因为 futex_wait 时对应用户地址处的值与给定值不符
     EAGAIN = -11,
+    /// 内存耗尽，或者没有对应的内存映射
+    ENOMEM = -12,
     /// 无效地址
     EFAULT = -14,
     /// 设备或者资源被占用
@@ -352,3 +354,27 @@ pub struct SysInfo {
     pub mem_unit: u32,
 }
 
+bitflags! {
+    /// sys_renameat2 用到的选项
+    pub struct RenameFlags: u32 {
+        /// 不要替换目标位置的文件，如果预定位置已经有文件，不要删除它
+        const NOREPLACE = 1 << 0;
+        /// 交换原位置和目标位置的文件
+        const EXCHANGE = 1 << 1;
+        /// 替换后在原位置放一个 "whiteout" 类型对象，仅在一些文件系统中有用，这里不考虑
+        const WHITEOUT = 1 << 2;
+    }
+}
+
+bitflags! {
+    /// sys_renameat2 用到的选项
+    pub struct MSyncFlags: u32 {
+        /// 可以异步做
+        const ASYNC = 1 << 0;
+        /// 删除同一文件的其他内存映射
+        /// （这样把同一文件映射到其他位置的进程/线程可以马上得知文件被修改，然后更换新的值）
+        const INVALIDATE = 1 << 1;
+        /// 要求同步，即立即检查
+        const SYNC = 1 << 2;
+    }
+}
