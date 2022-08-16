@@ -5,28 +5,49 @@ mod resolution;
 
 use super::{File, OpenFlags};
 use core::mem::size_of;
+use lock::RwLock;
 use loopback::{read_from_port, write_to_port, LOCAL_LOOPBACK_ADDR};
-use resolution::{addr_resolution, AddrType, IpAddr};
+use resolution::{addr_resolution, get_ephemeral_port, AddrType, IpAddr};
 
 /// 一个套接字
 pub struct Socket {
     /// socket 对应的域
-    _domain: usize,
+    _domain: Domain,
     /// 连接类型
     _s_type: usize,
     /// 具体的连接协议
     _protocol: usize,
     /// 打开时的选项
-    flags: OpenFlags,
+    flags: RwLock<OpenFlags>,
+    /// Save IP Port
+    endpoint: RwLock<AddrType>,
 }
 
 impl Socket {
-    pub fn new(domain: usize, s_type: usize, protocol: usize) -> Self {
+    pub fn new(domain: Domain, s_type: usize, protocol: usize) -> Self {
         Self {
             _domain: domain,
             _s_type: s_type,
             _protocol: protocol,
-            flags: OpenFlags::RDWR | OpenFlags::NON_BLOCK | OpenFlags::CLOEXEC,
+            flags: RwLock::new(OpenFlags::RDWR),
+            endpoint: RwLock::new(AddrType::Unknown),
+        }
+    }
+    pub fn set_endpoint(&self, addr: usize) -> Option<usize> {
+        match addr_resolution(addr as *const u16) {
+            AddrType::Ip(ip, mut port) => {
+                if port == 0 {
+                    port = get_ephemeral_port();
+                }
+                info!("set endpoint: ip {:x}, port {}", ip, port);
+                let mut ep = self.endpoint.write();
+                *ep = AddrType::Ip(ip, port);
+                Some(port.into())
+            }
+            _ => {
+                warn!("set endpoint failed !");
+                None
+            }
         }
     }
 }
@@ -42,7 +63,15 @@ impl File for Socket {
     }
     /// 获取文件状态信息
     fn get_status(&self) -> OpenFlags {
-        self.flags
+        *self.flags.read()
+    }
+    /// 设置fd flags
+    fn set_status(&self, flags: OpenFlags) -> bool {
+        info!("socket set flags: {:?}", flags);
+        let fl = &mut self.flags.write();
+        fl.set(OpenFlags::NON_BLOCK, flags.contains(OpenFlags::NON_BLOCK));
+        fl.set(OpenFlags::CLOEXEC, flags.contains(OpenFlags::CLOEXEC));
+        true
     }
     /// 发送消息，当且仅当这个文件是 socket 时可用
     fn sendto(&self, buf: &[u8], _flags: i32, dest_addr: usize) -> Option<usize> {
@@ -79,5 +108,19 @@ impl File for Socket {
             }
             AddrType::Unknown => None,
         }
+    }
+}
+
+use numeric_enum_macro::numeric_enum;
+numeric_enum! {
+    #[repr(usize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    #[allow(non_camel_case_types)]
+    /// Generic musl socket domain.
+    pub enum Domain {
+        /// Local communication
+        AF_UNIX = 1,
+        /// IPv4 Internet protocols
+        AF_INET = 2,
     }
 }

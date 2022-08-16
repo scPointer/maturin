@@ -1,11 +1,18 @@
 //! 关于 socket 的 syscall
 
 use super::{ErrorNo, SysResult};
-use crate::{file::Socket, task::get_current_task};
+use crate::{file::{Socket, Domain}, task::get_current_task};
 use alloc::sync::Arc;
 
 /// 创建一个 socket
 pub fn sys_socket(domain: usize, s_type: usize, protocol: usize) -> SysResult {
+    let domain = match Domain::try_from(domain) {
+        Ok(domain) => domain,
+        Err(_) => {
+            warn!("invalid domain: {domain}");
+            return Err(ErrorNo::EAFNOSUPPORT);
+        }
+    };
     let task = get_current_task().unwrap();
     let mut fd_manager = task.fd_manager.lock();
     if let Ok(fd) = fd_manager.push(Arc::new(Socket::new(domain, s_type, protocol))) {
@@ -82,4 +89,34 @@ pub fn sys_recvfrom(
     } else {
         return Err(ErrorNo::EBADF);
     }
+}
+
+/// 绑定socket fd到指定地址的IP和Port
+pub fn sys_bind(fd: usize, addr: usize, addr_len: usize) -> SysResult {
+    info!("sys_bind: fd: {} addr: {:x} len: {}", fd, addr, addr_len);
+    let task = get_current_task().unwrap();
+    let mut task_vm = task.vm.lock();
+    if task_vm.manually_alloc_page(addr).is_err()
+        || task_vm.manually_alloc_page(addr + addr_len).is_err()
+    {
+        return Err(ErrorNo::EINVAL);
+    }
+    let fd_manager = task.fd_manager.lock();
+    if let Ok(file) = fd_manager.get_file(fd) {
+        let sock = file.as_any().downcast_ref::<Socket>().unwrap().clone();
+        if let Some(_p) = sock.set_endpoint(addr) {
+            Ok(0)
+        } else {
+            Err(ErrorNo::EINVAL)
+        }
+    } else {
+        return Err(ErrorNo::EBADF);
+    }
+}
+
+/// 设置socket为监听模式
+pub fn sys_listen(fd: usize, backlog: usize) -> SysResult {
+    info!("sys_listen: fd: {} backlog: {}", fd, backlog);
+    // is_listening = true
+    Ok(0)
 }

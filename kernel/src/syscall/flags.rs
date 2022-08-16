@@ -236,6 +236,8 @@ pub enum ErrorNo {
     ESPIPE = -29,
     /// 超过范围。例如用户提供的buffer不够长
     ERANGE = -34,
+    EPFNOSUPPORT = -96,
+    EAFNOSUPPORT = -97,
 }
 
 // sys_lseek 时对应的条件

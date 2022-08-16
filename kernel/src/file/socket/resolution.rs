@@ -27,3 +27,19 @@ pub fn addr_resolution(family_user_addr: *const u16) -> AddrType {
         _ => AddrType::Unknown,
     }
 }
+
+pub fn get_ephemeral_port() -> u16 {
+    // TODO selects non-conflict high port
+    static mut EPHEMERAL_PORT: u16 = 0;
+    unsafe {
+        if EPHEMERAL_PORT == 0 {
+            EPHEMERAL_PORT = (49152 + 0 % (65536 - 49152)) as u16;
+        }
+        if EPHEMERAL_PORT == 65535 {
+            EPHEMERAL_PORT = 49152;
+        } else {
+            EPHEMERAL_PORT = EPHEMERAL_PORT + 1;
+        }
+        EPHEMERAL_PORT
+    }
+}

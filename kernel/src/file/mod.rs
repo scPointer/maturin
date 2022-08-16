@@ -11,11 +11,12 @@ mod vfs;
 
 use crate::timer::TimeSpec;
 use alloc::vec::Vec;
+use core::any::Any;
 
 pub use fatfs::SeekFrom;
 
 /// 文件类抽象
-pub trait File: Send + Sync {
+pub trait File: Send + Sync + AsAny {
     /// 读文件内容到 buf，返回读到的字节数。
     /// 如文件不可读，返回 None。(相对应地，如果可读但没有读到内容，返回 Some(0))
     fn read(&self, buf: &mut [u8]) -> Option<usize>;
@@ -98,6 +99,13 @@ pub trait File: Send + Sync {
     }
 }
 
+pub trait AsAny {
+    fn as_any(&self) -> &dyn Any;
+}
+impl<T: Any> AsAny for T {
+    fn as_any(&self) -> &dyn Any { self }
+}
+
 pub use device::{
     check_dir_exists,
     check_file_exists,
@@ -121,7 +129,7 @@ pub use fs_stat::FsStat;
 pub use kstat::normal_file_mode;
 pub use kstat::{Kstat, StMode};
 pub use pipe::Pipe;
-pub use socket::Socket;
+pub use socket::{Socket, Domain};
 pub use vfs::{
     BufferFile,
     get_virt_file_if_possible,
