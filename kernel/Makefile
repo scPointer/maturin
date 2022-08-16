@@ -14,7 +14,7 @@ DISK_DIR ?= judge
 export PLATFORM
 
 ifeq ($(ARCH), riscv64)
-target := riscv64imac-unknown-none-elf
+target := riscv64gc-unknown-none-elf
 #target := riscv64.json
 else
 $(error Unsupported architecture $(ARCH))

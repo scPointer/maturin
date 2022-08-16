@@ -6,7 +6,11 @@
 pub const TESTCASES: &[&str] = &[
     // 测 lua 或者 busybox 的时候**不要**打开 base_info，内核输出非常多
 
-    "busybox sh",
+    "lmbench_all lmdd label=\"File /var/tmp/XXX write bandwidth:\" of=/var/tmp/XXX move=1m fsync=1 print=3",
+    "lmbench_all lat_pagefault -P 1 /var/tmp/XXX",
+    //"lmbench_all lat_ctx -P 1 -s 32 2 4 8 16 24 32 64 96",
+
+    //"busybox sh",
     //"busybox sh lua_testcode.sh", // lua 测例
     //"busybox sh busybox_testcode.sh", // busybox 测例
     //"busybox sh lmbench_testcode.sh", // lmbench 测例(见下)

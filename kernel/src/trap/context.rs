@@ -21,6 +21,8 @@ pub struct TrapContext {
     pub sepc: usize,
     /// CPU 的编号。在内核时，这个信息存在 tp 寄存器上
     pub cpu_id: usize,
+    /// 浮点寄存器
+    pub fs: [usize; 2],
 }
 
 impl TrapContext {
@@ -82,6 +84,7 @@ impl TrapContext {
             sstatus,
             sepc: entry,        // sepc 设为用户程序入口
             cpu_id: usize::MAX, // 这个信息会在 restore 进入用户时被保存，所以此处无需处理
+            fs: [0; 2],
         };
         cx.set_sp(sp); // 设置用户栈地址
 
@@ -104,6 +107,7 @@ impl TrapContext {
             sstatus: sstatus::read(),
             sepc: 0,
             cpu_id: usize::MAX,
+            fs: [0; 2],
         }
     }
 }
