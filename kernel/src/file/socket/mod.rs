@@ -14,7 +14,7 @@ pub struct Socket {
     /// socket 对应的域
     _domain: Domain,
     /// 连接类型
-    _s_type: usize,
+    _s_type: SocketType,
     /// 具体的连接协议
     _protocol: usize,
     /// 打开时的选项
@@ -24,7 +24,7 @@ pub struct Socket {
 }
 
 impl Socket {
-    pub fn new(domain: Domain, s_type: usize, protocol: usize) -> Self {
+    pub fn new(domain: Domain, s_type: SocketType, protocol: usize) -> Self {
         Self {
             _domain: domain,
             _s_type: s_type,
@@ -124,3 +124,33 @@ numeric_enum! {
         AF_INET = 2,
     }
 }
+numeric_enum! {
+    #[repr(usize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    #[allow(non_camel_case_types)]
+    /// Generic musl socket type.
+    pub enum SocketType {
+        /// Provides sequenced, reliable, two-way, connection-based byte streams.
+        /// An out-of-band data transmission mechanism may be supported.
+        SOCK_STREAM = 1,
+        /// Supports datagrams (connectionless, unreliable messages of a fixed maximum length).
+        SOCK_DGRAM = 2,
+        /// Provides raw network protocol access.
+        SOCK_RAW = 3,
+        /// Provides a reliable datagram layer that does not guarantee ordering.
+        SOCK_RDM = 4,
+        /// Provides a sequenced, reliable, two-way connection-based data
+        /// transmission path for datagrams of fixed maximum length;
+        /// a consumer is required to read an entire packet with each input system call.
+        SOCK_SEQPACKET = 5,
+        /// Datagram Congestion Control Protocol socket
+        SOCK_DCCP = 6,
+        /// Obsolete and should not be used in new programs.
+        SOCK_PACKET = 10,
+        /// Set O_NONBLOCK flag on the open fd
+        SOCK_NONBLOCK = 0x800,
+        /// Set FD_CLOEXEC flag on the new fd
+        SOCK_CLOEXEC = 0x80000,
+    }
+}
+pub const SOCKET_TYPE_MASK: usize = 0xff;

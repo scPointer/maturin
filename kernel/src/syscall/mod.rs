@@ -52,7 +52,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         );
         return 0;
     };
-    debug!("Syscall {:?}, {:x?}", syscall_id, args);
+    debug!("{:?}, {:x?}", syscall_id, args);
 
     // lmbench 会大量调用这两个 syscall 来统计时间，因此需要跳过
     /*
@@ -194,6 +194,8 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         ),
         SyscallNo::BIND => sys_bind(args[0], args[1], args[2]),
         SyscallNo::LISTEN => sys_listen(args[0], args[1]),
+        SyscallNo::CONNECT => sys_connect(args[0], args[1], args[2]),
+        SyscallNo::ACCEPT => sys_accept(args[0], args[1], args[2]),
         SyscallNo::BRK => sys_brk(args[0]),
         SyscallNo::MUNMAP => sys_munmap(args[0], args[1]),
         SyscallNo::CLONE => sys_clone(args[0], args[1], args[2], args[3], args[4]),
@@ -245,12 +247,12 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             if syscall_id != SyscallNo::GETRUSAGE
                 && syscall_id != SyscallNo::CLOCK_GET_TIME
             {
-                debug!("Return -> {} = {:#x}", a0, a0);
+                debug!("{:?} ret -> {} = {:#x}", syscall_id, a0, a0);
             }
             a0 as isize
         }
         Err(num) => {
-            warn!("Return -> {:?}", num);
+            warn!("{:?} ret -> {:?}", syscall_id, num);
             num as isize
         }
     }

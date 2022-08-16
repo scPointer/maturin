@@ -5,9 +5,9 @@ mod fd_manager;
 mod fs_stat;
 mod kstat;
 mod pipe;
-mod socket;
 mod stdio;
 mod vfs;
+pub mod socket;
 
 use crate::timer::TimeSpec;
 use alloc::vec::Vec;
@@ -129,7 +129,7 @@ pub use fs_stat::FsStat;
 pub use kstat::normal_file_mode;
 pub use kstat::{Kstat, StMode};
 pub use pipe::Pipe;
-pub use socket::{Socket, Domain};
+pub use socket::Socket;
 pub use vfs::{
     BufferFile,
     get_virt_file_if_possible,

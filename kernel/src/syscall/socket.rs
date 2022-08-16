@@ -1,7 +1,8 @@
 //! 关于 socket 的 syscall
 
 use super::{ErrorNo, SysResult};
-use crate::{file::{Socket, Domain}, task::get_current_task};
+use crate::{file::Socket, task::get_current_task};
+use crate::file::socket::*;
 use alloc::sync::Arc;
 
 /// 创建一个 socket
@@ -9,13 +10,21 @@ pub fn sys_socket(domain: usize, s_type: usize, protocol: usize) -> SysResult {
     let domain = match Domain::try_from(domain) {
         Ok(domain) => domain,
         Err(_) => {
-            warn!("invalid domain: {domain}");
+            warn!("Invalid socket domain: {domain}");
             return Err(ErrorNo::EAFNOSUPPORT);
         }
     };
+    let socket_type = match SocketType::try_from(s_type & SOCKET_TYPE_MASK) {
+        Ok(t) => t,
+        Err(_) => {
+            warn!("Invalid socket type: {s_type}");
+            return Err(ErrorNo::EINVAL);
+        }
+    };
+    warn!("SOCKET domain: {:?}, s_type: {:?}, protocol: {:x}", domain, socket_type, protocol);
     let task = get_current_task().unwrap();
     let mut fd_manager = task.fd_manager.lock();
-    if let Ok(fd) = fd_manager.push(Arc::new(Socket::new(domain, s_type, protocol))) {
+    if let Ok(fd) = fd_manager.push(Arc::new(Socket::new(domain, socket_type, protocol))) {
         Ok(fd)
     } else {
         Err(ErrorNo::EMFILE)
@@ -117,6 +126,31 @@ pub fn sys_bind(fd: usize, addr: usize, addr_len: usize) -> SysResult {
 /// 设置socket为监听模式
 pub fn sys_listen(fd: usize, backlog: usize) -> SysResult {
     info!("sys_listen: fd: {} backlog: {}", fd, backlog);
-    // is_listening = true
+    let task = get_current_task().unwrap();
+    let fd_manager = task.fd_manager.lock();
+    if let Ok(_file) = fd_manager.get_file(fd) {
+        // is_listening = true
+        Ok(0)
+    } else {
+        Err(ErrorNo::EBADF)
+    }
+}
+
+/// socket连接给的远程地址. 如完成TCP的三次握手
+pub fn sys_connect(fd: usize, addr: usize, addr_len: usize) -> SysResult {
+    info!("sys_connect: fd: {} addr: {:x} len: {}", fd, addr, addr_len);
+    let task = get_current_task().unwrap();
+    let fd_manager = task.fd_manager.lock();
+    if let Ok(_file) = fd_manager.get_file(fd) {
+        // TCP submit a SYN
+        Ok(0)
+    } else {
+        Err(ErrorNo::EBADF)
+    }
+}
+
+/// socket连接给的远程地址. 如完成TCP的三次握手
+pub fn sys_accept(fd: usize, addr: usize, addr_len: usize) -> SysResult {
+    info!("sys_accept: fd: {} addr: {:x} len: {}", fd, addr, addr_len);
     Ok(0)
 }
