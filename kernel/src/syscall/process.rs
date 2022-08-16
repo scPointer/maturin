@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     constants::{SIGSET_SIZE_IN_BYTE, USER_STACK_SIZE, USER_VIRT_ADDR_LIMIT, FD_LIMIT_HARD},
-    file::{SeekFrom, BackEndFile, SyncPolicy},
+    file::{SeekFrom, BackEndFile},
     signal::{send_signal, Bitset, SigAction, SignalNo},
     memory::page_offset,
     task::{
@@ -294,7 +294,7 @@ pub fn sys_mmap(
         //确认可以seek才获取文件，否则后续 lazy alloc 时不好处理
         if let Some(_off) = file.seek(SeekFrom::Start(offset as u64)) {
             // file 在从 fd 中拿的时候已经是 clone 了，所以这里可以直接传给 backend
-            let backend = BackEndFile::new(file, offset, SyncPolicy::SyncRead);
+            let backend = BackEndFile::new(file, offset, prot.into());
             drop(tcb_inner);
             // mmap 内部需要拿 inner 锁
             if let Some(start) =
