@@ -2,16 +2,17 @@
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use core::mem::size_of;
 use lock::MutexGuard;
 
 use crate::constants::FD_LIMIT_HARD;
-use crate::file::{FdManager, File};
+use crate::file::{FdManager, File, PollEvents};
 use crate::memory::MemorySet;
 use crate::signal::ShadowBitset;
 use crate::task::{get_current_task, suspend_current_task};
 use crate::timer::{get_time, TimeSpec};
 
-use super::{ErrorNo, SysResult};
+use super::{ErrorNo, SysResult, PollFd};
 
 /// 获取 fd 指向文件的集合，
 /// 每个文件存在 arc 里，每个 fd 值存在一个 usize 里，然后在用户地址原地清空建立一个 ShadowBitset。
@@ -50,6 +51,7 @@ fn init_fd_sets(
         Err(ErrorNo::EBADF)
     }
 }
+
 
 pub fn sys_pselect6(
     nfds: usize,
@@ -138,5 +140,61 @@ pub fn sys_pselect6(
             // 检查超时
             return Ok(0);
         }
+    }
+}
+
+pub fn sys_ppoll(
+    ufds: *mut PollFd,
+    nfds: usize,
+    timeout: *const TimeSpec, // ppoll 不会更新 timeout 的值，而 poll 会
+    _sigmask: *const usize
+) -> SysResult {
+    let task = get_current_task().unwrap();
+    let mut task_vm = task.vm.lock();
+    debug!("ppoll ufds at {:x} nfds {} timeout at {:x}", ufds as usize, nfds, timeout as usize);
+    if task_vm.manually_alloc_user_str(ufds as *const u8, nfds * size_of::<PollFd>()).is_err() {
+        return Err(ErrorNo::EFAULT); // 无效地址
+    }
+    let mut fds: Vec<PollFd> = Vec::new();
+    for i in 0..nfds {
+        unsafe { fds.push(*ufds.add(i)); }
+    }
+    // 过期时间
+    // 这里用**时钟周期数**来记录，足够精确的同时 usize 也能存下。实际用微秒或者纳秒应该也没问题。
+    let expire_time = if timeout as usize != 0 {
+        if task_vm.manually_alloc_type(timeout).is_err() {
+            return Err(ErrorNo::EFAULT); // 无效地址
+        }
+        get_time() + unsafe { (*timeout).get_ticks() }
+    } else {
+        usize::MAX // 没有过期时间
+    };
+    drop(task_vm); // select 的时间可能很长，之后不用 vm 了就及时释放
+    loop {
+        let fd_manager = task.fd_manager.lock();
+        // 已触发的 fd
+        let mut set: usize = 0;
+        for req_fd in &mut fds {
+            if let Ok(file) = fd_manager.get_file(req_fd.fd as usize) {
+                req_fd.revents = file.poll(req_fd.events);
+                if !req_fd.revents.is_empty() {
+                    set += 1;
+                }
+            } else {
+                req_fd.revents |= PollEvents::ERR;
+                set += 1;
+            }
+        }
+        if set > 0 {
+            // 如果找到满足条件的 fd，则返回找到的 fd 数量
+            return Ok(set);
+        }
+        // 否则暂时 block 住
+        if get_time() > expire_time {
+            // 检查超时
+            return Ok(0);
+        }
+        drop(fd_manager); // fd_manager 同理
+        suspend_current_task();
     }
 }

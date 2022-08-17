@@ -115,6 +115,12 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[4] as *const TimeSpec,
             args[5] as *const usize,
         ),
+        SyscallNo::PPOLL => sys_ppoll(
+            args[0] as *mut PollFd,
+            args[1],
+            args[2] as *const TimeSpec,
+            args[3] as *const usize,
+        ),
         SyscallNo::READLINKAT => sys_readlinkat(
             args[0] as i32,
             args[1] as *const u8,
@@ -240,7 +246,6 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::SIGTIMEDWAIT => Ok(0),
         SyscallNo::MEMBARRIER => Ok(0),
         SyscallNo::FSYNC => Ok(0),
-        SyscallNo::PPOLL => Ok(1),
         _ => {
             //_ => panic!("Unsupported syscall id = {:#?}()", syscall_id, syscall_id as usize);
             error!(

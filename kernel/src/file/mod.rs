@@ -6,6 +6,7 @@ mod fd_manager;
 mod fs_stat;
 mod kstat;
 mod pipe;
+mod poll_events;
 mod socket;
 mod stdio;
 mod vfs;
@@ -56,6 +57,20 @@ pub trait File: Send + Sync {
     fn in_exceptional_conditions(&self) -> bool {
         false
     }
+    /// poll / ppoll 用到的选项，输入一个要求监控的事件集(events)，返回一个实际发生的事件集(request events)
+    fn poll(&self, events: PollEvents) -> PollEvents {
+        let mut ret = PollEvents::empty();
+        if self.in_exceptional_conditions() {
+            ret |= PollEvents::ERR;
+        }
+        if events.contains(PollEvents::IN) && self.ready_to_read() {
+            ret |= PollEvents::IN;
+        }
+        if events.contains(PollEvents::OUT) && self.ready_to_write() {
+            ret |= PollEvents::OUT;
+        }
+        ret
+    } 
     /// 清空文件
     fn clear(&self) {
     }
@@ -146,6 +161,7 @@ pub use fs_stat::FsStat;
 pub use kstat::normal_file_mode;
 pub use kstat::{Kstat, StMode};
 pub use pipe::Pipe;
+pub use poll_events::PollEvents;
 pub use socket::Socket;
 pub use vfs::{
     BufferFile,
