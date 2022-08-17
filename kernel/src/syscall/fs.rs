@@ -200,6 +200,12 @@ pub fn sys_pread(fd: usize, buf: *mut u8, count: usize, offset: usize) -> SysRes
 pub fn sys_readlinkat(dir_fd: i32, path: *const u8, buf: *mut u8, len: usize) -> SysResult {
     //info!("dir_fd {} path {:x}, buf {:x}, len {:x}", dir_fd, path as usize, buf as usize, len);
     let task = get_current_task().unwrap();
+    let task_vm = task.vm.lock();
+    if task_vm.manually_alloc_page(path as usize).is_err()
+    || task_vm.manually_alloc_user_str(buf, len).is_err()
+    {
+        return Err(ErrorNo::EFAULT); // 检查传入的地址是否合法
+    }
     if let Some((path, file)) = resolve_path_from_fd(&task, dir_fd, path) {
         info!("readlinkat: path {} file {}", path, file);
         let mut task_vm = task.vm.lock();
