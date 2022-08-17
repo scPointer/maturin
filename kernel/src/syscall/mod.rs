@@ -25,6 +25,7 @@ pub use flags::ErrorNo;
 use flags::*;
 use fs::*;
 use futex::*;
+pub use futex::{check_thread_blocked, wake_thread, set_waiter_for_thread};
 use loops::*;
 pub use loops::clear_loop_checker;
 use process::*;
@@ -94,7 +95,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[0] as i32,
             args[1] as *const u8,
             args[2] as u32,
-            args[3] as u32,
+            args[3] as i32,
         ),
         SyscallNo::CLOSE => sys_close(args[0]),
         SyscallNo::PIPE => sys_pipe(args[0] as *mut u32),
@@ -167,6 +168,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::TIMES => sys_times(args[0] as *mut TMS),
         SyscallNo::UNAME => sys_uname(args[0] as *mut UtsName),
         SyscallNo::GETRUSAGE => sys_getrusage(args[0] as i32, args[1] as *mut TimeVal),
+        SyscallNo::UMASK => sys_umask(args[0] as i32),
         SyscallNo::GET_TIME_OF_DAY => sys_get_time_of_day(args[0] as *mut TimeVal),
         SyscallNo::GETPID => sys_getpid(),
         SyscallNo::GETPPID => sys_getppid(),

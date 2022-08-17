@@ -14,7 +14,7 @@ use crate::{
         global_logoff_signals, send_signal, SigActionDefault, SigActionFlags, SigInfo, SignalNo,
         SignalUserContext, SIG_IGN,
     },
-    syscall::clear_loop_checker,
+    syscall::{clear_loop_checker, check_thread_blocked},
 };
 use alloc::{sync::Arc, vec::Vec};
 use core::mem::size_of;
@@ -69,6 +69,12 @@ pub fn run_tasks() -> ! {
     let cpu_id = get_cpu_id();
     loop {
         if let Some(task) = fetch_task_from_scheduler() {
+            let tid = task.get_tid_num();
+            // 如果线程正在等待，则不进入
+            if check_thread_blocked(tid) {
+                push_task_to_scheduler(task);
+                continue;
+            }
             let mut cpu_local = CPU_CONTEXTS[cpu_id].lock();
             //let mut task_inner = task.lock();
             let idle_task_cx_ptr = cpu_local.get_idle_task_cx_ptr();

@@ -143,7 +143,7 @@ impl TaskControlBlock {
                     signal_handlers: signal_handlers,
                     signal_receivers: signal_receivers,
                     vm: Arc::new(Mutex::new(vm)),
-                    fd_manager: Arc::new(Mutex::new(FdManager::new())),
+                    fd_manager: Arc::new(Mutex::new(FdManager::new(0))), // 初始 umask 设为 0
                     time: Mutex::new(TimeStat::new(tid_raw)),
                     inner: Arc::new(Mutex::new(TaskControlBlockInner {
                         dir: String::from(app_dir),

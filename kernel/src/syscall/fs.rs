@@ -476,7 +476,7 @@ pub fn sys_chdir(path: *const u8) -> SysResult {
 }
 
 /// 打开文件，返回对应的 fd。如打开失败，则返回 -1
-pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, _user_mode: u32) -> SysResult {
+pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: i32) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_fd_manager = task.fd_manager.lock();
     // 如果 fd 已满，则不再添加
@@ -498,8 +498,8 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, _user_mode: u32) -> Sy
             file_path.remove(1);
         }
         info!(
-            "try open parent_dir={} file_path={} flag={:x}",
-            parent_dir, file_path, flags
+            "try open parent_dir={} file_path={} flag={:x} mode = {:o}",
+            parent_dir, file_path, flags, user_mode & !task_fd_manager.get_umask()
         );
         if let Some(open_flags) = OpenFlags::from_bits(flags) {
             info!("[{:#?}]", open_flags);
@@ -718,6 +718,14 @@ pub fn sys_lseek(fd: usize, offset: isize, whence: isize) -> SysResult {
     Err(ErrorNo::EBADF)
 }
 
+/// 设置创建文件时 user_mode 的掩码，并返回原来的掩码。
+/// 对整个进程有效
+pub fn sys_umask(new_mask: i32) -> SysResult {
+    let task = get_current_task().unwrap();
+    let old_mask = task.fd_manager.lock().set_umask_and_get_old(new_mask);
+    Ok(old_mask as usize)
+}
+
 /// 设置文件属性。目前支持的比较少
 pub fn sys_fcntl64(fd: usize, cmd: usize, arg: usize) -> SysResult {
     let task = get_current_task().unwrap();
@@ -843,7 +851,7 @@ pub fn sys_renameat2(old_dir_fd: i32, old_path: *const u8, new_dir_fd: i32, new_
     }
     if let Some((old_path, old_file)) = resolve_path_from_fd(&task, old_dir_fd, old_path) {
         if let Some((new_path, new_file)) = resolve_path_from_fd(&task, new_dir_fd, new_path) {
-            warn!("rename {old_path} {old_file} {new_path} {new_file}");
+            //warn!("rename {old_path} {old_file} {new_path} {new_file}");
             return rename_or_move(old_path.as_str(), old_file, new_path.as_str(), new_file, !flags.contains(RenameFlags::NOREPLACE))
                 .map(|_| 0);
         }
