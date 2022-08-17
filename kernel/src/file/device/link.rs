@@ -24,11 +24,17 @@ pub fn parse_file_name((path, file): (String, String)) -> (String, String) {
     //*count.entry(x).or_insert(0) += 1;
 }
 
+/// 检查文件名对应的链接
+pub fn read_link(path: String, file: String) -> String {
+    let (real_path, real_file) = parse_file_name((path, file));
+    real_path + real_file.as_str()
+}
+
 /// 添加硬链接
 ///
 /// 这个函数不对外可见，外部需要调用 try_add_link
 fn add_link(real_path: String, real_file: String, user_path: String, user_file: String) {
-    //info!("add link {} {} {} {}", real_path, real_file, user_path, user_file);
+    info!("add link {} {} {} {}", real_path, real_file, user_path, user_file);
     let mut map = LINK_PATH_MAP.lock();
     let mut count_map = LINK_COUNT_MAP.lock();
     let key = FileDisc::new(&user_path, &user_file);

@@ -325,7 +325,7 @@ pub const RUSAGE_THREAD: i32 = 1;
 
 /// sys_sysinfo 用到的类型，详见 `https://man7.org/linux/man-pages/man2/sysinfo.2.html`
 #[repr(C)]
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SysInfo {
     /// 启动时间(以秒计)
     pub uptime: isize,

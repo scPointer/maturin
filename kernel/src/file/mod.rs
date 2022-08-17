@@ -134,6 +134,7 @@ pub use device::{
     show_testcase_result,
     try_add_link,
     try_remove_link,
+    read_link,
     umount_fat_fs,
     rename_or_move,
 };

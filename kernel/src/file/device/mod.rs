@@ -42,7 +42,7 @@ pub use fat_dir::FatDir;
 pub use fat_file::FatFile;
 pub use fd_dir::FdDir;
 pub use link::FileDisc;
-pub use link::{get_link_count, mount_fat_fs, try_add_link, try_remove_link, umount_fat_fs};
+pub use link::{read_link, get_link_count, mount_fat_fs, try_add_link, try_remove_link, umount_fat_fs};
 pub use open_flags::OpenFlags;
 pub use stat::get_fs_stat as origin_fs_stat;
 pub use test::{
@@ -109,6 +109,8 @@ pub fn fs_init() {
     mkdir("dev/", "misc");
     let _rtc = open_file("./dev/misc/", "rtc", OpenFlags::CREATE).unwrap(); // 硬件时钟信息
     let _lat_sig = open_file(ROOT_DIR, "lat_sig", OpenFlags::CREATE).unwrap(); // lat_sig prot 测例要求的文件。测例只管读这个文件，但又不创建
+
+    //add_link_for_all_files_in_dir(ROOT_DIR.into(), "./XXX/".into(), true, true); // 测试 add_link，目前没看到有其他问题
 }
 
 /// 在 path 后加入 child_path 路径，返回 child_path 中最后一个 '/' 的位置+1。(如没有 '/' 则返回0)
@@ -415,6 +417,56 @@ pub fn rename_or_move(old_dir: &str, old_file: &str, new_dir: &str, new_file: &s
         }
     }
     Err(ErrorNo::EINVAL)
+}
+
+/// 把 origin_dir 目录下的每个文件，链接到 link_dir 目录下的对应文件。
+/// 两个目录的结尾都需要有 '/'
+/// - create 为 true 表示如果 link_dir 下的文件(**包括这个目录本身**)不存在，则会创建它；
+/// - recursive 表示需要递归查找目录中每一个子目录的文件进行链接
+/// 
+/// 返回创建是否成功
+#[allow(unused)]
+pub fn add_link_for_all_files_in_dir(origin_dir: String, link_dir: String, is_create: bool, recursive: bool) -> bool {
+    // 打开原目录
+    if let Some(origin_fsdir) = inner_open_dir(MEMORY_FS.root_dir(), origin_dir.as_str()) {
+        // 打开需要链接到的目录
+        if inner_open_dir(MEMORY_FS.root_dir(), link_dir.as_str()).is_none() {
+            //如果不存在，则考察是否需要创建
+            // mkdir 时，目录后不该有 '/'，所以要去掉最后一个字符
+            if is_create && mkdir(ROOT_DIR, &link_dir.as_str()[..link_dir.len()-1]) {
+                inner_open_dir(MEMORY_FS.root_dir(), link_dir.as_str());
+            } else {
+                return false;
+            }
+        }
+        for dir_entry in origin_fsdir.iter() {
+            let file = dir_entry.unwrap();
+            let name = file.file_name();
+            if name == "." || name == ".." {
+                continue;
+            }
+            let new_origin_dir = origin_dir.clone() + name.as_str() + "/";
+            let new_link_dir = link_dir.clone() + name.as_str() + "/";
+            // 新的子目录不能是原目录的前缀，避免无限递归
+            // is_prefix_of 依赖的 trait 不是 stable，所以现在手动判断
+            if new_origin_dir[..link_dir.len()] == link_dir {
+                continue;
+            }
+            if is_create && check_file_exists(link_dir.as_str(), name.as_str()) {
+                remove_file(link_dir.as_str(), name.as_str());
+            }
+            try_add_link(origin_dir.clone(), name.as_str(), link_dir.clone(), name.as_str());
+            if recursive && file.is_dir() {
+                add_link_for_all_files_in_dir(
+                    new_origin_dir,
+                    new_link_dir,
+                    is_create,
+                    recursive
+                );
+            }
+        }
+    }
+    true
 }
 
 /// 检查目录是否存在

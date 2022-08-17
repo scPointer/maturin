@@ -66,7 +66,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     trap::init(); // 设置异常/中断的入口，即 stvec
     arch::allow_sum_access(); // 内核可以读写 USER 页表项中的数据
 
-    //trap::enable_timer_interrupt(); // 开启时钟中断
+    trap::enable_timer_interrupt(); // 开启时钟中断
     //timer::set_next_trigger(); // 设置时钟中断频率
 
     // file::list_apps_names_at_root_dir(); // 展示所有用户程序的名字

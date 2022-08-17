@@ -13,7 +13,7 @@ use crate::{
     constants::{AT_FDCWD, SENDFILE_BUFFER_SIZE},
     file::{
         check_dir_exists, check_file_exists, get_dir_entry_iter, mkdir, mount_fat_fs, open_file,
-        origin_fs_stat, try_add_link, try_remove_link, umount_fat_fs, rename_or_move,
+        origin_fs_stat, try_add_link, try_remove_link, read_link, umount_fat_fs, rename_or_move,
     },
     file::{FsStat, Kstat, OpenFlags, Pipe, SeekFrom},
     task::{get_current_task, TaskControlBlock},
@@ -212,6 +212,12 @@ pub fn sys_readlinkat(dir_fd: i32, path: *const u8, buf: *mut u8, len: usize) ->
             let slice = unsafe { core::slice::from_raw_parts_mut(buf, write_len) };
             slice.copy_from_slice(&name.as_bytes()[..write_len]);
             return Ok(write_len);
+        } else {
+            let linked_file = read_link(path, file.into());
+            info!("readlinkat -> linked to {linked_file}");
+            let slice = unsafe { core::slice::from_raw_parts_mut(buf, linked_file.len()) };
+            slice.copy_from_slice(linked_file.as_bytes());
+            return Ok(linked_file.len());
         }
     }
     Err(ErrorNo::EINVAL)
