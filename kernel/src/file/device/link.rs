@@ -5,6 +5,7 @@
 //#![deny(missing_docs)]
 
 use super::{check_dir_exists, check_file_exists, remove_file, split_path_and_file};
+use crate::constants::ROOT_DIR;
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
 use lock::Mutex;
 
@@ -25,9 +26,29 @@ pub fn parse_file_name((path, file): (String, String)) -> (String, String) {
 }
 
 /// 检查文件名对应的链接
-pub fn read_link(path: String, file: String) -> String {
-    let (real_path, real_file) = parse_file_name((path, file));
-    real_path + real_file.as_str()
+/// 如果在 map 中找不到对应链接，则返回 None
+pub fn read_link(path: &str, file: &str) -> Option<String> {
+    let file: String = if file.ends_with("/.") || file.ends_with("/..") {
+        String::from(file) + "/"
+    } else {
+        file.into()
+    };
+    let (mut path, mut file) = super::map_path_and_file(path, file.as_str())?;
+    if file == "" { // path 是个路径
+        if path == ROOT_DIR { // 如果是根路径
+            file = ROOT_DIR.into()
+        } else { // 否则，它是 ./for/example/this/is/a/path/ ，总之至少有两个 '/' 且以 '/' 结尾
+            // 删除路径尾的 '/'
+            path.pop().unwrap();
+            let pos = path.rfind("/").unwrap();
+            (path, file) = (path[..=pos].into(), path[pos+1..].into());
+        }
+    }
+    //info!("read link: {path} {file}");
+    let map = LINK_PATH_MAP.lock();
+    map.get(&FileDisc::new(&path, &file)).map(|disc| {
+        String::from(&disc.path[..]) + &disc.file[..]
+    })
 }
 
 /// 添加硬链接

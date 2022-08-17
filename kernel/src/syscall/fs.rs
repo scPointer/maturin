@@ -213,11 +213,12 @@ pub fn sys_readlinkat(dir_fd: i32, path: *const u8, buf: *mut u8, len: usize) ->
             slice.copy_from_slice(&name.as_bytes()[..write_len]);
             return Ok(write_len);
         } else {
-            let linked_file = read_link(path, file.into());
-            info!("readlinkat -> linked to {linked_file}");
-            let slice = unsafe { core::slice::from_raw_parts_mut(buf, linked_file.len()) };
-            slice.copy_from_slice(linked_file.as_bytes());
-            return Ok(linked_file.len());
+            if let Some(linked_file) = read_link(path.as_str(), file) {
+                info!("readlinkat -> linked to {linked_file}");
+                let slice = unsafe { core::slice::from_raw_parts_mut(buf, linked_file.len()) };
+                slice.copy_from_slice(linked_file.as_bytes());
+                return Ok(linked_file.len());
+            }
         }
     }
     Err(ErrorNo::EINVAL)
