@@ -86,6 +86,7 @@ pub fn fs_init() {
     //mkdir(ROOT_DIR, "tmp");
     mkdir(ROOT_DIR, "dev");
     mkdir(ROOT_DIR, "lib");
+    mkdir(ROOT_DIR, "tmp");
 
     mkdir("dev/", "shm");
     let dso = &"tls_get_new-dtv_dso.so"; // 该库要去lib等目录找，所以需要链接. 仅用于libc-test

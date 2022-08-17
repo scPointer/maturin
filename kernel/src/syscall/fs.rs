@@ -228,9 +228,13 @@ pub fn sys_access(dir_fd: i32, path: *const u8, _mode: usize) -> SysResult {
     if let Some((path, file)) = resolve_path_from_fd(&task, dir_fd, path) {
         info!("access : path {} file {}", path, file);
         if check_file_exists(path.as_str(), file) {
-            Ok(0)
+            if file.ends_with('/') {
+                return Err(ErrorNo::ENOTDIR)
+            } else {
+                Ok(0)
+            }
         } else if check_dir_exists((path + file).as_str()) {
-            Err(ErrorNo::EISDIR)
+            Ok(0)
         } else {
             Err(ErrorNo::ENOENT)
         }
