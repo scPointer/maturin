@@ -52,6 +52,10 @@ pub trait File: Send + Sync {
     fn ready_to_write(&self) -> bool {
         true
     }
+    /// 是否已经终止。对于 pipe 来说，这意味着另一端已关闭
+    fn is_hang_up(&self) -> bool {
+        false
+    }
     /// 处于“意外情况”。在 (p)select 和 (p)poll 中会使用到
     #[allow(unused)]
     fn in_exceptional_conditions(&self) -> bool {
@@ -62,6 +66,9 @@ pub trait File: Send + Sync {
         let mut ret = PollEvents::empty();
         if self.in_exceptional_conditions() {
             ret |= PollEvents::ERR;
+        }
+        if self.is_hang_up() {
+            ret |= PollEvents::HUP;
         }
         if events.contains(PollEvents::IN) && self.ready_to_read() {
             ret |= PollEvents::IN;

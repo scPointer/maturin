@@ -6,9 +6,9 @@
 pub const TESTCASES: &[&str] = &[
     // 测 lua 或者 busybox 的时候**不要**打开 base_info，内核输出非常多
 
-    //"busybox sh",
+    "busybox sh",
     //"busybox sh lua_testcode.sh", // lua 测例
-    "busybox sh busybox_testcode.sh", // busybox 测例
+    //"busybox sh busybox_testcode.sh", // busybox 测例
     //"busybox sh lmbench_testcode.sh", // lmbench 测例(见下)
 
 

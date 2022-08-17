@@ -149,6 +149,7 @@ pub fn sys_ppoll(
     timeout: *const TimeSpec, // ppoll 不会更新 timeout 的值，而 poll 会
     _sigmask: *const usize
 ) -> SysResult {
+    //if nfds > 0 { return Ok(1); }
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
     debug!("ppoll ufds at {:x} nfds {} timeout at {:x}", ufds as usize, nfds, timeout as usize);
@@ -181,17 +182,23 @@ pub fn sys_ppoll(
                     set += 1;
                 }
             } else {
-                req_fd.revents |= PollEvents::ERR;
+                req_fd.revents = PollEvents::ERR;
                 set += 1;
             }
         }
         if set > 0 {
             // 如果找到满足条件的 fd，则返回找到的 fd 数量
+            for i in 0..fds.len() {
+                unsafe { *ufds.add(i) = fds[i]; }
+            }
             return Ok(set);
         }
         // 否则暂时 block 住
         if get_time() > expire_time {
             // 检查超时
+            for i in 0..fds.len() {
+                unsafe { *ufds.add(i) = fds[i]; }
+            }
             return Ok(0);
         }
         drop(fd_manager); // fd_manager 同理

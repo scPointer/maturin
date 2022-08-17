@@ -178,4 +178,12 @@ impl File for Pipe {
     fn ready_to_write(&self) -> bool {
         !self.is_read && self.data.lock().get_len() < PIPE_SIZE_LIMIT
     }
+    /// 是否已经终止。对于 pipe 来说，这意味着另一端已关闭
+    fn is_hang_up(&self) -> bool {
+        if self.is_read {
+            self.data.lock().get_len() == 0 && Arc::strong_count(&self.data) < 2
+        } else {
+            Arc::strong_count(&self.data) < 2
+        }
+    }
 }

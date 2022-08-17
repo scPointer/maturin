@@ -242,4 +242,26 @@ impl File for FatFile {
         file.seek(SeekFrom::Start(0)).unwrap();
         file.truncate().unwrap();
     }
+    /// 已准备好读。对于 pipe 来说，这意味着读端的buffer内有值
+    fn ready_to_read(&self) -> bool {
+        if !self.readable {
+            return false;
+        }
+        let mut file = self.file.lock();
+        let pre_pos = file.seek(SeekFrom::Current(0)).unwrap();
+        let len = file.seek(SeekFrom::End(0)).unwrap();
+        file.seek(SeekFrom::Start(pre_pos)).unwrap();
+        pre_pos != len
+    }
+    /// 已准备好写。对于 pipe 来说，这意味着写端的buffer未满
+    fn ready_to_write(&self) -> bool {
+        if !self.writable {
+            return false;
+        }
+        let mut file = self.file.lock();
+        let pre_pos = file.seek(SeekFrom::Current(0)).unwrap();
+        let len = file.seek(SeekFrom::End(0)).unwrap();
+        file.seek(SeekFrom::Start(pre_pos)).unwrap();
+        pre_pos != len
+    }
 }
