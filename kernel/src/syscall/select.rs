@@ -6,7 +6,7 @@ use core::mem::size_of;
 use lock::MutexGuard;
 
 use crate::constants::FD_LIMIT_HARD;
-use crate::file::{FdManager, File, PollEvents};
+use crate::file::{FdManager, File, PollEvents, EpollFile, EpollEvent, EpollCtl};
 use crate::memory::MemorySet;
 use crate::signal::ShadowBitset;
 use crate::task::{get_current_task, suspend_current_task};
@@ -204,4 +204,36 @@ pub fn sys_ppoll(
         drop(fd_manager); // fd_manager 同理
         suspend_current_task();
     }
+}
+
+/// 创建一个 epoll 文件
+pub fn sys_epoll_create(_flags: usize) -> SysResult {
+    info!("epoll create");
+    let task = get_current_task().unwrap();
+    let mut fd_manager = task.fd_manager.lock();
+    let epoll_file = EpollFile::new();
+    fd_manager.push(Arc::new(epoll_file)).map_err(|_| ErrorNo::EMFILE)
+}
+
+pub fn sys_epoll_ctl(epfd: i32, op: i32, fd: i32, event: *const EpollEvent) -> SysResult {
+    info!("epoll ctl: epfd {epfd} op {op} fd {fd}");
+    let task = get_current_task().unwrap();
+    let mut task_vm = task.vm.lock();
+    let fd_manager = task.fd_manager.lock();
+    let event = if task_vm.manually_alloc_type(event).is_err() {
+        return Err(ErrorNo::EFAULT); // 地址不合法
+    } else {
+        unsafe { *event }
+    };
+    let operator = EpollCtl::try_from(op).map_err(|_| ErrorNo::EINVAL)?; // 操作符不合法
+    if let Some(epoll_file) = fd_manager
+        .get_file(epfd as usize)
+        .map(|file| file.get_epoll_fd())
+        .map_err(|_| ErrorNo::EBADF)? {
+        if fd_manager.get_file(fd as usize).is_err() {
+            return Err(ErrorNo::EBADF); // 错误的文件描述符
+        }
+        return epoll_file.epoll_ctl(operator, fd, event).map(|_| 0);
+    }
+    Err(ErrorNo::EBADF) // 错误的文件描述符
 }

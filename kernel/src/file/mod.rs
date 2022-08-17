@@ -2,6 +2,7 @@
 
 mod backend;
 mod device;
+mod epoll;
 mod fd_manager;
 mod fs_stat;
 mod kstat;
@@ -139,6 +140,10 @@ pub trait File: Send + Sync {
     ) -> Option<usize> {
         None
     }
+    /// 如果这个文件对应的是一个 epoll，则获取 epoll 文件。否则，返回 None
+    fn get_epoll_fd(&self) -> Option<EpollFile> {
+        None
+    }
 }
 
 pub use device::{
@@ -163,6 +168,7 @@ pub use device::{
 
 pub use backend::{BackEndFile, SyncPolicy};
 pub use device::{FileDisc, OpenFlags};
+pub use epoll::{EpollFile, EpollEvent, EpollCtl};
 pub use fd_manager::FdManager;
 pub use fs_stat::FsStat;
 pub use kstat::normal_file_mode;
