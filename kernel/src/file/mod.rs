@@ -2,10 +2,13 @@
 
 mod backend;
 mod device;
+mod epoll;
 mod fd_manager;
 mod fs_stat;
 mod kstat;
 mod pipe;
+mod poll_events;
+mod socket;
 mod stdio;
 mod vfs;
 pub mod socket;
@@ -52,11 +55,32 @@ pub trait File: Send + Sync + AsAny {
     fn ready_to_write(&self) -> bool {
         true
     }
+    /// 是否已经终止。对于 pipe 来说，这意味着另一端已关闭
+    fn is_hang_up(&self) -> bool {
+        false
+    }
     /// 处于“意外情况”。在 (p)select 和 (p)poll 中会使用到
     #[allow(unused)]
     fn in_exceptional_conditions(&self) -> bool {
         false
     }
+    /// poll / ppoll 用到的选项，输入一个要求监控的事件集(events)，返回一个实际发生的事件集(request events)
+    fn poll(&self, events: PollEvents) -> PollEvents {
+        let mut ret = PollEvents::empty();
+        if self.in_exceptional_conditions() {
+            ret |= PollEvents::ERR;
+        }
+        if self.is_hang_up() {
+            ret |= PollEvents::HUP;
+        }
+        if events.contains(PollEvents::IN) && self.ready_to_read() {
+            ret |= PollEvents::IN;
+        }
+        if events.contains(PollEvents::OUT) && self.ready_to_write() {
+            ret |= PollEvents::OUT;
+        }
+        ret
+    } 
     /// 清空文件
     fn clear(&self) {
     }
@@ -118,6 +142,10 @@ pub trait File: Send + Sync + AsAny {
     ) -> Option<usize> {
         None
     }
+    /// 如果这个文件对应的是一个 epoll，则获取 epoll 文件。否则，返回 None
+    fn get_epoll_fd(&self) -> Option<EpollFile> {
+        None
+    }
 }
 
 pub trait AsAny {
@@ -142,16 +170,20 @@ pub use device::{
     show_testcase_result,
     try_add_link,
     try_remove_link,
+    read_link,
     umount_fat_fs,
+    rename_or_move,
 };
 
 pub use backend::{BackEndFile, SyncPolicy};
 pub use device::{FileDisc, OpenFlags};
+pub use epoll::{EpollFile, EpollEvent, EpollCtl};
 pub use fd_manager::FdManager;
 pub use fs_stat::FsStat;
 pub use kstat::normal_file_mode;
 pub use kstat::{Kstat, StMode};
 pub use pipe::Pipe;
+pub use poll_events::PollEvents;
 pub use socket::Socket;
 pub use vfs::{
     BufferFile,

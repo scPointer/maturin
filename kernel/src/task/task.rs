@@ -143,7 +143,7 @@ impl TaskControlBlock {
                     signal_handlers: signal_handlers,
                     signal_receivers: signal_receivers,
                     vm: Arc::new(Mutex::new(vm)),
-                    fd_manager: Arc::new(Mutex::new(FdManager::new())),
+                    fd_manager: Arc::new(Mutex::new(FdManager::new(0))), // 初始 umask 设为 0
                     time: Mutex::new(TimeStat::new(tid_raw)),
                     inner: Arc::new(Mutex::new(TaskControlBlockInner {
                         dir: String::from(app_dir),
@@ -409,6 +409,10 @@ impl TaskControlBlock {
     /// 修改一段内存映射的权限
     pub fn mprotect(&self, start: VirtAddr, end: VirtAddr, new_flags: PTEFlags) -> bool {
         self.vm.lock().modify_overlap_areas_with_new_flags(start, end, new_flags).is_ok()
+    }
+    /// 将一段区域中的数据同步到和其对应的文件中，返回给定区间是否至少和一个mmap的区间相交
+    pub fn msync(&self, start: VirtAddr, end: VirtAddr) -> bool {
+        self.vm.lock().msync_areas(start, end).is_ok()
     }
     /// 修改任务状态
     pub fn set_status(&self, new_status: TaskStatus) {

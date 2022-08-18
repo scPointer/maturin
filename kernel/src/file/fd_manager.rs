@@ -22,16 +22,20 @@ pub struct FdManager {
     fd_allocator: FdAllocator,
     /// 最大 fd 限制
     limit: usize,
+    /// 创建文件时的的 mode 需要屏蔽这些位
+    /// 如 sys_open 时权限为 0o666 ，而调用者的 umask 为 0o022，则实际权限为 0o644
+    umask: i32,
 }
 
 impl FdManager {
     /// 新建 FdManager 并插入 Stdin / Stdout / Stderr
-    pub fn new() -> Self {
+    pub fn new(umask: i32) -> Self {
         let limit = FD_LIMIT_ORIGIN;
         let mut fd_manager = Self {
             files: Vec::new(),
             fd_allocator: FdAllocator::new(limit),
             limit: limit,
+            umask: umask,
         };
         fd_manager.push(Arc::new(Stdin)).unwrap();
         fd_manager.push(Arc::new(Stdout)).unwrap();
@@ -49,6 +53,7 @@ impl FdManager {
             files: Vec::new(),
             fd_allocator: FdAllocator::new(self.limit),
             limit: self.limit,
+            umask: self.umask,
         };
         new_manager.files.resize(self.files.len(), None);
         for fd in 0..self.files.len() {
@@ -180,5 +185,15 @@ impl FdManager {
                 self.files[fd].take();
             }
         }
+    }
+    /// 获取 umask
+    pub fn get_umask(&self) -> i32 {
+        self.umask
+    }
+    /// 获取旧的 umask 并设置新值
+    pub fn set_umask_and_get_old(&mut self, new_umask: i32) -> i32 {
+        let old = self.umask;
+        self.umask = new_umask;
+        old
     }
 }

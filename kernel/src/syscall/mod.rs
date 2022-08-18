@@ -25,6 +25,7 @@ pub use flags::ErrorNo;
 use flags::*;
 use fs::*;
 use futex::*;
+pub use futex::{check_thread_blocked, wake_thread, set_waiter_for_thread};
 use loops::*;
 pub use loops::clear_loop_checker;
 use process::*;
@@ -33,7 +34,7 @@ use socket::*;
 use syscall_no::SyscallNo;
 use times::*;
 
-use crate::file::{FsStat, Kstat};
+use crate::file::{FsStat, Kstat, EpollEvent};
 use crate::signal::SigAction;
 use crate::task::ITimerVal;
 use crate::timer::{TimeSpec, TimeVal};
@@ -67,6 +68,8 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     */
     let result = match syscall_id {
         SyscallNo::GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
+        SyscallNo::EPOLL_CREATE => sys_epoll_create(args[0]),
+        SyscallNo::EPOLL_CTL => sys_epoll_ctl(args[0] as i32, args[1] as i32, args[2] as i32, args[3] as *const EpollEvent),
         SyscallNo::DUP => sys_dup(args[0]),
         SyscallNo::DUP3 => sys_dup3(args[0], args[1]),
         SyscallNo::FCNTL64 => sys_fcntl64(args[0], args[1], args[2]),
@@ -87,13 +90,14 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[4] as *const u8,
         ),
         SyscallNo::STATFS => sys_statfs(args[0] as *const u8, args[1] as *mut FsStat),
+        SyscallNo::ACCESS => sys_access(args[0] as i32, args[1] as *const u8, args[2]),
         SyscallNo::MKDIR => sys_mkdir(args[0] as i32, args[1] as *const u8, args[2] as u32),
         SyscallNo::CHDIR => sys_chdir(args[0] as *const u8),
         SyscallNo::OPEN => sys_open(
             args[0] as i32,
             args[1] as *const u8,
             args[2] as u32,
-            args[3] as u32,
+            args[3] as i32,
         ),
         SyscallNo::CLOSE => sys_close(args[0]),
         SyscallNo::PIPE => sys_pipe(args[0] as *mut u32),
@@ -112,6 +116,12 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[3] as *mut usize,
             args[4] as *const TimeSpec,
             args[5] as *const usize,
+        ),
+        SyscallNo::PPOLL => sys_ppoll(
+            args[0] as *mut PollFd,
+            args[1],
+            args[2] as *const TimeSpec,
+            args[3] as *const usize,
         ),
         SyscallNo::READLINKAT => sys_readlinkat(
             args[0] as i32,
@@ -166,6 +176,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::TIMES => sys_times(args[0] as *mut TMS),
         SyscallNo::UNAME => sys_uname(args[0] as *mut UtsName),
         SyscallNo::GETRUSAGE => sys_getrusage(args[0] as i32, args[1] as *mut TimeVal),
+        SyscallNo::UMASK => sys_umask(args[0] as i32),
         SyscallNo::GET_TIME_OF_DAY => sys_get_time_of_day(args[0] as *mut TimeVal),
         SyscallNo::GETPID => sys_getpid(),
         SyscallNo::GETPPID => sys_getppid(),
@@ -212,6 +223,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[1],
             MMAPPROT::from_bits(args[2] as u32).unwrap(),
         ),
+        SyscallNo::MSYNC => sys_msync(args[0], args[1], MSyncFlags::from_bits(args[2] as u32).unwrap()),
         SyscallNo::EXECVE => sys_execve(
             args[0] as *const u8,
             args[1] as *const usize,
@@ -228,13 +240,18 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[2] as *const RLimit,
             args[3] as *mut RLimit,
         ),
+        SyscallNo::RENAMEAT2 => sys_renameat2(
+            args[0] as i32,
+            args[1] as *const u8,
+            args[2] as i32,
+            args[3] as *const u8,
+            RenameFlags::from_bits(args[4] as u32).unwrap()
+        ),
         SyscallNo::IOCTL => sys_ioctl(args[0], args[1], args[2] as *mut usize),
         //SyscallNo::MPROTECT => 0,
         SyscallNo::SIGTIMEDWAIT => Ok(0),
         SyscallNo::MEMBARRIER => Ok(0),
-        SyscallNo::MSYNC => Ok(0),
         SyscallNo::FSYNC => Ok(0),
-        SyscallNo::PPOLL => Ok(1),
         _ => {
             //_ => panic!("Unsupported syscall id = {:#?}()", syscall_id, syscall_id as usize);
             error!(

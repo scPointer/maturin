@@ -49,6 +49,14 @@ impl File for Stdin {
         }
         true
     }
+    /// 已准备好读
+    fn ready_to_read(&self) -> bool {
+        true
+    }
+    /// 已准备好写
+    fn ready_to_write(&self) -> bool {
+        false
+    }
 }
 
 impl File for Stdout {
@@ -76,6 +84,14 @@ impl File for Stdout {
             (*stat).st_uid = 0;
             (*stat).st_gid = 0;
         }
+        true
+    }
+    /// 已准备好读
+    fn ready_to_read(&self) -> bool {
+        false
+    }
+    /// 已准备好写
+    fn ready_to_write(&self) -> bool {
         true
     }
 }
@@ -108,6 +124,14 @@ impl File for Stderr {
             (*stat).st_uid = 0;
             (*stat).st_gid = 0;
         }
+        true
+    }
+    /// 已准备好读
+    fn ready_to_read(&self) -> bool {
+        false
+    }
+    /// 已准备好写
+    fn ready_to_write(&self) -> bool {
         true
     }
 }

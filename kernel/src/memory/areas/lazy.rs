@@ -51,6 +51,15 @@ impl PmArea for PmAreaLazy {
         Ok(self.frames[idx].as_ref().map(|f| f.start_paddr()))
     }
 
+    fn sync_frame_with_file(&mut self, idx: usize) -> OSResult {
+        // 有后端文件就同步，即使没有也不报错
+        if let Some(backend) = &self.backend {
+            // 无法写回也无所谓，当前区域仍可使用
+            backend.write_to_offset(idx * PAGE_SIZE, self.frames[idx].as_ref().unwrap().as_slice()).unwrap_or(0);
+        }
+        Ok(())
+    }
+
     fn release_frame(&mut self, idx: usize) -> OSResult {
         let frame = self.frames[idx].take().ok_or(OSError::PmAreaLazy_ReleaseNotAllocatedPage)?;
         if let Some(backend) = &self.backend {
@@ -76,6 +85,9 @@ impl PmArea for PmAreaLazy {
 
     fn shrink_left(&mut self, new_start: usize) -> OSResult {
         if new_start < self.size() {
+            for idx in 0..addr_to_page_id(new_start) {
+                self.release_frame(idx).unwrap_or(());
+            }
             // 被删除的页帧会在 drop 时自动释放
             self.frames.drain(..addr_to_page_id(new_start));
             if let Some(backend) = &mut self.backend {
@@ -89,6 +101,9 @@ impl PmArea for PmAreaLazy {
 
     fn shrink_right(&mut self, new_end: usize) -> OSResult {
         if new_end < self.size() {
+            for idx in addr_to_page_id(new_end)..self.frames.len() {
+                self.release_frame(idx).unwrap_or(());
+            }
             // 被删除的页帧会在 drop 时自动释放
             self.frames.drain(addr_to_page_id(new_end)..);
             Ok(())
@@ -100,6 +115,9 @@ impl PmArea for PmAreaLazy {
     fn split(&mut self, left_end: usize, right_start: usize) -> OSResult<Arc<Mutex<dyn PmArea>>> {
         if left_end <= right_start && right_start < self.size() {
             let new_frames = self.frames.drain(addr_to_page_id(right_start)..).collect();
+            for idx in addr_to_page_id(left_end)..addr_to_page_id(right_start) {
+                self.release_frame(idx).unwrap_or(());
+            }
             // 被删除的页帧会在 drop 时自动释放
             self.frames.drain(addr_to_page_id(left_end)..);
             Ok(Arc::new(Mutex::new(PmAreaLazy::new_from_frames(

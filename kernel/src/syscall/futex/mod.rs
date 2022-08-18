@@ -7,11 +7,18 @@
 //! 由于 futex 参数复杂，所以特别开了一个子模块来放和它相关的实现与 flag
 
 mod flags;
+mod waiter;
+pub use waiter::{Waiter, FutexWaiter};
+mod waiting_board;
+pub use waiting_board::{check_thread_blocked, wake_thread, set_waiter_for_thread};
 
-use super::{sys_gettid, ErrorNo, SysResult};
-use crate::task::{get_current_task, suspend_current_task};
 use flags::{Flags, FutexFlag};
 use lock::Mutex;
+use alloc::boxed::Box;
+use super::{sys_gettid, ErrorNo, SysResult};
+use crate::task::{get_current_task, suspend_current_task};
+use crate::timer::{TimeSpec, TimeVal};
+
 
 static FCOUNT: Mutex<usize> = Mutex::new(0);
 
@@ -50,11 +57,18 @@ pub fn sys_futex(
                     Err(ErrorNo::EAGAIN)
                 } else {
                     // 如果是个表示 timeout 的地址
-                    if val2 != 0 && task_vm.manually_alloc_page(val2 as usize).is_ok() {
-                        //let time_spec: TimeSpec = unsafe { *(val2 as *const TimeSpec) };
-                        //info!("futex timeoud {}s{}ns", time_spec.tv_sec, time_spec.tv_nsec);
+                    let timed_out = if val2 != 0 && task_vm.manually_alloc_page(val2 as usize).is_ok() {
+                        let time_spec: TimeSpec = unsafe { *(val2 as *const TimeSpec) };
+                        let time_us: usize = TimeVal::from(time_spec).into();
+                        info!("futex timed out {time_us} us");
+                        Some(time_us)
+                        
                         //panic!("");
-                    }
+                    } else {
+                        // None，永不通过超时唤醒
+                        Some(0)
+                    };
+                    set_waiter_for_thread(tid, Box::new(FutexWaiter::new(timed_out)));
                     drop(task_vm); // 切换任务前取消对锁的占用
                     drop(task);
                     suspend_current_task();
