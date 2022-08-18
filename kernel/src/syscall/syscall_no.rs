@@ -92,6 +92,7 @@ numeric_enum_macro::numeric_enum! {
         MMAP = 222,
         MPROTECT = 226,
         MSYNC = 227,
+        ACCEPT4 = 242,
         WAIT4 = 260,
         PRLIMIT64 = 261,
         RENAMEAT2 = 276,

@@ -208,6 +208,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::LISTEN => sys_listen(args[0], args[1]),
         SyscallNo::CONNECT => sys_connect(args[0], args[1], args[2]),
         SyscallNo::ACCEPT => sys_accept(args[0], args[1], args[2] as *mut u32),
+        SyscallNo::ACCEPT4 => sys_accept(args[0], args[1], args[2] as *mut u32),
         SyscallNo::BRK => sys_brk(args[0]),
         SyscallNo::MUNMAP => sys_munmap(args[0], args[1]),
         SyscallNo::CLONE => sys_clone(args[0], args[1], args[2], args[3], args[4]),
