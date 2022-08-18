@@ -8,7 +8,6 @@ mod fs_stat;
 mod kstat;
 mod pipe;
 mod poll_events;
-mod socket;
 mod stdio;
 mod vfs;
 pub mod socket;

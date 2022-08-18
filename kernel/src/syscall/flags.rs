@@ -254,6 +254,7 @@ pub enum ErrorNo {
     ERANGE = -34,
     EPFNOSUPPORT = -96,
     EAFNOSUPPORT = -97,
+    ECONNREFUSED = -111,
 }
 
 // sys_lseek 时对应的条件

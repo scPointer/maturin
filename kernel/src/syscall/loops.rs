@@ -2,15 +2,18 @@
 //! 跟具体系统调用无关，只是为了方便在出现死循环（比如有某种wait的syscall未实现）的时候，
 //! 用来提前结束进程，至少保证OS不崩
 
+use super::{sys_exit, SyscallNo};
 use lock::Mutex;
-use super::{SyscallNo, sys_exit};
 
 /// 一个检测死循环的计数器
-const LOOP_LIMIT:usize = 100;
+const LOOP_LIMIT: usize = 100;
 /// 通过计数器退出时的返回值
 const LOOP_EXIT_CODE: i32 = -100;
 /// 计数器实现
-static DEAD_LOOP_CNT: Mutex<LoopCounter> = Mutex::new(LoopCounter{cnt: 0, limit: LOOP_LIMIT});
+static DEAD_LOOP_CNT: Mutex<LoopCounter> = Mutex::new(LoopCounter {
+    cnt: 0,
+    limit: LOOP_LIMIT,
+});
 
 /// 检查循环次数
 struct LoopCounter {

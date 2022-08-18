@@ -6,8 +6,9 @@ mod resolution;
 use super::{File, OpenFlags};
 use core::mem::size_of;
 use lock::RwLock;
-use loopback::{read_from_port, write_to_port, LOCAL_LOOPBACK_ADDR};
-use resolution::{addr_resolution, get_ephemeral_port, AddrType, IpAddr};
+use loopback::{can_read, read_from_port, write_to_port, LOCAL_LOOPBACK_ADDR};
+pub use resolution::IpAddr;
+use resolution::{addr_resolution, get_ephemeral_port, AddrType};
 
 /// 一个套接字
 pub struct Socket {
@@ -17,10 +18,14 @@ pub struct Socket {
     _s_type: SocketType,
     /// 具体的连接协议
     _protocol: usize,
-    /// 打开时的选项
-    flags: RwLock<OpenFlags>,
-    /// Save IP Port
-    endpoint: RwLock<AddrType>,
+    /// SocketInner struct to modify socket
+    inner: RwLock<SocketInner>,
+}
+pub struct SocketInner {
+    flags: OpenFlags,
+    local_endpoint: Option<AddrType>,
+    remote_endpoint: Option<AddrType>,
+    is_listening: bool,
 }
 
 impl Socket {
@@ -29,26 +34,36 @@ impl Socket {
             _domain: domain,
             _s_type: s_type,
             _protocol: protocol,
-            flags: RwLock::new(OpenFlags::RDWR),
-            endpoint: RwLock::new(AddrType::Unknown),
+            inner: RwLock::new(SocketInner {
+                flags: OpenFlags::RDWR,
+                local_endpoint: None,
+                remote_endpoint: None,
+                is_listening: false,
+            }),
         }
     }
-    pub fn set_endpoint(&self, addr: usize) -> Option<usize> {
+    pub fn set_endpoint(&self, addr: usize, is_remote: bool) -> Option<u16> {
         match addr_resolution(addr as *const u16) {
             AddrType::Ip(ip, mut port) => {
-                if port == 0 {
-                    port = get_ephemeral_port();
+                if is_remote {
+                    self.inner.write().remote_endpoint = Some(AddrType::Ip(ip, port));
+                } else {
+                    if port == 0 {
+                        port = get_ephemeral_port();
+                    }
+                    self.inner.write().local_endpoint = Some(AddrType::Ip(ip, port));
                 }
                 info!("set endpoint: ip {:x}, port {}", ip, port);
-                let mut ep = self.endpoint.write();
-                *ep = AddrType::Ip(ip, port);
-                Some(port.into())
+                Some(port)
             }
             _ => {
                 warn!("set endpoint failed !");
                 None
             }
         }
+    }
+    pub fn set_listening(&self, listen: bool) {
+        self.inner.write().is_listening = listen;
     }
 }
 
@@ -61,14 +76,38 @@ impl File for Socket {
     fn write(&self, _buf: &[u8]) -> Option<usize> {
         None
     }
+    /// socket的buffer内有值则可读
+    fn ready_to_read(&self) -> bool {
+        if let Some(ep) = self.inner.read().local_endpoint {
+            match ep {
+                AddrType::Ip(_ip, port) => {
+                    if let Some(len) = can_read(port) {
+                        info!("Port {} can read: {}", port, len);
+                        return true;
+                    }
+                }
+                _ => {
+                    warn!("local endpoint Unknown");
+                }
+            }
+        } else {
+            warn!("local endpoint is invalid !");
+        }
+
+        false
+    }
+    /// socket的buffer未满则可写. Vec总是可以extend写
+    fn ready_to_write(&self) -> bool {
+        true
+    }
     /// 获取文件状态信息
     fn get_status(&self) -> OpenFlags {
-        *self.flags.read()
+        self.inner.read().flags
     }
     /// 设置fd flags
     fn set_status(&self, flags: OpenFlags) -> bool {
         info!("socket set flags: {:?}", flags);
-        let fl = &mut self.flags.write();
+        let fl = &mut self.inner.write().flags;
         fl.set(OpenFlags::NON_BLOCK, flags.contains(OpenFlags::NON_BLOCK));
         fl.set(OpenFlags::CLOEXEC, flags.contains(OpenFlags::CLOEXEC));
         true
@@ -95,7 +134,15 @@ impl File for Socket {
         src_addr: usize,
         src_len: &mut u32,
     ) -> Option<usize> {
-        match addr_resolution(src_addr as *const u16) {
+        let endpoint = if src_addr == 0 {
+            self.inner
+                .read()
+                .local_endpoint
+                .unwrap_or(AddrType::Unknown)
+        } else {
+            addr_resolution(src_addr as *const u16)
+        };
+        match endpoint {
             AddrType::Ip(ip, port) => {
                 info!("receive from ip {:x} port {}", ip, port);
                 // 按 syscall 描述，这里需要把地址信息的长度写到用户给的 src_len 的位置

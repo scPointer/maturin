@@ -1,9 +1,10 @@
 //! 关于 socket 的 syscall
 
 use super::{ErrorNo, SysResult};
-use crate::{file::Socket, task::get_current_task};
 use crate::file::socket::*;
+use crate::{file::Socket, task::get_current_task};
 use alloc::sync::Arc;
+use core::mem::size_of;
 
 /// 创建一个 socket
 pub fn sys_socket(domain: usize, s_type: usize, protocol: usize) -> SysResult {
@@ -21,7 +22,10 @@ pub fn sys_socket(domain: usize, s_type: usize, protocol: usize) -> SysResult {
             return Err(ErrorNo::EINVAL);
         }
     };
-    warn!("SOCKET domain: {:?}, s_type: {:?}, protocol: {:x}", domain, socket_type, protocol);
+    warn!(
+        "SOCKET domain: {:?}, s_type: {:?}, protocol: {:x}",
+        domain, socket_type, protocol
+    );
     let task = get_current_task().unwrap();
     let mut fd_manager = task.fd_manager.lock();
     if let Ok(fd) = fd_manager.push(Arc::new(Socket::new(domain, socket_type, protocol))) {
@@ -71,7 +75,7 @@ pub fn sys_recvfrom(
     fd: usize,
     buf: *mut u8,
     len: usize,
-    flags: i32,
+    _flags: i32,
     src_addr: usize,
     src_len_pos: *mut u32,
 ) -> SysResult {
@@ -88,9 +92,12 @@ pub fn sys_recvfrom(
     let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
     if let Ok(file) = fd_manager.get_file(fd) {
         // 这里不考虑进程切换
-        if let Some(read_len) = file.recvfrom(slice, flags, src_addr, unsafe {
-            src_len_pos.as_mut().unwrap()
-        }) {
+        /*
+        if let Some(read_len) = file.recvfrom(slice, flags, src_addr, 
+            unsafe { src_len_pos.as_mut().unwrap() })
+        */
+        if let Some(read_len) = file.recvfrom(slice, 0, 0, &mut 0)
+        {
             return Ok(read_len);
         } else {
             return Err(ErrorNo::EINVAL);
@@ -113,7 +120,7 @@ pub fn sys_bind(fd: usize, addr: usize, addr_len: usize) -> SysResult {
     let fd_manager = task.fd_manager.lock();
     if let Ok(file) = fd_manager.get_file(fd) {
         let sock = file.as_any().downcast_ref::<Socket>().unwrap().clone();
-        if let Some(_p) = sock.set_endpoint(addr) {
+        if let Some(_p) = sock.set_endpoint(addr, false) {
             Ok(0)
         } else {
             Err(ErrorNo::EINVAL)
@@ -128,8 +135,9 @@ pub fn sys_listen(fd: usize, backlog: usize) -> SysResult {
     info!("sys_listen: fd: {} backlog: {}", fd, backlog);
     let task = get_current_task().unwrap();
     let fd_manager = task.fd_manager.lock();
-    if let Ok(_file) = fd_manager.get_file(fd) {
-        // is_listening = true
+    if let Ok(file) = fd_manager.get_file(fd) {
+        let sock = file.as_any().downcast_ref::<Socket>().unwrap().clone();
+        sock.set_listening(true);
         Ok(0)
     } else {
         Err(ErrorNo::EBADF)
@@ -140,17 +148,85 @@ pub fn sys_listen(fd: usize, backlog: usize) -> SysResult {
 pub fn sys_connect(fd: usize, addr: usize, addr_len: usize) -> SysResult {
     info!("sys_connect: fd: {} addr: {:x} len: {}", fd, addr, addr_len);
     let task = get_current_task().unwrap();
+    let mut task_vm = task.vm.lock();
+    if task_vm.manually_alloc_page(addr).is_err()
+        || task_vm.manually_alloc_page(addr + addr_len).is_err()
+    {
+        return Err(ErrorNo::EINVAL);
+    }
     let fd_manager = task.fd_manager.lock();
-    if let Ok(_file) = fd_manager.get_file(fd) {
-        // TCP submit a SYN
-        Ok(0)
+    if let Ok(file) = fd_manager.get_file(fd) {
+        let sock = file.as_any().downcast_ref::<Socket>().unwrap().clone();
+        let laddr = IpAddr {
+            family: 2,
+            port: 0,
+            addr: 0,
+        };
+        if let Some(lport) = sock.set_endpoint(&laddr as *const _ as usize, false) {
+            // TCP submit a SYN
+            let laddr = IpAddr {
+                family: 2,
+                port: lport,
+                addr: 0,
+            };
+            let slice = unsafe {
+                core::slice::from_raw_parts(
+                    &laddr as *const IpAddr as *const _,
+                    size_of::<IpAddr>(),
+                )
+            };
+            if let Some(write_len) = file.sendto(slice, 0, addr) {
+                let rport = sock.set_endpoint(addr, true).unwrap_or(0);
+                info!("Sent tcp from {} to {} len: {}", lport, rport, write_len);
+                return Ok(0);
+            } else {
+                return Err(ErrorNo::ECONNREFUSED);
+            }
+        } else {
+            return Err(ErrorNo::EINVAL);
+        }
     } else {
         Err(ErrorNo::EBADF)
     }
 }
 
-/// socket连接给的远程地址. 如完成TCP的三次握手
-pub fn sys_accept(fd: usize, addr: usize, addr_len: usize) -> SysResult {
-    info!("sys_accept: fd: {} addr: {:x} len: {}", fd, addr, addr_len);
-    Ok(0)
+/// 监听着的SOCK_STREAM类型的socket, 接受连接, 原socket不受影响，创建一个新的socket返回
+pub fn sys_accept(fd: usize, addr: usize, addr_len: *mut u32) -> SysResult {
+    info!("sys_accept: fd: {} addr: {:x} len: {:p}", fd, addr, addr_len);
+    let task = get_current_task().unwrap();
+    let mut task_vm = task.vm.lock();
+    if task_vm.manually_alloc_page(addr).is_err()
+        || task_vm.manually_alloc_page(addr_len as usize).is_err()
+    {
+        return Err(ErrorNo::EINVAL);
+    }
+    let mut fd_manager = task.fd_manager.lock();
+    if let Ok(file) = fd_manager.get_file(fd) {
+        loop {
+            if file.ready_to_read() {
+                // New socket
+                if let Ok(new_fd) = fd_manager.push(Arc::new(Socket::new(
+                    Domain::AF_INET,
+                    SocketType::SOCK_STREAM,
+                    6, /* TCP */
+                ))) {
+                    let mut buffer = [0u8; 64];
+                    if let Some(read_len) = file.recvfrom(&mut buffer, 0, 0, &mut 0) {
+                        info!("accept recv: {}", read_len);
+                        unsafe {
+                            let taddr = core::slice::from_raw_parts_mut(addr as *mut u8, read_len);
+                            taddr.copy_from_slice(&buffer[..read_len]);
+                            *addr_len = read_len as u32;
+                        }
+                    }
+                    return Ok(new_fd);
+                } else {
+                    return Err(ErrorNo::EMFILE);
+                }
+            }
+            // yield
+        }
+    } else {
+        Err(ErrorNo::EBADF)
+    }
 }

@@ -1,5 +1,6 @@
 //! 地址解析。目前只有 ip 地址的解析
 
+#[derive(Debug, Clone, Copy)]
 pub enum AddrType {
     /// ip 地址和端口
     Ip(u32, u16),

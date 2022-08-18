@@ -39,6 +39,24 @@ impl PortData {
     }
 }
 
+pub fn can_read(port: u16) -> Option<usize> {
+    let map = PORT_MAP.lock();
+    match map.get(&port) {
+        Some(pd) => {
+            let len = pd.data.lock().len();
+            if len > 0 {
+                Some(len)
+            } else {
+                None
+            }
+        }
+        None => {
+            // 端口没数据不可读
+            None
+        }
+    }
+}
+
 pub fn read_from_port(port: u16, buf: &mut [u8]) -> Option<usize> {
     let map = PORT_MAP.lock();
     match map.get(&port) {

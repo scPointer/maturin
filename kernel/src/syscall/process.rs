@@ -162,11 +162,9 @@ fn sys_exec(path: *const u8, args: *const usize) -> SysResult {
 ///
 /// 目前只支持 WNOHANG 选项
 pub fn sys_wait4(pid: isize, exit_code_ptr: *mut i32, option: WaitFlags) -> SysResult {
+    info!("sys_wait4 {}, {:x}, {:#?}",
+          pid, exit_code_ptr as usize, option);
     loop {
-        info!(
-            "sys_wait4 {}, {:x}, {:#?}",
-            pid, exit_code_ptr as usize, option
-        );
         let child_pid = waitpid(pid, exit_code_ptr);
         // 找不到子进程，直接返回-1
         if child_pid == -1 {
