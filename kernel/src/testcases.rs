@@ -6,6 +6,8 @@
 pub const TESTCASES: &[&str] = &[
     // 测 lua 或者 busybox 的时候**不要**打开 base_info，内核输出非常多
 
+    //"redis-server", 
+    //"redis-cli",
     "busybox sh",
     //"busybox sh lua_testcode.sh", // lua 测例
     //"busybox sh busybox_testcode.sh", // busybox 测例

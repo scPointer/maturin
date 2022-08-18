@@ -63,6 +63,14 @@ pub fn fetch_task_from_scheduler() -> Option<Arc<TaskControlBlock>> {
             info!("[cpu {}] is idle now", get_cpu_id());
             loop {}
         }
+
+        /*
+            if let Some(new_tcb) = load_next_testcase() {
+                return Some(new_tcb);
+            }
+            info!("[cpu {}] is idle now", get_cpu_id());
+            */
+
         //println!("[cpu {}] get task", get_cpu_id());
         task
     } else {

@@ -114,12 +114,21 @@ impl File for Socket {
     }
     /// 发送消息，当且仅当这个文件是 socket 时可用
     fn sendto(&self, buf: &[u8], _flags: i32, dest_addr: usize) -> Option<usize> {
-        match addr_resolution(dest_addr as *const u16) {
+        let endpoint = if dest_addr == 0 {
+            self.inner
+                .read()
+                .remote_endpoint
+                .unwrap_or(AddrType::Unknown)
+        } else {
+            addr_resolution(dest_addr as *const u16)
+        };
+        match endpoint {
             AddrType::Ip(ip, port) => {
                 info!("send to ip {:x} port {}", ip, port);
-                if ip == LOCAL_LOOPBACK_ADDR {
+                if (ip == 0) || (ip == LOCAL_LOOPBACK_ADDR) {
                     write_to_port(port, buf)
                 } else {
+                    warn!("Unknown IP: {:#x}", ip);
                     None
                 }
             }
@@ -147,9 +156,10 @@ impl File for Socket {
                 info!("receive from ip {:x} port {}", ip, port);
                 // 按 syscall 描述，这里需要把地址信息的长度写到用户给的 src_len 的位置
                 *src_len = size_of::<IpAddr>() as u32;
-                if ip == LOCAL_LOOPBACK_ADDR {
+                if (ip == 0) || (ip == LOCAL_LOOPBACK_ADDR) {
                     read_from_port(port, buf)
                 } else {
+                    warn!("Unknown IP: {:#x}", ip);
                     None
                 }
             }

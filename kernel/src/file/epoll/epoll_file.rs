@@ -8,15 +8,15 @@ use crate::syscall::ErrorNo;
 
 /// 用作 epoll 的文件
 pub struct EpollFile {
-    inner: Arc<Mutex<EpollFileInner>>,
+    pub inner: Arc<Mutex<EpollFileInner>>,
 }
 
 /// epoll 内部可变部分
 pub struct EpollFileInner {
     /// 监控的所有文件(fd)。key 不用 Arc<dyn File> 只是因为不好针对 map 做
-    interest_list: BTreeMap<i32, EpollEvent>,
+    pub interest_list: BTreeMap<i32, EpollEvent>,
     /// 已经相应事件的文件(fd)
-    _ready_list: BTreeSet<i32>,
+    pub _ready_list: BTreeSet<i32>,
 }
 
 impl EpollFile {
@@ -38,6 +38,7 @@ impl EpollFile {
     }
     /// 进行控制操作，如成功则返回 Ok(())，否则返回对应的错误编号
     pub fn epoll_ctl(&self, op: EpollCtl, fd: i32, event: EpollEvent) -> Result<(), ErrorNo> {
+        info!("epool ctl: {:?}, fd: {}, event: {:?}", op, fd, event);
         let list = &mut self.inner.lock().interest_list;
         match op {
             EpollCtl::ADD => {

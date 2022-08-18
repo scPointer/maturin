@@ -21,7 +21,7 @@ mod socket;
 mod syscall_no;
 mod times;
 
-pub use flags::ErrorNo;
+pub use flags::{PollFd, ErrorNo};
 use flags::*;
 use fs::*;
 use futex::*;
@@ -70,6 +70,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
         SyscallNo::EPOLL_CREATE => sys_epoll_create(args[0]),
         SyscallNo::EPOLL_CTL => sys_epoll_ctl(args[0] as i32, args[1] as i32, args[2] as i32, args[3] as *const EpollEvent),
+        SyscallNo::EPOLL_WAIT => sys_epoll_wait(args[0] as i32, args[1] as *mut EpollEvent, args[2] as i32, args[3] as i32),
         SyscallNo::DUP => sys_dup(args[0]),
         SyscallNo::DUP3 => sys_dup3(args[0], args[1]),
         SyscallNo::FCNTL64 => sys_fcntl64(args[0], args[1], args[2]),
@@ -254,7 +255,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::FSYNC => Ok(0),
         _ => {
             //_ => panic!("Unsupported syscall id = {:#?}()", syscall_id, syscall_id as usize);
-            error!(
+            warn!(
                 "Unsupported syscall id = {:#?}({})",
                 syscall_id, syscall_id as usize
             );

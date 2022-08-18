@@ -42,22 +42,19 @@ pub fn sys_sendto(
     len: usize,
     flags: i32,
     dest_addr: usize,
-    addr_len: usize,
+    _addr_len: usize,
 ) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
     let fd_manager = task.fd_manager.lock();
     if task_vm.manually_alloc_page(buf as usize).is_err()
         || task_vm.manually_alloc_page(buf as usize + len).is_err()
-        || task_vm.manually_alloc_page(dest_addr).is_err()
-        || task_vm.manually_alloc_page(dest_addr + addr_len).is_err()
     {
         return Err(ErrorNo::EINVAL);
     }
     let slice = unsafe { core::slice::from_raw_parts(buf, len) };
-
     if let Ok(file) = fd_manager.get_file(fd) {
-        // 这里不考虑进程切换
+        // 这里不考虑进程切换.                             dest_addr可能为0
         if let Some(write_len) = file.sendto(slice, flags, dest_addr) {
             return Ok(write_len);
         } else {
@@ -76,16 +73,14 @@ pub fn sys_recvfrom(
     buf: *mut u8,
     len: usize,
     _flags: i32,
-    src_addr: usize,
-    src_len_pos: *mut u32,
+    _src_addr: usize,
+    _src_len_pos: *mut u32,
 ) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
     let fd_manager = task.fd_manager.lock();
     if task_vm.manually_alloc_page(buf as usize).is_err()
         || task_vm.manually_alloc_page(buf as usize + len).is_err()
-        || task_vm.manually_alloc_page(src_addr).is_err()
-        || task_vm.manually_alloc_page(src_len_pos as usize).is_err()
     {
         return Err(ErrorNo::EINVAL);
     }
@@ -162,6 +157,7 @@ pub fn sys_connect(fd: usize, addr: usize, addr_len: usize) -> SysResult {
             port: 0,
             addr: 0,
         };
+        //设置好本地endpoint
         if let Some(lport) = sock.set_endpoint(&laddr as *const _ as usize, false) {
             // TCP submit a SYN
             let laddr = IpAddr {
@@ -175,7 +171,9 @@ pub fn sys_connect(fd: usize, addr: usize, addr_len: usize) -> SysResult {
                     size_of::<IpAddr>(),
                 )
             };
+            //把本地地址告诉给远端
             if let Some(write_len) = file.sendto(slice, 0, addr) {
+                //设置好远程endpoint
                 let rport = sock.set_endpoint(addr, true).unwrap_or(0);
                 info!("Sent tcp from {} to {} len: {}", lport, rport, write_len);
                 return Ok(0);
@@ -204,21 +202,22 @@ pub fn sys_accept(fd: usize, addr: usize, addr_len: *mut u32) -> SysResult {
     if let Ok(file) = fd_manager.get_file(fd) {
         loop {
             if file.ready_to_read() {
+                let mut buffer = [0u8; 64];
+                //获取新连接的远端地址
+                if let Some(read_len) = file.recvfrom(&mut buffer, 0, 0, &mut 0) {
+                    info!("accept recv: {}", read_len);
+                    unsafe {
+                        let taddr = core::slice::from_raw_parts_mut(addr as *mut u8, read_len);
+                        taddr.copy_from_slice(&buffer[..read_len]);
+                        *addr_len = read_len as u32;
+                    }
+                }
                 // New socket
                 if let Ok(new_fd) = fd_manager.push(Arc::new(Socket::new(
                     Domain::AF_INET,
                     SocketType::SOCK_STREAM,
                     6, /* TCP */
                 ))) {
-                    let mut buffer = [0u8; 64];
-                    if let Some(read_len) = file.recvfrom(&mut buffer, 0, 0, &mut 0) {
-                        info!("accept recv: {}", read_len);
-                        unsafe {
-                            let taddr = core::slice::from_raw_parts_mut(addr as *mut u8, read_len);
-                            taddr.copy_from_slice(&buffer[..read_len]);
-                            *addr_len = read_len as u32;
-                        }
-                    }
                     return Ok(new_fd);
                 } else {
                     return Err(ErrorNo::EMFILE);

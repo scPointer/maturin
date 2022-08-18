@@ -3,7 +3,8 @@
 
 use bitflags::*;
 
-#[derive(Copy, Clone)]
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
 /// 指定一个 epoll 事件
 pub struct EpollEvent {
     /// 事件类型，见下

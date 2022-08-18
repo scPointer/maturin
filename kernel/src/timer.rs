@@ -26,13 +26,10 @@ pub fn get_time() -> usize {
     time::read()
 }
 
-/*
 /// 获取毫秒格式的时间值。注意这不一定代表进程经过的时间值
-#[allow(dead_code)]
 pub fn get_time_ms() -> usize {
-    time::read() / MACHINE_TICKS_PER_MSEC
+    (time::read() * 1000) / CLOCK_FREQ
 }
-*/
 
 pub fn get_time_sec() -> usize {
     time::read() / CLOCK_FREQ

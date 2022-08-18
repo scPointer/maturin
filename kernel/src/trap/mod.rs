@@ -63,6 +63,7 @@ pub fn init() {
 pub fn enable_timer_interrupt() {
     unsafe {
         sie::set_stimer();
+        //sstatus::set_sie();
     }
 }
 
@@ -93,7 +94,7 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     //unsafe { core::arch::asm!("fmv.d.x {0}, fs1", out(reg) fs1) };
     //println!("in fs1 {}", fs1);
     //unsafe { core::arch::asm!("fsd fs1, 0(sp)") };
-    //println!("user sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits());
+    trace!("user sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits());
     //}
     let scause = scause::read(); // get trap cause
     let stval = stval::read(); // get extra value
@@ -104,6 +105,8 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             //unsafe { core::arch::asm!("auipc {0}, 0", out(reg) pc) };
             //console_put_usize_in_hex(pc);
             //println!("syscall");
+
+            // Todo, enable timer interrupt when syscall
             cx.sepc += 4;
             cx.x[10] = syscall(
                 cx.x[17],
@@ -160,8 +163,8 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
 
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             // println!("[cpu {}] timer interrupt", get_cpu_id());
-            println!(
-                "[cpu {}] timer interrupt, sepc = {:#x}",
+            info!(
+                "[cpu {}] timer interrupt(USER), sepc = {:#x}",
                 get_cpu_id(),
                 cx.sepc
             );
@@ -195,6 +198,7 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     let scause = scause::read(); // get trap cause
     let stval = stval::read(); // get extra value
 
+    trace!("kernel sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits());
     /*
     let mut pc: usize;
     unsafe { core::arch::asm!("auipc {0}, 0", out(reg) pc) };
@@ -265,7 +269,7 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         }
 
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
-            println!(
+            info!(
                 "[cpu {}] timer interrupt(KERNEL), sepc = {:#x}",
                 get_cpu_id(),
                 cx.sepc
@@ -283,5 +287,6 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             );
         }
     }
-    panic!("kernel trap: {:#x?}", cx);
+    panic!("kernel trap cause: {:?}, context: {:#x?}", scause.cause(), cx);
+    //cx
 }

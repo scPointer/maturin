@@ -10,7 +10,7 @@ use crate::file::{FdManager, File, PollEvents, EpollFile, EpollEvent, EpollCtl};
 use crate::memory::MemorySet;
 use crate::signal::ShadowBitset;
 use crate::task::{get_current_task, suspend_current_task};
-use crate::timer::{get_time, TimeSpec};
+use crate::timer::{get_time, get_time_ms, TimeSpec};
 
 use super::{ErrorNo, SysResult, PollFd};
 
@@ -237,3 +237,66 @@ pub fn sys_epoll_ctl(epfd: i32, op: i32, fd: i32, event: *const EpollEvent) -> S
     }
     Err(ErrorNo::EBADF) // 错误的文件描述符
 }
+
+pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout: i32) -> SysResult {
+    info!("epoll wait: epfd {epfd} event {event:?} maxevents {maxevents} timeout {timeout}");
+    let task = get_current_task().unwrap();
+    let mut task_vm = task.vm.lock();
+    if task_vm.manually_alloc_type(event).is_err() {
+        return Err(ErrorNo::EFAULT); // 地址不合法
+    };
+    let fd_manager = task.fd_manager.lock();
+    let epoll_file = fd_manager
+        .get_file(epfd as usize)
+        .map(|file| file.get_epoll_fd())
+        .map_err(|_| ErrorNo::EBADF)?.unwrap();
+
+    //类似poll
+    let interest = &epoll_file.inner.lock().interest_list;
+    let mut epolls: Vec<EpollEvent> = Vec::new();
+    for (fd, evt) in interest {
+        if *fd as u64 != evt.data {
+            warn!("fd: {} is not in Event: {:?}", fd, evt);
+        }
+        epolls.push(*evt);
+    }
+    let expire_time = if timeout >= 0 {
+        get_time_ms() + timeout as usize
+    } else {
+        usize::MAX // 没有过期时间
+    };
+    drop(fd_manager);
+    drop(task_vm); // select 的时间可能很长，之后不用 vm 了就及时释放
+
+    loop {
+        let fd_manager = task.fd_manager.lock();
+        // 已触发的 fd
+        let mut set: usize = 0;
+        for req_fd in &epolls {
+            if let Ok(file) = fd_manager.get_file(req_fd.data as usize) {
+                let revents = file.poll(PollEvents::from_bits_truncate(req_fd.events.bits() as u16));
+                if !revents.is_empty() {
+                    // 回写epollevent, 
+                    unsafe {*event.add(set) = *req_fd;}
+                    set += 1;
+                }
+            } else {
+                //let revents = PollEvents::ERR;
+                unsafe {*event.add(set) = *req_fd;}
+                set += 1;
+            }
+        }
+        if set > 0 {
+            // 正常返回响应了事件的fd个数
+            return Ok(set);
+        }
+        // 否则暂时 block 住
+        if get_time_ms() > expire_time {
+            // 超时返回0
+            return Ok(0);
+        }
+        drop(fd_manager); // fd_manager 同理
+        suspend_current_task();
+    }
+}
+

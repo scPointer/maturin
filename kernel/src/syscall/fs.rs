@@ -730,7 +730,7 @@ pub fn sys_umask(new_mask: i32) -> SysResult {
 pub fn sys_fcntl64(fd: usize, cmd: usize, arg: usize) -> SysResult {
     let task = get_current_task().unwrap();
     let mut fd_manager = task.fd_manager.lock();
-    info!("fcntl {fd} {cmd}");
+    info!("fcntl {fd} {cmd} {arg}");
     if let Ok(file) = fd_manager.get_file(fd) {
         return match Fcntl64Cmd::try_from(cmd) {
             Ok(Fcntl64Cmd::F_DUPFD) => {
