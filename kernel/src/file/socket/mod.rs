@@ -1,4 +1,4 @@
-//! 暂时的 socket 实现。只是个 buffer
+//! 暂时的 socket 实现
 
 mod loopback;
 mod resolution;
@@ -30,12 +30,13 @@ pub struct SocketInner {
 
 impl Socket {
     pub fn new(domain: Domain, s_type: SocketType, protocol: usize) -> Self {
+        
         Self {
             domain: domain,
             stype: s_type,
             protocol: protocol,
             inner: RwLock::new(SocketInner {
-                flags: OpenFlags::RDWR,
+                flags: OpenFlags::RDWR | OpenFlags::CLOEXEC | OpenFlags::NON_BLOCK,
                 local_endpoint: None,
                 remote_endpoint: None,
                 is_listening: false,

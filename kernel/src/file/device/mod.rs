@@ -91,13 +91,10 @@ pub fn fs_init() {
     mkdir("dev/", "shm");
     let dso = &"tls_get_new-dtv_dso.so"; // 该库要去lib等目录找，所以需要链接. 仅用于libc-test
     let libc_so = &"ld-musl-riscv64-sf.so.1";
+    let libc_so2 = &"ld-musl-riscv64.so.1"; // 另一种名字的 libc.so，非 libc-test 测例库用
     try_add_link(ROOT_DIR.into(), dso, "./lib/".into(), dso);
-    try_add_link(
-        ROOT_DIR.into(),
-        "libc.so",
-        "./lib/".into(),
-        libc_so
-    );
+    try_add_link(ROOT_DIR.into(), "libc.so", "./lib/".into(), libc_so);
+    try_add_link(ROOT_DIR.into(), "libc.so", "./lib/".into(), libc_so2);
     mkdir(ROOT_DIR, "sbin");
     try_add_link(ROOT_DIR.into(), "lmbench_all".into(), "./sbin/".into(), "lmbench_all".into()); // busybox会去这里找
     try_add_link(ROOT_DIR.into(), "busybox".into(), "./sbin/".into(), "busybox".into());
