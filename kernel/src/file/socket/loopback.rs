@@ -126,7 +126,7 @@ pub fn write_to_port(port: u16, buf: &[u8]) -> Option<usize> {
         }
     }
 }
-
+#[allow(unused)]
 fn print_hex_dump(buf: &[u8], len: usize) {
     use alloc::string::String;
 
