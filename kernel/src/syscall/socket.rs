@@ -3,7 +3,7 @@
 use super::{ErrorNo, SysResult};
 use crate::task::suspend_current_task;
 use crate::file::socket::*;
-use crate::{file::Socket, task::get_current_task};
+use crate::{file::{Socket, OpenFlags}, task::get_current_task};
 use alloc::sync::Arc;
 use core::mem::size_of;
 
@@ -16,7 +16,7 @@ pub fn sys_socket(domain: usize, s_type: usize, protocol: usize) -> SysResult {
             return Err(ErrorNo::EAFNOSUPPORT);
         }
     };
-    let socket_type = match SocketType::try_from(s_type & SOCKET_TYPE_MASK) {
+    let socket_type = match SocketType::try_from(s_type & (SOCKET_TYPE_MASK as usize)) {
         Ok(t) => t,
         Err(_) => {
             warn!("Invalid socket type: {s_type}");
@@ -173,8 +173,8 @@ pub fn sys_connect(fd: usize, addr: usize, addr_len: usize) -> SysResult {
                     size_of::<IpAddr>(),
                     )
             };
-            //把本地地址告诉给远端
-            if let Some(write_len) = file.sendto(slice, 0, addr) {
+            //把本地地址告诉给远端, 暂用端口port+100
+            if let Some(write_len) = file.sendto(slice, 100, addr) {
                 //设置好远程endpoint
                 let rport = sock.set_endpoint(addr, true).unwrap_or(0);
                 info!("sys_connect sent IpAddr {} from {} to {} len: {}", size_of::<IpAddr>(), lport, rport, write_len);
@@ -192,7 +192,7 @@ pub fn sys_connect(fd: usize, addr: usize, addr_len: usize) -> SysResult {
 }
 
 /// 监听着的SOCK_STREAM类型的socket, 接受连接, 原socket不受影响，创建一个新的socket返回
-pub fn sys_accept(fd: usize, addr: usize, addr_len: *mut u32) -> SysResult {
+pub fn sys_accept4(fd: usize, addr: usize, addr_len: *mut u32, flags: i32) -> SysResult {
     info!("sys_accept: fd: {} addr: {:x} len: {:p}", fd, addr, addr_len);
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
@@ -205,10 +205,10 @@ pub fn sys_accept(fd: usize, addr: usize, addr_len: *mut u32) -> SysResult {
     loop {
         let mut fd_manager = task.fd_manager.lock();
         if let Ok(file) = fd_manager.get_file(fd) {
-            if file.ready_to_read() {
+            //if file.ready_to_read()
                 let mut buffer = [0u8; 64];
                 //获取新连接的远端地址
-                if let Some(read_len) = file.recvfrom(&mut buffer, 0, 0, &mut 0) {
+                if let Some(read_len) = file.recvfrom(&mut buffer, 100, 0, &mut 0) {
                     info!("accept recv: {}", read_len);
                     if read_len != size_of::<IpAddr>() {
                         warn!("accept unknown IpAddr");
@@ -219,7 +219,7 @@ pub fn sys_accept(fd: usize, addr: usize, addr_len: *mut u32) -> SysResult {
                         *addr_len = read_len as u32;
 
                         let recv_addr = addr as *const IpAddr;
-                        info!("sys_accept got IpAddr {} family: {:?}, IP: {:x}, Port: {}",
+                        warn!("sys_accept got IpAddr {} family: {:?}, IP: {:x}, Port: {}",
                               *addr_len, (*recv_addr).family, u32::from_be((*recv_addr).addr), u16::from_be((*recv_addr).port));
                     }
 
@@ -233,8 +233,12 @@ pub fn sys_accept(fd: usize, addr: usize, addr_len: *mut u32) -> SysResult {
                     } else {
                         return Err(ErrorNo::EMFILE);
                     }
+                } else if let Some(fl) = OpenFlags::from_bits((flags as u32) & !SOCKET_TYPE_MASK) {
+                    info!("sys_accept flags: {:?}", fl);
+                    if fl.contains(OpenFlags::NON_BLOCK) {
+                        return Err(ErrorNo::EAGAIN);
+                    }
                 }
-            }
         } else {
             return Err(ErrorNo::EBADF);
         }

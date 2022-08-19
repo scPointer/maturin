@@ -82,12 +82,12 @@ impl Socket {
 
 impl File for Socket {
     /// Socket 不适用普通读写
-    fn read(&self, _buf: &mut [u8]) -> Option<usize> {
-        None
+    fn read(&self, buf: &mut [u8]) -> Option<usize> {
+        self.recvfrom(buf, 0, 0, &mut 0)
     }
     /// Socket 不适用普通读写
-    fn write(&self, _buf: &[u8]) -> Option<usize> {
-        None
+    fn write(&self, buf: &[u8]) -> Option<usize> {
+        self.sendto(buf, 0, 0)
     }
     /// socket的buffer内有值则可读
     fn ready_to_read(&self) -> bool {
@@ -97,6 +97,15 @@ impl File for Socket {
                     if let Some(len) = can_read(port) {
                         info!("Port {} can read: {}", port, len);
                         return true;
+                    }
+
+                    if self.inner.read().is_listening {
+                        //Fixme, 检测新连接
+                        let port = port + 100;
+                        if let Some(len) = can_read(port) {
+                            info!("Port {} accept: {}", port, len);
+                            return true;
+                        }
                     }
                 }
                 _ => {
@@ -126,7 +135,7 @@ impl File for Socket {
         true
     }
     /// 发送消息，当且仅当这个文件是 socket 时可用
-    fn sendto(&self, buf: &[u8], _flags: i32, dest_addr: usize) -> Option<usize> {
+    fn sendto(&self, buf: &[u8], flags: i32, dest_addr: usize) -> Option<usize> {
         let endpoint = if dest_addr == 0 {
             self.inner
                 .read()
@@ -139,20 +148,27 @@ impl File for Socket {
             AddrType::Ip(ip, port) => {
                 info!("send to ip {:x} port {}", ip, port);
                 if (ip == 0) || (ip == LOCAL_LOOPBACK_ADDR) {
+                    //Fixme, 用于建立TCP连接
+                    let port = if flags == 100 {
+                        port + 100
+                    } else { port };
                     write_to_port(port, buf)
                 } else {
                     warn!("Unknown IP: {:#x}", ip);
                     None
                 }
             }
-            AddrType::Unknown => None,
+            AddrType::Unknown => {
+                warn!("recvfrom AddrType::Unknown");
+                None
+            }
         }
     }
     /// 收取消息，当且仅当这个文件是 socket 时可用
     fn recvfrom(
         &self,
         buf: &mut [u8],
-        _flags: i32,
+        flags: i32,
         src_addr: usize,
         src_len: &mut u32,
     ) -> Option<usize> {
@@ -169,13 +185,20 @@ impl File for Socket {
                 // 按 syscall 描述，这里需要把地址信息的长度写到用户给的 src_len 的位置
                 *src_len = size_of::<IpAddr>() as u32;
                 if (ip == 0) || (ip == LOCAL_LOOPBACK_ADDR) {
+                    //Fixme, 用于建立TCP连接
+                    let port = if flags == 100 {
+                        port + 100
+                    } else { port };
                     read_from_port(port, buf)
                 } else {
                     warn!("Unknown IP: {:#x}", ip);
                     None
                 }
             }
-            AddrType::Unknown => None,
+            AddrType::Unknown => {
+                warn!("recvfrom AddrType::Unknown");
+                None
+            }
         }
     }
 }
@@ -222,4 +245,4 @@ numeric_enum! {
         SOCK_CLOEXEC = 0x80000,
     }
 }
-pub const SOCKET_TYPE_MASK: usize = 0xff;
+pub const SOCKET_TYPE_MASK: u32 = 0xff;

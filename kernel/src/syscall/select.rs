@@ -276,17 +276,22 @@ pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout
             if let Ok(file) = fd_manager.get_file(req_fd.data as usize) {
                 let revents = file.poll(PollEvents::from_bits_truncate(req_fd.events.bits() as u16));
                 if !revents.is_empty() {
+                    info!("Epoll found fd {} revent {:?}", req_fd.data, revents);
                     // 回写epollevent, 
                     unsafe {*event.add(set) = *req_fd;}
                     set += 1;
                 }
             } else {
+                warn!("epoll can not get fd: {}", req_fd.data);
                 //let revents = PollEvents::ERR;
                 unsafe {*event.add(set) = *req_fd;}
                 set += 1;
             }
         }
         if set > 0 {
+            unsafe {
+                info!("Epoll ret: {:?}", *event);
+            }
             // 正常返回响应了事件的fd个数
             return Ok(set);
         }
