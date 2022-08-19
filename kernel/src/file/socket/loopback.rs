@@ -61,10 +61,14 @@ pub fn read_from_port(port: u16, buf: &mut [u8]) -> Option<usize> {
     let map = PORT_MAP.lock();
     match map.get(&port) {
         Some(data) => {
-            let len = data.read(buf);
-            info!("Read len: {} from port: {}", len.unwrap_or(0), port);
-            print_hex_dump(buf, 64);
-            len
+            if data.data.lock().len() > 0 {
+                let len = data.read(buf);
+                info!("Read len: {} from port: {}", len.unwrap_or(0), port);
+                print_hex_dump(buf, 64);
+                len
+            }else{
+                None
+            }
         }
         None => {
             // 端口还没有数据

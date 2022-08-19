@@ -13,11 +13,11 @@ use resolution::{addr_resolution, get_ephemeral_port, AddrType};
 /// 一个套接字
 pub struct Socket {
     /// socket 对应的域
-    _domain: Domain,
+    domain: Domain,
     /// 连接类型
-    _s_type: SocketType,
+    stype: SocketType,
     /// 具体的连接协议
-    _protocol: usize,
+    protocol: usize,
     /// SocketInner struct to modify socket
     inner: RwLock<SocketInner>,
 }
@@ -31,13 +31,26 @@ pub struct SocketInner {
 impl Socket {
     pub fn new(domain: Domain, s_type: SocketType, protocol: usize) -> Self {
         Self {
-            _domain: domain,
-            _s_type: s_type,
-            _protocol: protocol,
+            domain: domain,
+            stype: s_type,
+            protocol: protocol,
             inner: RwLock::new(SocketInner {
                 flags: OpenFlags::RDWR,
                 local_endpoint: None,
                 remote_endpoint: None,
+                is_listening: false,
+            }),
+        }
+    }
+    pub fn clonew(&self) -> Self {
+        Self {
+            domain: self.domain,
+            stype: self.stype,
+            protocol: self.protocol,
+            inner: RwLock::new(SocketInner {
+                flags: OpenFlags::RDWR,
+                local_endpoint: self.inner.read().local_endpoint,
+                remote_endpoint: self.inner.read().remote_endpoint,
                 is_listening: false,
             }),
         }
@@ -91,7 +104,7 @@ impl File for Socket {
                 }
             }
         } else {
-            warn!("local endpoint is invalid !");
+            warn!("local endpoint is invalid {:?}", self.inner.read().local_endpoint);
         }
 
         false
@@ -153,7 +166,6 @@ impl File for Socket {
         };
         match endpoint {
             AddrType::Ip(ip, port) => {
-                info!("receive from ip {:x} port {}", ip, port);
                 // 按 syscall 描述，这里需要把地址信息的长度写到用户给的 src_len 的位置
                 *src_len = size_of::<IpAddr>() as u32;
                 if (ip == 0) || (ip == LOCAL_LOOPBACK_ADDR) {
