@@ -3,7 +3,7 @@
 
 #![no_std]
 #![no_main]
-#![deny(warnings)]
+//#![deny(warnings)]
 #![feature(panic_info_message)]
 #![feature(default_alloc_error_handler)]
 #![feature(naked_functions, asm_sym, asm_const)]
@@ -66,7 +66,7 @@ pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     trap::init(); // 设置异常/中断的入口，即 stvec
     arch::allow_sum_access(); // 内核可以读写 USER 页表项中的数据
 
-    trap::enable_timer_interrupt(); // 开启时钟中断
+    //trap::enable_timer_interrupt(); // 开启时钟中断
     //timer::set_next_trigger(); // 设置时钟中断频率
 
     // file::list_apps_names_at_root_dir(); // 展示所有用户程序的名字
@@ -99,8 +99,9 @@ pub extern "C" fn start_kernel_secondary(_arg0: usize, _arg1: usize) -> ! {
     memory::enable_kernel_page_table(); // 构造并切换到内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec
     arch::allow_sum_access(); // 修改 sstatus 的 SUM 位，使内核可以读写USER页表项中的数据
-                              //trap::enable_timer_interrupt(); // 开启时钟中断
-                              //timer::set_next_trigger(); // 设置时钟中断频率
+
+    //trap::enable_timer_interrupt(); // 开启时钟中断
+    //timer::set_next_trigger(); // 设置时钟中断频率
 
     let cpu_id = arch::get_cpu_id();
     info!("I'm CPU [{cpu_id}]");

@@ -1,8 +1,9 @@
 //! 关于 socket 的 syscall
 
 use super::{ErrorNo, SysResult};
+use crate::task::suspend_current_task;
 use crate::file::socket::*;
-use crate::{file::Socket, task::get_current_task};
+use crate::{file::{Socket, OpenFlags}, task::get_current_task};
 use alloc::sync::Arc;
 use core::mem::size_of;
 
@@ -15,14 +16,14 @@ pub fn sys_socket(domain: usize, s_type: usize, protocol: usize) -> SysResult {
             return Err(ErrorNo::EAFNOSUPPORT);
         }
     };
-    let socket_type = match SocketType::try_from(s_type & SOCKET_TYPE_MASK) {
+    let socket_type = match SocketType::try_from(s_type & (SOCKET_TYPE_MASK as usize)) {
         Ok(t) => t,
         Err(_) => {
             warn!("Invalid socket type: {s_type}");
             return Err(ErrorNo::EINVAL);
         }
     };
-    warn!(
+    info!(
         "SOCKET domain: {:?}, s_type: {:?}, protocol: {:x}",
         domain, socket_type, protocol
     );
@@ -78,27 +79,32 @@ pub fn sys_recvfrom(
 ) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
-    let fd_manager = task.fd_manager.lock();
     if task_vm.manually_alloc_page(buf as usize).is_err()
         || task_vm.manually_alloc_page(buf as usize + len).is_err()
     {
         return Err(ErrorNo::EINVAL);
     }
+    drop(task_vm);
     let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
-    if let Ok(file) = fd_manager.get_file(fd) {
-        // 这里不考虑进程切换
-        /*
-        if let Some(read_len) = file.recvfrom(slice, flags, src_addr, 
-            unsafe { src_len_pos.as_mut().unwrap() })
-        */
-        if let Some(read_len) = file.recvfrom(slice, 0, 0, &mut 0)
-        {
-            return Ok(read_len);
+    loop {
+        let fd_manager = task.fd_manager.lock();
+        if let Ok(file) = fd_manager.get_file(fd) {
+            /* if let Some(read_len) = file.recvfrom(slice, flags, src_addr, 
+               unsafe { src_len_pos.as_mut().unwrap() }) */
+            if let Some(read_len) = file.recvfrom(slice, 0, 0, &mut 0) {
+                return Ok(read_len);
+            }
+            let fl = file.get_status();
+            if fl.contains(OpenFlags::NON_BLOCK) {
+                info!("sys_recvfrom flags: {:?}", fl);
+                return Err(ErrorNo::EAGAIN);
+            }
         } else {
-            return Err(ErrorNo::EINVAL);
+            return Err(ErrorNo::EBADF);
         }
-    } else {
-        return Err(ErrorNo::EBADF);
+
+        drop(fd_manager);
+        suspend_current_task(); // yield
     }
 }
 
@@ -160,22 +166,24 @@ pub fn sys_connect(fd: usize, addr: usize, addr_len: usize) -> SysResult {
         //设置好本地endpoint
         if let Some(lport) = sock.set_endpoint(&laddr as *const _ as usize, false) {
             // TCP submit a SYN
+            // 注意转换成Big endian
             let laddr = IpAddr {
                 family: 2,
-                port: lport,
-                addr: 0,
+                port: u16::to_be(lport),
+                addr: u32::to_be(0x7f000001),
             };
             let slice = unsafe {
                 core::slice::from_raw_parts(
-                    &laddr as *const IpAddr as *const _,
+                    &laddr as *const IpAddr as *const u8,
                     size_of::<IpAddr>(),
-                )
+                    )
             };
-            //把本地地址告诉给远端
-            if let Some(write_len) = file.sendto(slice, 0, addr) {
+            //把本地地址告诉给远端, 暂用端口port+100
+            if let Some(write_len) = file.sendto(slice, 100, addr) {
                 //设置好远程endpoint
                 let rport = sock.set_endpoint(addr, true).unwrap_or(0);
-                info!("Sent tcp from {} to {} len: {}", lport, rport, write_len);
+                info!("sys_connect sent IpAddr {} from {} to {} len: {}", size_of::<IpAddr>(), lport, rport, write_len);
+                // 这里没loop, 直接返回成功
                 return Ok(0);
             } else {
                 return Err(ErrorNo::ECONNREFUSED);
@@ -189,43 +197,57 @@ pub fn sys_connect(fd: usize, addr: usize, addr_len: usize) -> SysResult {
 }
 
 /// 监听着的SOCK_STREAM类型的socket, 接受连接, 原socket不受影响，创建一个新的socket返回
-pub fn sys_accept(fd: usize, addr: usize, addr_len: *mut u32) -> SysResult {
+pub fn sys_accept4(fd: usize, addr: usize, addr_len: *mut u32, flags: i32) -> SysResult {
     info!("sys_accept: fd: {} addr: {:x} len: {:p}", fd, addr, addr_len);
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
     if task_vm.manually_alloc_page(addr).is_err()
         || task_vm.manually_alloc_page(addr_len as usize).is_err()
-    {
-        return Err(ErrorNo::EINVAL);
-    }
-    let mut fd_manager = task.fd_manager.lock();
-    if let Ok(file) = fd_manager.get_file(fd) {
-        loop {
-            if file.ready_to_read() {
+        {
+            return Err(ErrorNo::EINVAL);
+        }
+    drop(task_vm);
+    loop {
+        let mut fd_manager = task.fd_manager.lock();
+        if let Ok(file) = fd_manager.get_file(fd) {
+            //if file.ready_to_read()
                 let mut buffer = [0u8; 64];
                 //获取新连接的远端地址
-                if let Some(read_len) = file.recvfrom(&mut buffer, 0, 0, &mut 0) {
+                if let Some(read_len) = file.recvfrom(&mut buffer, 100, 0, &mut 0) {
                     info!("accept recv: {}", read_len);
+                    if read_len != size_of::<IpAddr>() {
+                        warn!("accept unknown IpAddr");
+                    }
                     unsafe {
                         let taddr = core::slice::from_raw_parts_mut(addr as *mut u8, read_len);
                         taddr.copy_from_slice(&buffer[..read_len]);
                         *addr_len = read_len as u32;
+
+                        let recv_addr = addr as *const IpAddr;
+                        info!("sys_accept got IpAddr {} family: {:?}, IP: {:x}, Port: {}",
+                              *addr_len, (*recv_addr).family, u32::from_be((*recv_addr).addr), u16::from_be((*recv_addr).port));
+                    }
+
+                    //设置好远程endpoint
+                    let sock = file.as_any().downcast_ref::<Socket>().unwrap().clone();
+                    sock.set_endpoint(addr, true).unwrap_or(0);
+
+                    // New Socket
+                    if let Ok(new_fd) = fd_manager.push(Arc::new(sock.clonew())) {
+                        return Ok(new_fd);
+                    } else {
+                        return Err(ErrorNo::EMFILE);
+                    }
+                } else if let Some(fl) = OpenFlags::from_bits((flags as u32) & !SOCKET_TYPE_MASK) {
+                    if fl.contains(OpenFlags::NON_BLOCK) {
+                        info!("sys_accept flags: {:?}", fl);
+                        return Err(ErrorNo::EAGAIN);
                     }
                 }
-                // New socket
-                if let Ok(new_fd) = fd_manager.push(Arc::new(Socket::new(
-                    Domain::AF_INET,
-                    SocketType::SOCK_STREAM,
-                    6, /* TCP */
-                ))) {
-                    return Ok(new_fd);
-                } else {
-                    return Err(ErrorNo::EMFILE);
-                }
-            }
-            // yield
+        } else {
+            return Err(ErrorNo::EBADF);
         }
-    } else {
-        Err(ErrorNo::EBADF)
+        drop(fd_manager);
+        suspend_current_task(); // yield
     }
 }

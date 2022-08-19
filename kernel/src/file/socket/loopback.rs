@@ -8,6 +8,9 @@ use crate::constants::SOCKET_BUFFER_SIZE_LIMIT;
 /// 本地的网络地址，即 127.0.0.1
 pub const LOCAL_LOOPBACK_ADDR: u32 = 0x7f000001;
 
+/// 网络缓存的最大值
+pub const MAXBUF: usize = 32 * 1024;
+
 /// 端口映射
 static PORT_MAP: Mutex<BTreeMap<u16, PortData>> = Mutex::new(BTreeMap::new());
 
@@ -27,6 +30,7 @@ impl PortData {
     pub fn read(&self, buf: &mut [u8]) -> Option<usize> {
         let read_len = self.data.lock().read(buf);
         //warn!("read buffer {read_len}");
+        info!("reading lenght: {}, buf len: {}", read_len, buf.len());
         if read_len > 0 {
             Some(read_len)
         } else {
@@ -69,14 +73,35 @@ pub fn can_read(port: u16) -> Option<usize> {
     }
 }
 
+pub fn can_write(port: u16) -> Option<usize> {
+    let map = PORT_MAP.lock();
+    match map.get(&port) {
+        Some(pd) => {
+            let len = pd.data.lock().get_len();
+            if len < MAXBUF {
+                Some(MAXBUF - len)
+            } else {
+                None
+            }
+        }
+        None => {
+            Some(MAXBUF)
+        }
+    }
+}
+
 pub fn read_from_port(port: u16, buf: &mut [u8]) -> Option<usize> {
     let map = PORT_MAP.lock();
     match map.get(&port) {
         Some(data) => {
-            let len = data.read(buf);
-            info!("Read len: {} from port: {}", len.unwrap_or(0), port);
-            print_hex_dump(buf, 64);
-            len
+            if data.data.lock().get_len() > 0 {
+                let len = data.read(buf);
+                info!("Read len: {} from port: {}", len.unwrap_or(0), port);
+                //print_hex_dump(buf, 64);
+                len
+            }else{
+                None
+            }
         }
         None => {
             // 端口还没有数据
@@ -87,7 +112,7 @@ pub fn read_from_port(port: u16, buf: &mut [u8]) -> Option<usize> {
 
 pub fn write_to_port(port: u16, buf: &[u8]) -> Option<usize> {
     info!("To write len: {:?} into port: {}", buf.len(), port);
-    print_hex_dump(buf, 64);
+    //print_hex_dump(buf, 64);
     let mut map = PORT_MAP.lock();
     match map.get(&port) {
         Some(data) => data.write(buf),

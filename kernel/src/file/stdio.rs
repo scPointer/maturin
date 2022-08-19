@@ -7,6 +7,7 @@
 
 use super::{normal_file_mode, File, Kstat, StMode};
 use crate::arch::stdin::getchar;
+use crate::task::suspend_current_task;
 
 /// 标准输入流
 pub struct Stdin;
@@ -25,6 +26,7 @@ impl File for Stdin {
             // 目前调用 sys_read 会导致当前进程阻塞在用户输入上
             let c = getchar();
             if c == 0 || c == 255 {
+                suspend_current_task(); //yield cpu
                 continue;
             } else {
                 break c;
