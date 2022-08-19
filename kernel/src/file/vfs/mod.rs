@@ -1,5 +1,5 @@
 //! 虚拟文件系统管理
-//! 用户堆一些特殊目录和文件的访问，如 /dev/zero 或 /tmp
+//! 用于对一些特殊目录和文件的访问，如 /dev/zero 或 /tmp
 
 mod null;
 mod temp;

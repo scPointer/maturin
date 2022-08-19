@@ -181,7 +181,7 @@ pub use fd_manager::FdManager;
 pub use fs_stat::FsStat;
 pub use kstat::normal_file_mode;
 pub use kstat::{Kstat, StMode};
-pub use pipe::Pipe;
+pub use pipe::{Pipe, RingBuffer};
 pub use poll_events::PollEvents;
 pub use socket::Socket;
 pub use vfs::{

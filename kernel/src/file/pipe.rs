@@ -2,7 +2,7 @@
 //!
 //! 相当于两个文件，其中一个只读，一个只可写，但指向同一片内存。
 //! Pipe 的读写可能会触发进程切换。
-//! 目前的实现中，Pipe本身分配在堆上
+//! 目前的实现中，Pipe会请求并获取页帧，不占用内核堆/栈
 
 use super::{File, BufferFile, OpenFlags};
 use crate::{constants::PIPE_SIZE_LIMIT, task::suspend_current_task};
@@ -10,21 +10,23 @@ use alloc::sync::Arc;
 use lock::Mutex;
 
 /// 管道内部的 buffer，是个循环队列
-struct PipeBuffer {
+pub struct RingBuffer {
     data: BufferFile,
     head: usize,
     end: usize,
     len: usize,
+    size_limit: usize,
 }
 
-impl PipeBuffer {
+impl RingBuffer {
     /// 创建一个 buffer
-    pub fn new() -> Self {
+    pub fn new(size_limit: usize) -> Self {
         Self {
             data: BufferFile::new(OpenFlags::empty()),
             head: 0,
             end: 0,
             len: 0,
+            size_limit: size_limit,
         }
     }
     /// 读尽可能多的内容，注意这个函数不是 trait File 的
@@ -36,39 +38,48 @@ impl PipeBuffer {
         // 设置指针到数据前
         unsafe { self.data.set_pos(self.head); }
         // 循环队列不用跨过起点
-        if self.head + max_len <= PIPE_SIZE_LIMIT {
+        if self.head + max_len <= self.size_limit {
             self.data.read_inner(&mut buf[..max_len]);
             self.head += max_len;
         } else { // 需要跨过起点
-            self.data.read_inner(&mut buf[..PIPE_SIZE_LIMIT-self.head]);
+            self.data.read_inner(&mut buf[..self.size_limit-self.head]);
             unsafe { self.data.set_pos(0); }
-            self.data.read_inner(&mut buf[PIPE_SIZE_LIMIT-self.head..max_len]);
+            self.data.read_inner(&mut buf[self.size_limit-self.head..max_len]);
             // self.head 后面加的是负数，但它又是 usize，最好不用 +=
-            self.head = self.head + max_len - PIPE_SIZE_LIMIT; 
+            self.head = self.head + max_len - self.size_limit; 
         }
         max_len
     }
     /// 写尽可能多的内容，注意这个函数不是 trait File 的
-    fn write(&mut self, buf: &[u8]) -> usize {
-        let max_len = buf.len().min(PIPE_SIZE_LIMIT - self.len);
+    pub fn write(&mut self, buf: &[u8]) -> usize {
+        let max_len = buf.len().min(self.size_limit - self.len);
         self.len += max_len;
         // 设置指针到数据后
         unsafe { self.data.set_pos(self.end); }
         // 循环队列不用跨过起点
-        if self.end + max_len <= PIPE_SIZE_LIMIT {
+        if self.end + max_len <= self.size_limit {
             self.data.write_inner(&buf[..max_len]);
             self.end += max_len;
         } else { // 需要跨过起点
-            self.data.write_inner(&buf[..PIPE_SIZE_LIMIT-self.end]);
+            self.data.write_inner(&buf[..self.size_limit-self.end]);
             unsafe { self.data.set_pos(0); }
-            self.data.write_inner(&buf[PIPE_SIZE_LIMIT-self.end..max_len]);
+            self.data.write_inner(&buf[self.size_limit-self.end..max_len]);
             // self.end 后面加的是负数，但它又是 usize，最好不用 +=
-            self.end = self.end + max_len - PIPE_SIZE_LIMIT; 
+            self.end = self.end + max_len - self.size_limit; 
         }
         max_len
     }
-    fn get_len(&self) -> usize {
+    /// 获取循环队列目前的存的数据长度
+    pub fn get_len(&self) -> usize {
         self.len
+    }
+    /// 是否 buffer 已满
+    pub fn is_full(&self) -> bool {
+        self.len == self.size_limit
+    }
+    /// 是否 buffer 是空的
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
     }
 }
 
@@ -78,13 +89,13 @@ pub struct Pipe {
     is_read: bool,
     /// 管道内保存的数据
     /// 只有所有持有管道的 Arc 被 Drop 时，才会释放其中的 PipeBuffer 的空间
-    data: Arc<Mutex<PipeBuffer>>,
+    data: Arc<Mutex<RingBuffer>>,
 }
 
 impl Pipe {
     /// 新建一个管道，返回两端
     pub fn new_pipe() -> (Self, Self) {
-        let buf = Arc::new(Mutex::new(PipeBuffer::new()));
+        let buf = Arc::new(Mutex::new(RingBuffer::new(PIPE_SIZE_LIMIT)));
         (
             Self {
                 is_read: true,
@@ -172,16 +183,16 @@ impl File for Pipe {
     }
     /// 已准备好读。对于 pipe 来说，这意味着读端的buffer内有值
     fn ready_to_read(&self) -> bool {
-        self.is_read && self.data.lock().get_len() > 0
+        self.is_read && !self.data.lock().is_empty()
     }
     /// 已准备好写。对于 pipe 来说，这意味着写端的buffer未满
     fn ready_to_write(&self) -> bool {
-        !self.is_read && self.data.lock().get_len() < PIPE_SIZE_LIMIT
+        !self.is_read && !self.data.lock().is_full()
     }
     /// 是否已经终止。对于 pipe 来说，这意味着另一端已关闭
     fn is_hang_up(&self) -> bool {
         if self.is_read {
-            self.data.lock().get_len() == 0 && Arc::strong_count(&self.data) < 2
+            self.data.lock().is_empty() && Arc::strong_count(&self.data) < 2
         } else {
             Arc::strong_count(&self.data) < 2
         }

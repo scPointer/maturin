@@ -80,8 +80,6 @@ pub const SAMPLE: &[&str] = &[
 
 程序会依次加载 `SAMPLE` 中的测例并运行，修改它的内容可以控制实际执行的测例。
 
-
-
 需要说明的是，"每次单独测试一个测例"是比赛评测导致的，因为**评测机不给输入，只凭借串口输出检查测例是否通过，而且无法分辨多个测例同时输出时的情况**。
 
 之后2-3天应该马上会更新一个基于 busybox 的 shell 的、可交互的模式。
@@ -96,11 +94,7 @@ pub const SAMPLE: &[&str] = &[
 
 所有分配器采用 bitset 上的 radix tree。实际是 `bitmap_allocator::BitAlloc...`
 
-
-
 堆分配器比较简单，采用静态的 `LockedHeap`
-
-
 
 只有 `tid` 的分配器，没有 `pid`的分配器。即对应内核中没有进程，只有“线程”。
 
@@ -131,8 +125,6 @@ pub const SAMPLE: &[&str] = &[
   `UserStr<F: IoFlag> = UserDataVec<u8, F>`
   
   `UserDataIoVec<F: IoFlag> = UserDataVec<UserStr<F>, In>` (sys_readv/writev)
-
-
 
 > 这个部分和 zCore 的 `UserPtr` 有什么不同？
 > 
@@ -246,13 +238,9 @@ pub struct TaskControlBlock {
 
 - (这一条是设想)线程A通过kill发一个信号，则会首先找到对应tid的TCB，然后往它的 SignalReceivers 里塞一个信号。每个拥有这个 Receivers 的线程都可能发现这个信号，但因为 mutex 它们不会同时发现。每个抢到 mutex 锁的线程会试图比对自己的 mask，如果可以接收则会处理并删除这个信号。这符合 linux 对于"每个线程都有自己的信号掩码，但信号只会发给一个线程，异步信号任取一个没有阻塞的线程"的要求。
 
-
-
 musl-libc 的 pthread-create 没有使用上面这些复杂灵活的处理，所以 zCore 那样不管 clone 时的 flags 混过去也是行得通的。
 
 所以目前我们OS的思路只是提供了这样一种支持，对 musl-libc 不是必须的。
-
-
 
 另外，分开不同的模块可以让不同的线程同时访问，但也容易死锁。目前的策略是，在处理syscall时，先按照上面TCB里定义的顺序拿所有需要的模块的锁，再进行操作。
 
@@ -313,5 +301,3 @@ musl-libc 的 pthread-create 没有使用上面这些复杂灵活的处理，所
 ## 其他约定
 
 在写这个OS的过程中，我尽量保持每个文件/struct/fn/enum项等的有完整中文注释，同时函数中也有足够多的行级中文注释
-
-

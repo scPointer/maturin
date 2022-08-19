@@ -1,6 +1,6 @@
 # 操作系统设计赛 - 初赛文档
 
-[toc]
+[TOC]
 
 ## 开发人员
 
@@ -22,21 +22,20 @@
 
 ```mermaid
 graph TB
-	fs-init
-	main-->memory
-	main-->task
-	main-->trap
-	main-->loaders
-	main-->file
-	main-->drivers
-	main-->arch/riscv
-	main-->syscall
-	memory-->/allocator
-	memory-->/areas
-	file-->/device
-	drivers-->/block
-	drivers-->/memory
-
+    fs-init
+    main-->memory
+    main-->task
+    main-->trap
+    main-->loaders
+    main-->file
+    main-->drivers
+    main-->arch/riscv
+    main-->syscall
+    memory-->/allocator
+    memory-->/areas
+    file-->/device
+    drivers-->/block
+    drivers-->/memory
 ```
 
 对这些模块简要介绍如下：
@@ -71,22 +70,22 @@ make run
 
 这分别对应了进入trap时`sp`和`sscratch`的不同状态：
 
-| 来源           | sp指向 | sscratch存储 | trap行为                 |
-| -------------- | ------ | ------------ | ------------------------ |
-| 用户程序用户态 | 用户栈 | 内核栈       | csrrw后转内核栈处理      |
-| 用户程序内核态 | 内核栈 | 用户栈       | 不csrrw，直接压栈处理    |
-| 空闲核内核态   | 内核栈 | 0            | csrrw两次，之后压栈处理* |
+| 来源      | sp指向 | sscratch存储 | trap行为          |
+| ------- | ---- | ---------- | --------------- |
+| 用户程序用户态 | 用户栈  | 内核栈        | csrrw后转内核栈处理    |
+| 用户程序内核态 | 内核栈  | 用户栈        | 不csrrw，直接压栈处理   |
+| 空闲核内核态  | 内核栈  | 0          | csrrw两次，之后压栈处理* |
 
 注意最后一种情况下，csrrw两次和不适用csrrw的效果是一样的。这样处理是因为**进入trap时，内核只能看到sp**，无法分辨后两种情况，因此需要换出sscratch里存的值再做判断。
 
 > 内核如何分别用户栈和内核栈？
->
+> 
 > 因为MaturinOS的内核(虚)地址一定在高地址，即 0xffff_ffff_xxxx_xxxx，而用户地址一定在低地址，即 0x0000_0000_xxxx_xxxx，所以通过将 sp 当作有符号数然后使用`bgez`和`beqz`分辨即可。
 
 类似地，从trap返回时也需要对应作上述处理，但是这时候是通过`sstatus`的`SPP`位来判断来源是否是用户态再复原。
 
 > 既然有SPP可以判断，为什么进入trap时不通过这个信息来判断？
->
+> 
 > 因为异常中断不同于普通的函数调用规范，每一个寄存器里都有用户信息，没有一个安全的寄存器可以用来判断。rCore中使用了sscratch，但这只是对应第一种情况，在分辨异常中断属于上述三种情况的哪一种时，sscratch里也有信息，也不能随意写掉。当然，可以在sscratch里放一段安全的地址，然后不管什么情况都把所有东西先存到那里再处理。但我们觉得既然可以用分支判断解决问题，就没有必要再新增结构了。
 
 #### /memory
@@ -145,7 +144,7 @@ boot_page_table_sv39:
 3. 直接向页帧分配器要一个帧，然后自己存起来。**在这种情况下，可以说这个结构"拥有"它申请的页，但页表和 `MemorySet` 里不会添加这一项。**事实上，申请到的页是在 physical_memory 段里的，详见页帧分配器(`frame.rs`)。理论上来说，内核里的代码可以任意读写 physical_memory 段中的地址，但只要"约定"每个结构在需要内存时都先申请空间再使用，就至少可以保证不会错误读写到别的数据
 
 > 为什么要有第三种申请空间方式而不是把这样的申请都放在堆上？
->
+> 
 > 因为堆内部的空间不大，目前设定为 4MB。堆分配器(`heap.rs`)占用的空间在 `bss` 里，而一般来说我们不太希望内核编译出来的文件里本身就带一堆大“数组”，所以不会把堆开得特别大。
 
 ##### /memory/areas
@@ -179,7 +178,7 @@ boot_page_table_sv39:
 同理，也不需要单独配置 `KernelStack` 在用户地址空间中的映射。这点和本项目参考的 `rCore-tutorial` 有明显的不同
 
 > `rCore-tutorial` 的内核态与用户态使用的页表不同，所以它的 trap 进入内核(见 https://rcore-os.github.io/rCore-Tutorial-Book-v3/chapter3/2task-switching.html) 过程大致是
->
+> 
 > 1. 把sp换到”内核栈在用户地址空间中的地址"
 > 2. 保存需要的寄存器
 > 3. 读取 rust 函数 trap_handler 的地址，切换到内核栈

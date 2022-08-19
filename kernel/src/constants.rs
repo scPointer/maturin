@@ -62,6 +62,8 @@ pub const FD_LIMIT_ORIGIN: usize = 64;
 pub const FD_LIMIT_HARD: usize = 256;
 /// sys_pipe创建的管道的大小，单位为字节
 pub const PIPE_SIZE_LIMIT: usize = 0x40_000; // 64 KB
+/// socket 使用的 buffer 大小
+pub const SOCKET_BUFFER_SIZE_LIMIT: usize = 0x100_0000; // 16 MB
 
 /// 一段左闭右开的地址区间，.0 为左端点， .1 为右端点，
 pub struct AddrArea(pub usize, pub usize);

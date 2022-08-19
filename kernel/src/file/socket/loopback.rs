@@ -1,10 +1,10 @@
 //! 本地回环网络
 //!
 
-use alloc::{collections::BTreeMap, vec::Vec};
-use core::cmp::min;
+use alloc::{collections::BTreeMap};
 use lock::Mutex;
-
+use crate::file::RingBuffer;
+use crate::constants::SOCKET_BUFFER_SIZE_LIMIT;
 /// 本地的网络地址，即 127.0.0.1
 pub const LOCAL_LOOPBACK_ADDR: u32 = 0x7f000001;
 
@@ -13,29 +13,41 @@ static PORT_MAP: Mutex<BTreeMap<u16, PortData>> = Mutex::new(BTreeMap::new());
 
 /// 端口上的被发送或等待接收的数据
 pub struct PortData {
-    data: Mutex<Vec<u8>>,
+    data: Mutex<RingBuffer>,
 }
 
 impl PortData {
     /// 建立新的端口映射
     pub fn new() -> Self {
         Self {
-            data: Mutex::new(Vec::new()),
+            data: Mutex::new(RingBuffer::new(SOCKET_BUFFER_SIZE_LIMIT)),
         }
     }
     /// 读数据到 buf 中
     pub fn read(&self, buf: &mut [u8]) -> Option<usize> {
-        let mut data = self.data.lock();
-        let read_len = min(data.len(), buf.len());
-        buf[..read_len].copy_from_slice(&data[..read_len]);
-        *data = data.split_off(read_len);
-        Some(read_len)
+        let read_len = self.data.lock().read(buf);
+        //warn!("read buffer {read_len}");
+        if read_len > 0 {
+            Some(read_len)
+        } else {
+            None
+        }
     }
     /// 从 buf 写入数据
     pub fn write(&self, buf: &[u8]) -> Option<usize> {
-        let mut data = self.data.lock();
-        data.extend_from_slice(buf);
-        Some(buf.len())
+        let write_len = self.data.lock().write(buf);
+        //warn!("write buffer {write_len}");
+        if write_len > 0 {
+            Some(write_len)
+        } else {
+            /*
+            let len = self.data.lock().get_len();
+            if len > 0x10_000 {
+                warn!("buffer len {len}");
+            }
+            */
+            None
+        }
     }
 }
 
@@ -43,7 +55,7 @@ pub fn can_read(port: u16) -> Option<usize> {
     let map = PORT_MAP.lock();
     match map.get(&port) {
         Some(pd) => {
-            let len = pd.data.lock().len();
+            let len = pd.data.lock().get_len();
             if len > 0 {
                 Some(len)
             } else {

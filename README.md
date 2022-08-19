@@ -30,10 +30,9 @@ make run
 
 也可以在 `/kernel/Makefile` 里第 12 行直接修改 `DISK_DIR ?= libc` 一项。
 
-
 加载到文件系统镜像的测例不一定要全部运行，目前只默认运行十个测例。在`kernel/src/file/device/test.rs` 的 109 行左右有如下逻辑：
-```rust
 
+```rust
 lazy_static! {
     static ref TESTCASES_ITER: Mutex<Iter<'static, &'static str>> = Mutex::new(SAMPLE.into_iter());
     static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(SAMPLE));
@@ -48,11 +47,10 @@ pub const SAMPLE: &[&str] = &[
 在文件下面还有常量 `BUSYBOX_TESTCASES` `LUA_TESTCASES` `LIBC_DYNAMIC_TESTCASES` `LIBX_STATIC_TESTCASES`。可以把它们中的一部分复制到 `SAMPLE` 中，也可以用这几个常量的名字**替换** `TESTCASES_ITER` 和 `TEST_STATUS` 中的 `SAMPLE`，实现快速测试整组测例。
 
 > 需要说明的是，"每次单独测试一个测例"是比赛评测导致的，因为评测机只凭借串口输出检查测例是否通过，而且无法分辨多个测例同时输出时的情况。
->
+> 
 > 这里的本地测试通过不一定表示实际测试也能通过。因为测例是通过 `/libc` 模块下手动生成的，这样才能不依赖于比赛给定的 `runtest.exe` 和 `run-dynamic.sh` 和 `run-static.sh` 运行测例。否则，测试将全程交给这三个文件，想修改测例只能修改磁盘镜像里的文件，比改代码更麻烦。
->
+> 
 > 目前是由单核执行测例，因为文件系统还没有做多核的适配。所有相关选项在 `/kernel/src/constants.rs` 里
-
 
 ## Directory tree
 
@@ -111,7 +109,6 @@ pub const SAMPLE: &[&str] = &[
 #### 内核为什么要关心这个接口
 
 因为内核需要把 `MMIO` 提供的块设备接口包装成 `fscommon::BufStream` 所需要的实现了 `Read, Write, Seek` 的接口，所以内核必须先知道这三个接口来自哪里，有什么要求，才能对应实现 `Trait`。
-
 
 ### /rust-fatfs
 
