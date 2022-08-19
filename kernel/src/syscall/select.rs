@@ -6,7 +6,7 @@ use core::mem::size_of;
 use lock::MutexGuard;
 
 use crate::constants::FD_LIMIT_HARD;
-use crate::file::{FdManager, File, PollEvents, EpollFile, EpollEvent, EpollCtl};
+use crate::file::{FdManager, File, PollEvents, EpollFile, EpollEvent, EpollEventType, EpollCtl};
 use crate::memory::MemorySet;
 use crate::signal::ShadowBitset;
 use crate::task::{get_current_task, suspend_current_task};
@@ -255,10 +255,12 @@ pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout
     let interest = &epoll_file.inner.lock().interest_list;
     let mut epolls: Vec<EpollEvent> = Vec::new();
     for (fd, evt) in interest {
-        if *fd as u64 != evt.data {
+        let mut nevt = *evt;
+        if *fd as u64 != nevt.data {
             warn!("fd: {} is not in Event: {:?}", fd, evt);
+            nevt.data = *fd as u64;
         }
-        epolls.push(*evt);
+        epolls.push(nevt);
     }
     let expire_time = if timeout >= 0 {
         get_time_ms() + timeout as usize
@@ -278,13 +280,19 @@ pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout
                 if !revents.is_empty() {
                     info!("Epoll found fd {} revent {:?}", req_fd.data, revents);
                     // 回写epollevent, 
-                    unsafe {*event.add(set) = *req_fd;}
+                    unsafe {
+                        *event.add(set) = *req_fd;
+                        (*event.add(set)).events = EpollEventType::from_bits_truncate(revents.bits() as u32);
+                    }
                     set += 1;
                 }
             } else {
                 warn!("epoll can not get fd: {}", req_fd.data);
                 //let revents = PollEvents::ERR;
-                unsafe {*event.add(set) = *req_fd;}
+                unsafe {
+                    *event.add(set) = *req_fd;
+                    (*event.add(set)).events = EpollEventType::EPOLLERR;
+                }
                 set += 1;
             }
         }

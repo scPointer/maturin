@@ -145,6 +145,7 @@ pub fn suspend_current_task() {
     task.set_status(TaskStatus::Ready);
     // let task = cpu_local.take_current_task(); 只有写好用户程序的内核栈、回到 idle 状态以后，才能把任务塞回队列里
     // add_task(task);
+    trace!("[cpu {}] tid {} suspend", cpu_id, task.get_tid_num());
     let current_task_cx_ptr = task.get_task_cx_ptr() as *mut TaskContext;
     let idle_task_cx_ptr = cpu_local.get_idle_task_cx_ptr();
     //println!("idle task context ptr {:x}", idle_task_cx_ptr as usize);
@@ -176,7 +177,7 @@ pub fn exit_current_task(exit_code: i32) {
             }
         }
     }
-    //println!("[cpu {}] tid {} exited with code {}", cpu_id, task.get_tid_num(), exit_code);
+    trace!("[cpu {}] tid {} exited with code {}", cpu_id, task.get_tid_num(), exit_code);
     let idle_task_cx_ptr = cpu_local.get_idle_task_cx_ptr();
     //println!("idle task context ptr {:x}", idle_task_cx_ptr as usize);
     //drop(task_inner);

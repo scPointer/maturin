@@ -6,7 +6,7 @@ mod resolution;
 use super::{File, OpenFlags};
 use core::mem::size_of;
 use lock::RwLock;
-use loopback::{can_read, read_from_port, write_to_port, LOCAL_LOOPBACK_ADDR};
+use loopback::{can_read, can_write, read_from_port, write_to_port, LOCAL_LOOPBACK_ADDR};
 pub use resolution::IpAddr;
 use resolution::{addr_resolution, get_ephemeral_port, AddrType};
 
@@ -94,11 +94,6 @@ impl File for Socket {
         if let Some(ep) = self.inner.read().local_endpoint {
             match ep {
                 AddrType::Ip(_ip, port) => {
-                    if let Some(len) = can_read(port) {
-                        info!("Port {} can read: {}", port, len);
-                        return true;
-                    }
-
                     if self.inner.read().is_listening {
                         //Fixme, 检测新连接
                         let port = port + 100;
@@ -106,6 +101,9 @@ impl File for Socket {
                             info!("Port {} accept: {}", port, len);
                             return true;
                         }
+                    } else if let Some(len) = can_read(port) {
+                        info!("Port {} can read: {}", port, len);
+                        return true;
                     }
                 }
                 _ => {
@@ -118,8 +116,23 @@ impl File for Socket {
 
         false
     }
-    /// socket的buffer未满则可写. Vec总是可以extend写
+    /// socket的buffer未满则可写
     fn ready_to_write(&self) -> bool {
+        if let Some(ep) = self.inner.read().remote_endpoint {
+            match ep {
+                AddrType::Ip(_ip, port) => {
+                    if let Some(len) = can_write(port) {
+                        info!("Port {} can write: {}", port, len);
+                        return true;
+                    } else {
+                        info!("Buffer to write is full");
+                        return false;
+                    }
+                }
+                _ => {}
+            }
+        }
+        info!("local endpoint is invalid now {:?}", self.inner.read().remote_endpoint);
         true
     }
     /// 获取文件状态信息

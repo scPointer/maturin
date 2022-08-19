@@ -176,7 +176,7 @@ pub use device::{
 
 pub use backend::{BackEndFile, SyncPolicy};
 pub use device::{FileDisc, OpenFlags};
-pub use epoll::{EpollFile, EpollEvent, EpollCtl};
+pub use epoll::{EpollFile, EpollEvent, EpollEventType, EpollCtl};
 pub use fd_manager::FdManager;
 pub use fs_stat::FsStat;
 pub use kstat::normal_file_mode;

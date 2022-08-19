@@ -23,7 +23,7 @@ pub fn sys_socket(domain: usize, s_type: usize, protocol: usize) -> SysResult {
             return Err(ErrorNo::EINVAL);
         }
     };
-    warn!(
+    info!(
         "SOCKET domain: {:?}, s_type: {:?}, protocol: {:x}",
         domain, socket_type, protocol
     );
@@ -93,6 +93,11 @@ pub fn sys_recvfrom(
                unsafe { src_len_pos.as_mut().unwrap() }) */
             if let Some(read_len) = file.recvfrom(slice, 0, 0, &mut 0) {
                 return Ok(read_len);
+            }
+            let fl = file.get_status();
+            if fl.contains(OpenFlags::NON_BLOCK) {
+                info!("sys_recvfrom flags: {:?}", fl);
+                return Err(ErrorNo::EAGAIN);
             }
         } else {
             return Err(ErrorNo::EBADF);
@@ -219,7 +224,7 @@ pub fn sys_accept4(fd: usize, addr: usize, addr_len: *mut u32, flags: i32) -> Sy
                         *addr_len = read_len as u32;
 
                         let recv_addr = addr as *const IpAddr;
-                        warn!("sys_accept got IpAddr {} family: {:?}, IP: {:x}, Port: {}",
+                        info!("sys_accept got IpAddr {} family: {:?}, IP: {:x}, Port: {}",
                               *addr_len, (*recv_addr).family, u32::from_be((*recv_addr).addr), u16::from_be((*recv_addr).port));
                     }
 
@@ -234,8 +239,8 @@ pub fn sys_accept4(fd: usize, addr: usize, addr_len: *mut u32, flags: i32) -> Sy
                         return Err(ErrorNo::EMFILE);
                     }
                 } else if let Some(fl) = OpenFlags::from_bits((flags as u32) & !SOCKET_TYPE_MASK) {
-                    info!("sys_accept flags: {:?}", fl);
                     if fl.contains(OpenFlags::NON_BLOCK) {
+                        info!("sys_accept flags: {:?}", fl);
                         return Err(ErrorNo::EAGAIN);
                     }
                 }

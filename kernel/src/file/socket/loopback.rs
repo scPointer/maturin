@@ -8,6 +8,9 @@ use lock::Mutex;
 /// 本地的网络地址，即 127.0.0.1
 pub const LOCAL_LOOPBACK_ADDR: u32 = 0x7f000001;
 
+/// 网络缓存的最大值
+pub const MAXBUF: usize = 32 * 1024;
+
 /// 端口映射
 static PORT_MAP: Mutex<BTreeMap<u16, PortData>> = Mutex::new(BTreeMap::new());
 
@@ -27,6 +30,11 @@ impl PortData {
     pub fn read(&self, buf: &mut [u8]) -> Option<usize> {
         let mut data = self.data.lock();
         let read_len = min(data.len(), buf.len());
+
+        info!("DATA lenght: {}, buf len: {}", data.len(), buf.len());
+        // redis crash here when recv
+
+        info!("reading lenght: {}", read_len);
         buf[..read_len].copy_from_slice(&data[..read_len]);
         *data = data.split_off(read_len);
         Some(read_len)
@@ -57,6 +65,23 @@ pub fn can_read(port: u16) -> Option<usize> {
     }
 }
 
+pub fn can_write(port: u16) -> Option<usize> {
+    let map = PORT_MAP.lock();
+    match map.get(&port) {
+        Some(pd) => {
+            let len = pd.data.lock().len();
+            if len < MAXBUF {
+                Some(MAXBUF - len)
+            } else {
+                None
+            }
+        }
+        None => {
+            Some(MAXBUF)
+        }
+    }
+}
+
 pub fn read_from_port(port: u16, buf: &mut [u8]) -> Option<usize> {
     let map = PORT_MAP.lock();
     match map.get(&port) {
@@ -64,7 +89,7 @@ pub fn read_from_port(port: u16, buf: &mut [u8]) -> Option<usize> {
             if data.data.lock().len() > 0 {
                 let len = data.read(buf);
                 info!("Read len: {} from port: {}", len.unwrap_or(0), port);
-                print_hex_dump(buf, 64);
+                //print_hex_dump(buf, 64);
                 len
             }else{
                 None
@@ -79,7 +104,7 @@ pub fn read_from_port(port: u16, buf: &mut [u8]) -> Option<usize> {
 
 pub fn write_to_port(port: u16, buf: &[u8]) -> Option<usize> {
     info!("To write len: {:?} into port: {}", buf.len(), port);
-    print_hex_dump(buf, 64);
+    //print_hex_dump(buf, 64);
     let mut map = PORT_MAP.lock();
     match map.get(&port) {
         Some(data) => data.write(buf),
