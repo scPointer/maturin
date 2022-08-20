@@ -1,57 +1,48 @@
 //! 本地回环网络
 //!
 
-use alloc::{collections::BTreeMap};
-use lock::Mutex;
-use crate::file::RingBuffer;
 use crate::constants::SOCKET_BUFFER_SIZE_LIMIT;
+use alloc::{collections::BTreeMap, vec::Vec};
+use core::cmp::min;
+use lock::Mutex;
+
 /// 本地的网络地址，即 127.0.0.1
 pub const LOCAL_LOOPBACK_ADDR: u32 = 0x7f000001;
-
-/// 网络缓存的最大值
-pub const MAXBUF: usize = 32 * 1024;
 
 /// 端口映射
 static PORT_MAP: Mutex<BTreeMap<u16, PortData>> = Mutex::new(BTreeMap::new());
 
 /// 端口上的被发送或等待接收的数据
 pub struct PortData {
-    data: Mutex<RingBuffer>,
+    data: Mutex<Vec<u8>>,
 }
 
 impl PortData {
     /// 建立新的端口映射
     pub fn new() -> Self {
         Self {
-            data: Mutex::new(RingBuffer::new(SOCKET_BUFFER_SIZE_LIMIT)),
+            data: Mutex::new(Vec::new()),
         }
     }
     /// 读数据到 buf 中
     pub fn read(&self, buf: &mut [u8]) -> Option<usize> {
-        let read_len = self.data.lock().read(buf);
-        //warn!("read buffer {read_len}");
-        info!("reading lenght: {}, buf len: {}", read_len, buf.len());
-        if read_len > 0 {
-            Some(read_len)
-        } else {
-            None
-        }
+        let mut data = self.data.lock();
+        let read_len = min(data.len(), buf.len());
+        info!("reading lenght: {}", read_len);
+        buf[..read_len].copy_from_slice(&data[..read_len]);
+        *data = data.split_off(read_len);
+        Some(read_len)
     }
     /// 从 buf 写入数据
     pub fn write(&self, buf: &[u8]) -> Option<usize> {
-        let write_len = self.data.lock().write(buf);
-        //warn!("write buffer {write_len}");
-        if write_len > 0 {
-            Some(write_len)
-        } else {
-            /*
-            let len = self.data.lock().get_len();
-            if len > 0x10_000 {
-                warn!("buffer len {len}");
-            }
-            */
-            None
+        let mut data = self.data.lock();
+        let write_len = min(SOCKET_BUFFER_SIZE_LIMIT - data.len(), buf.len());
+        if write_len == 0 {
+            warn!("DATA buffer to write is full");
+            return None;
         }
+        data.extend_from_slice(&buf[..write_len]);
+        Some(write_len)
     }
 }
 
@@ -59,7 +50,7 @@ pub fn can_read(port: u16) -> Option<usize> {
     let map = PORT_MAP.lock();
     match map.get(&port) {
         Some(pd) => {
-            let len = pd.data.lock().get_len();
+            let len = pd.data.lock().len();
             if len > 0 {
                 Some(len)
             } else {
@@ -77,15 +68,15 @@ pub fn can_write(port: u16) -> Option<usize> {
     let map = PORT_MAP.lock();
     match map.get(&port) {
         Some(pd) => {
-            let len = pd.data.lock().get_len();
-            if len < MAXBUF {
-                Some(MAXBUF - len)
+            let len = pd.data.lock().len();
+            if len < SOCKET_BUFFER_SIZE_LIMIT {
+                Some(SOCKET_BUFFER_SIZE_LIMIT - len)
             } else {
                 None
             }
         }
         None => {
-            Some(MAXBUF)
+            Some(SOCKET_BUFFER_SIZE_LIMIT)
         }
     }
 }
@@ -94,7 +85,7 @@ pub fn read_from_port(port: u16, buf: &mut [u8]) -> Option<usize> {
     let map = PORT_MAP.lock();
     match map.get(&port) {
         Some(data) => {
-            if data.data.lock().get_len() > 0 {
+            if data.data.lock().len() > 0 {
                 let len = data.read(buf);
                 info!("Read len: {} from port: {}", len.unwrap_or(0), port);
                 //print_hex_dump(buf, 64);
@@ -126,7 +117,8 @@ pub fn write_to_port(port: u16, buf: &[u8]) -> Option<usize> {
         }
     }
 }
-#[allow(unused)]
+
+#[allow(dead_code)]
 fn print_hex_dump(buf: &[u8], len: usize) {
     use alloc::string::String;
 

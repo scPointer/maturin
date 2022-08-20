@@ -40,6 +40,7 @@ numeric_enum_macro::numeric_enum! {
         FSTATAT = 79,
         FSTAT = 80,
         FSYNC = 82,
+        FDATASYNC = 83,
         UTIMENSAT = 88,
         EXIT = 93,
         EXIT_GROUP = 94,

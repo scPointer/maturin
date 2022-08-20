@@ -56,7 +56,7 @@ impl Socket {
             }),
         }
     }
-    pub fn set_endpoint(&self, addr: usize, is_remote: bool) -> Option<u16> {
+    pub fn set_endpoint(&self, addr: *const u8, is_remote: bool) -> Option<u16> {
         match addr_resolution(addr as *const u16) {
             AddrType::Ip(ip, mut port) => {
                 if is_remote {

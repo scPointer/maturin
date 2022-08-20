@@ -42,21 +42,19 @@ pub fn sys_sendto(
     buf: *const u8,
     len: usize,
     flags: i32,
-    dest_addr: usize,
+    dest_addr: *const u8,
     _addr_len: usize,
 ) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
     let fd_manager = task.fd_manager.lock();
-    if task_vm.manually_alloc_page(buf as usize).is_err()
-        || task_vm.manually_alloc_page(buf as usize + len).is_err()
-    {
-        return Err(ErrorNo::EINVAL);
+    if task_vm.manually_alloc_user_str(buf, len).is_err() {
+        return Err(ErrorNo::EFAULT); // 地址不合法
     }
     let slice = unsafe { core::slice::from_raw_parts(buf, len) };
     if let Ok(file) = fd_manager.get_file(fd) {
         // 这里不考虑进程切换.                             dest_addr可能为0
-        if let Some(write_len) = file.sendto(slice, flags, dest_addr) {
+        if let Some(write_len) = file.sendto(slice, flags, dest_addr as usize) {
             return Ok(write_len);
         } else {
             return Err(ErrorNo::EINVAL);
@@ -74,15 +72,13 @@ pub fn sys_recvfrom(
     buf: *mut u8,
     len: usize,
     _flags: i32,
-    _src_addr: usize,
+    _src_addr: *mut u8,
     _src_len_pos: *mut u32,
 ) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
-    if task_vm.manually_alloc_page(buf as usize).is_err()
-        || task_vm.manually_alloc_page(buf as usize + len).is_err()
-    {
-        return Err(ErrorNo::EINVAL);
+    if task_vm.manually_alloc_user_str(buf, len).is_err() {
+        return Err(ErrorNo::EFAULT); // 地址不合法
     }
     drop(task_vm);
     let slice = unsafe { core::slice::from_raw_parts_mut(buf, len) };
@@ -109,14 +105,12 @@ pub fn sys_recvfrom(
 }
 
 /// 绑定socket fd到指定地址的IP和Port
-pub fn sys_bind(fd: usize, addr: usize, addr_len: usize) -> SysResult {
-    info!("sys_bind: fd: {} addr: {:x} len: {}", fd, addr, addr_len);
+pub fn sys_bind(fd: usize, addr: *const u8, addr_len: usize) -> SysResult {
+    info!("sys_bind: fd: {} addr: {:p} len: {}", fd, addr, addr_len);
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
-    if task_vm.manually_alloc_page(addr).is_err()
-        || task_vm.manually_alloc_page(addr + addr_len).is_err()
-    {
-        return Err(ErrorNo::EINVAL);
+    if task_vm.manually_alloc_user_str(addr, addr_len).is_err() {
+        return Err(ErrorNo::EFAULT); // 地址不合法
     }
     let fd_manager = task.fd_manager.lock();
     if let Ok(file) = fd_manager.get_file(fd) {
@@ -146,15 +140,14 @@ pub fn sys_listen(fd: usize, backlog: usize) -> SysResult {
 }
 
 /// socket连接给的远程地址. 如完成TCP的三次握手
-pub fn sys_connect(fd: usize, addr: usize, addr_len: usize) -> SysResult {
-    info!("sys_connect: fd: {} addr: {:x} len: {}", fd, addr, addr_len);
+pub fn sys_connect(fd: usize, addr: *const u8, addr_len: usize) -> SysResult {
+    info!("sys_connect: fd: {} addr: {:p} len: {}", fd, addr, addr_len);
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
-    if task_vm.manually_alloc_page(addr).is_err()
-        || task_vm.manually_alloc_page(addr + addr_len).is_err()
-    {
-        return Err(ErrorNo::EINVAL);
+    if task_vm.manually_alloc_user_str(addr, addr_len).is_err() {
+        return Err(ErrorNo::EFAULT); // 地址不合法
     }
+
     let fd_manager = task.fd_manager.lock();
     if let Ok(file) = fd_manager.get_file(fd) {
         let sock = file.as_any().downcast_ref::<Socket>().unwrap().clone();
@@ -164,7 +157,7 @@ pub fn sys_connect(fd: usize, addr: usize, addr_len: usize) -> SysResult {
             addr: 0,
         };
         //设置好本地endpoint
-        if let Some(lport) = sock.set_endpoint(&laddr as *const _ as usize, false) {
+        if let Some(lport) = sock.set_endpoint(&laddr as *const _ as *const u8, false) {
             // TCP submit a SYN
             // 注意转换成Big endian
             let laddr = IpAddr {
@@ -179,7 +172,7 @@ pub fn sys_connect(fd: usize, addr: usize, addr_len: usize) -> SysResult {
                     )
             };
             //把本地地址告诉给远端, 暂用端口port+100
-            if let Some(write_len) = file.sendto(slice, 100, addr) {
+            if let Some(write_len) = file.sendto(slice, 100, addr as usize) {
                 //设置好远程endpoint
                 let rport = sock.set_endpoint(addr, true).unwrap_or(0);
                 info!("sys_connect sent IpAddr {} from {} to {} len: {}", size_of::<IpAddr>(), lport, rport, write_len);
@@ -197,11 +190,11 @@ pub fn sys_connect(fd: usize, addr: usize, addr_len: usize) -> SysResult {
 }
 
 /// 监听着的SOCK_STREAM类型的socket, 接受连接, 原socket不受影响，创建一个新的socket返回
-pub fn sys_accept4(fd: usize, addr: usize, addr_len: *mut u32, flags: i32) -> SysResult {
-    info!("sys_accept: fd: {} addr: {:x} len: {:p}", fd, addr, addr_len);
+pub fn sys_accept4(fd: usize, addr: *mut u8, addr_len: *mut u32, flags: i32) -> SysResult {
+    info!("sys_accept: fd: {} addr: {:p} len: {:p}", fd, addr, addr_len);
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
-    if task_vm.manually_alloc_page(addr).is_err()
+    if task_vm.manually_alloc_page(addr as usize).is_err()
         || task_vm.manually_alloc_page(addr_len as usize).is_err()
         {
             return Err(ErrorNo::EINVAL);

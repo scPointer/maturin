@@ -70,6 +70,7 @@ impl RingBuffer {
         max_len
     }
     /// 获取循环队列目前的存的数据长度
+    #[allow(dead_code)]
     pub fn get_len(&self) -> usize {
         self.len
     }
