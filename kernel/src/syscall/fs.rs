@@ -144,10 +144,11 @@ pub fn sys_readv(fd: usize, iov: *mut IoVec, iov_cnt: usize) -> SysResult {
 /// 写入一组字符串到同一个 fd 中。
 /// 目前这个 syscall 借用 sys_write 来实现
 pub fn sys_writev(fd: usize, iov: *const IoVec, iov_cnt: usize) -> SysResult {
-    //info!("sys_writev fd {}", fd);
+    info!("sys_writev fd {}, iovec {:?}, count {}", fd, iov, iov_cnt);
     let mut written_len = 0;
     for i in 0..iov_cnt {
         let io_vec: &IoVec = unsafe { &*iov.add(i) };
+        info!("To write base: {:#x}", io_vec.base as usize);
         if io_vec.base as usize == 0 { // busybox 可能会给stdout两个io_vec，第二个是空地址
             continue;
         }

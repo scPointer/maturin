@@ -9,7 +9,7 @@ use crate::constants::SOCKET_BUFFER_SIZE_LIMIT;
 pub const LOCAL_LOOPBACK_ADDR: u32 = 0x7f000001;
 
 /// 网络缓存的最大值
-pub const MAXBUF: usize = 32 * 1024;
+pub const MAXBUF: usize = 64 * 1024;
 
 /// 端口映射
 static PORT_MAP: Mutex<BTreeMap<u16, PortData>> = Mutex::new(BTreeMap::new());
