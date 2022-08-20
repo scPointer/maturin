@@ -22,7 +22,7 @@ pub const IS_SINGLE_CORE: bool = true;
 /// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序
 pub const SPIN_LOOP_AFTER_BOOT: bool = false;
 /// 运行时有多少内核输出
-pub const LOG_LEVEL: crate::console::LogLevel = crate::console::LogLevel::Warn;
+pub const LOG_LEVEL: crate::console::LogLevel = crate::console::LogLevel::Error;
 //pub const LOG_LEVEL: crate::console::LogLevel = crate::console::LogLevel::Off; // 评测时使用这个等级
 
 /// 是否输出访存报错信息。这个信息会干扰到评测判定(换行问题)，但平时很有用
@@ -63,7 +63,7 @@ pub const FD_LIMIT_HARD: usize = 256;
 /// sys_pipe创建的管道的大小，单位为字节
 pub const PIPE_SIZE_LIMIT: usize = 0x40_000; // 64 KB
 /// socket 使用的 buffer 大小
-pub const SOCKET_BUFFER_SIZE_LIMIT: usize = 0x100_0000; // 16 MB
+pub const SOCKET_BUFFER_SIZE_LIMIT: usize = 0x200000; // 2 MB
 
 /// 一段左闭右开的地址区间，.0 为左端点， .1 为右端点，
 pub struct AddrArea(pub usize, pub usize);
