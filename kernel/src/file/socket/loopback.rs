@@ -9,7 +9,7 @@ use lock::Mutex;
 pub const LOCAL_LOOPBACK_ADDR: u32 = 0x7f000001;
 
 /// 网络缓存的最大值
-pub const MAXBUF: usize = 32 * 1024;
+pub const MAXBUF: usize = 64 * 1024;
 
 /// 端口映射
 static PORT_MAP: Mutex<BTreeMap<u16, PortData>> = Mutex::new(BTreeMap::new());
@@ -30,10 +30,6 @@ impl PortData {
     pub fn read(&self, buf: &mut [u8]) -> Option<usize> {
         let mut data = self.data.lock();
         let read_len = min(data.len(), buf.len());
-
-        info!("DATA lenght: {}, buf len: {}", data.len(), buf.len());
-        // redis crash here when recv
-
         info!("reading lenght: {}", read_len);
         buf[..read_len].copy_from_slice(&data[..read_len]);
         *data = data.split_off(read_len);
@@ -42,8 +38,13 @@ impl PortData {
     /// 从 buf 写入数据
     pub fn write(&self, buf: &[u8]) -> Option<usize> {
         let mut data = self.data.lock();
-        data.extend_from_slice(buf);
-        Some(buf.len())
+        let write_len = min(MAXBUF - data.len(), buf.len());
+        if write_len == 0 {
+            warn!("DATA buffer to write is full");
+            return None;
+        }
+        data.extend_from_slice(&buf[..write_len]);
+        Some(write_len)
     }
 }
 
