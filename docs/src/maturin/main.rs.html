@@ -1,0 +1,412 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/main.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>main.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../maturin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../../maturin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../maturin/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+</pre><pre class="rust"><code><span class="doccomment">//! 程序入口为 mod arch/riscv/mod.rs 中的函数 entry ( 也是build.rs中的ENTRY(_start) ),</span>
+<span class="doccomment">//! 函数 entry 将cpu_id存到tp寄存器并设置好初始的内核栈与页表后，跳转到 start_kernel 启动</span>
+
+<span class="attribute">#![<span class="ident">no_std</span>]</span>
+<span class="attribute">#![<span class="ident">no_main</span>]</span>
+<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">panic_info_message</span>)]</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">default_alloc_error_handler</span>)]</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">naked_functions</span>, <span class="ident">asm_sym</span>, <span class="ident">asm_const</span>)]</span>
+<span class="comment">// MemorySet 处理相交的 VmArea 时需要</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">btree_drain_filter</span>)]</span>
+<span class="comment">// used in file/device/link.rs</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">const_btree_new</span>)]</span>
+<span class="comment">// test.rs 输入 argv 需要</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">drain_filter</span>)]</span>
+
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">log</span>;
+
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">console</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">constants</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">drivers</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">file</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">lang</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">loaders</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">memory</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">signal</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">syscall</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">task</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">testcases</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">timer</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">trap</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">utils</span>;
+
+<span class="comment">// #[cfg(target_arch = &quot;riscv64&quot;)]</span>
+<span class="attribute">#[<span class="ident">path</span> <span class="op">=</span> <span class="string">&quot;arch/riscv/mod.rs&quot;</span>]</span>
+<span class="kw">mod</span> <span class="ident">arch</span>;
+
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">bitflags</span>;
+
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">alloc</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">fatfs</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">fscommon</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">lock</span>;
+
+<span class="kw">mod</span> <span class="ident">fsio</span> {
+    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">fscommon</span>::{<span class="ident">Read</span>, <span class="ident">Seek</span>, <span class="ident">Write</span>};
+}
+
+<span class="macro">core::arch::global_asm!</span>(<span class="macro">include_str!</span>(<span class="string">&quot;fs.S&quot;</span>));
+
+<span class="comment">// use core::sync::atomic::AtomicUsize;</span>
+<span class="comment">// static BOOTED_CPU_NUM: AtomicUsize = AtomicUsize::new(0);</span>
+<span class="kw">use</span> <span class="ident">log</span>::<span class="kw-2">*</span>;
+
+<span class="attribute">#[<span class="ident">no_mangle</span>]</span>
+<span class="doccomment">/// 主核启动OS</span>
+<span class="kw">pub</span> <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span> <span class="ident">start_kernel</span>(<span class="ident">_arg0</span>: <span class="ident">usize</span>, <span class="ident">_arg1</span>: <span class="ident">usize</span>) -&gt; <span class="op">!</span> {
+    <span class="ident">arch::clear_bss</span>(); <span class="comment">// 清空 bss 段</span>
+    <span class="ident">console::init_logger</span>(<span class="ident"><span class="kw">crate</span>::constants::LOG_LEVEL</span>).<span class="ident">unwrap</span>();
+    <span class="ident">memory::allocator_init</span>(); <span class="comment">// 初始化堆分配器和页帧分配器</span>
+    <span class="ident">memory::enable_kernel_page_table</span>(); <span class="comment">// 构造并切换到内核态页表与 MemorySet</span>
+    <span class="ident">trap::init</span>(); <span class="comment">// 设置异常/中断的入口，即 stvec</span>
+    <span class="ident">arch::allow_sum_access</span>(); <span class="comment">// 内核可以读写 USER 页表项中的数据</span>
+
+    <span class="comment">//trap::enable_timer_interrupt(); // 开启时钟中断</span>
+    <span class="comment">//timer::set_next_trigger(); // 设置时钟中断频率</span>
+
+    <span class="comment">// file::list_apps_names_at_root_dir(); // 展示所有用户程序的名字</span>
+    <span class="ident">file::list_files_at_root</span>(); <span class="comment">// 展示所有用户程序的名字</span>
+    <span class="ident">file::fs_init</span>(); <span class="comment">// 初始化一些不是实际文件本身但是 OS 约定需要的&quot;文件&quot;</span>
+    <span class="kw">let</span> <span class="ident">cpu_id</span> <span class="op">=</span> <span class="ident">arch::get_cpu_id</span>();
+    <span class="macro">info!</span>(<span class="string">&quot;CPU [{cpu_id}] bootstrap&quot;</span>);
+    <span class="kw">for</span> <span class="ident">other_cpu</span> <span class="kw">in</span> <span class="ident">constants::FIRST_CPU_ID</span>..<span class="op">=</span><span class="ident">constants::LAST_CPU_ID</span> {
+        <span class="kw">if</span> <span class="ident">other_cpu</span> <span class="op">!</span><span class="op">=</span> <span class="ident">cpu_id</span> {
+            <span class="kw">let</span> <span class="ident">_entry</span> <span class="op">=</span> <span class="ident">arch::secondary_entry</span> <span class="kw">as</span> <span class="ident">usize</span>;
+            <span class="comment">// println!(&quot;other_cpu {}&quot;, other_cpu);</span>
+            <span class="comment">// arch::start_hart(other_cpu, memory::virt_to_phys(_entry), 0);</span>
+        }
+    }
+
+    <span class="comment">// let cpu_id = arch::get_cpu_id();</span>
+    <span class="comment">//println!(&quot;CPU [{}] is waiting&quot;, cpu_id);</span>
+
+    <span class="comment">// 全局初始化结束</span>
+    <span class="kw">if</span> <span class="ident">constants::SPIN_LOOP_AFTER_BOOT</span> {
+        <span class="kw">loop</span> {}
+    } <span class="kw">else</span> {
+        <span class="ident">task::run_tasks</span>();
+    }
+}
+
+<span class="attribute">#[<span class="ident">no_mangle</span>]</span>
+<span class="doccomment">/// 其他核启动OS</span>
+<span class="kw">pub</span> <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span> <span class="ident">start_kernel_secondary</span>(<span class="ident">_arg0</span>: <span class="ident">usize</span>, <span class="ident">_arg1</span>: <span class="ident">usize</span>) -&gt; <span class="op">!</span> {
+    <span class="ident">memory::enable_kernel_page_table</span>(); <span class="comment">// 构造并切换到内核态页表与 MemorySet</span>
+    <span class="ident">trap::init</span>(); <span class="comment">// 设置异常/中断的入口，即 stvec</span>
+    <span class="ident">arch::allow_sum_access</span>(); <span class="comment">// 修改 sstatus 的 SUM 位，使内核可以读写USER页表项中的数据</span>
+
+    <span class="comment">//trap::enable_timer_interrupt(); // 开启时钟中断</span>
+    <span class="comment">//timer::set_next_trigger(); // 设置时钟中断频率</span>
+
+    <span class="kw">let</span> <span class="ident">cpu_id</span> <span class="op">=</span> <span class="ident">arch::get_cpu_id</span>();
+    <span class="macro">info!</span>(<span class="string">&quot;I&#39;m CPU [{cpu_id}]&quot;</span>);
+
+    <span class="comment">// 全局初始化结束</span>
+    <span class="kw">if</span> <span class="ident">constants::SPIN_LOOP_AFTER_BOOT</span> <span class="op">|</span><span class="op">|</span> <span class="ident">constants::IS_SINGLE_CORE</span> {
+        <span class="kw">loop</span> {}
+    } <span class="kw">else</span> {
+        <span class="ident">task::run_tasks</span>();
+    }
+}
+
+<span class="comment">/*
+/// 是否已经有核在进行全局初始化
+//static GLOBAL_INIT_STARTED: AtomicBool = AtomicBool::new(false);
+/// 全局初始化是否已结束
+//static GLOBAL_INIT_FINISHED: AtomicBool = AtomicBool::new(false);
+
+/// 是否还没有核进行全局初始化，如是则返回 true
+fn can_do_global_init() -&gt; bool {
+    // GLOBAL_INIT_STARTED.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed).is_ok()
+    /* match arch::get_cpu_id() {
+        BOOTSTRAP_CPU_ID =&gt; {
+            GLOBAL_INIT_STARTED.store(true, Ordering::Release);
+            true
+        },
+        _ =&gt; false
+    }
+    */
+    if GLOBAL_INIT_STARTED.load(Ordering::Acquire) == false {
+        GLOBAL_INIT_STARTED.store(true, Ordering::Release);
+        true
+    } else {
+        false
+    }
+}
+
+/// 标记那些全局只执行一次的启动步骤已完成。
+/// 内核必须由 cpu_id 等于 AP_CAN_INIT 初始值的核先启动并执行这些全局只需要一次的操作，然后其他的核才能启动
+fn mark_global_init_finished() {
+    // GLOBAL_INIT_FINISHED.compare_exchange(false, true, Ordering::Release, Ordering::Relaxed).unwrap();
+    GLOBAL_INIT_FINISHED.store(true, Ordering::Release);
+}
+
+/// 等待那些全局只执行一次的启动步骤是否完成
+fn wait_global_init_finished() {
+    while GLOBAL_INIT_FINISHED.load(Ordering::Acquire) == false {
+        spin_loop();
+    }
+}
+
+/// 确认当前核已启动(BOOTSTRAP_CPU 也需要调用)
+fn mark_bootstrap_finish() {
+    BOOTED_CPU_NUM.fetch_add(1, Ordering::Release);
+}
+
+/// 等待所有核已启动
+fn wait_all_cpu_started() {
+    while BOOTED_CPU_NUM.load(Ordering::Acquire) &lt; constants::LAST_CPU_ID - constants::FIRST_CPU_ID + 1 &amp;&amp; !constants::IS_SINGLE_CORE {
+        spin_loop();
+    }
+}
+*/</span>
+
+<span class="doccomment">/// 测试输出linker各段的虚存映射</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">test_vm</span>() {
+    <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> {
+        <span class="kw">fn</span> <span class="ident">stext</span>();
+        <span class="kw">fn</span> <span class="ident">etext</span>();
+        <span class="kw">fn</span> <span class="ident">sdata</span>();
+        <span class="kw">fn</span> <span class="ident">edata</span>();
+        <span class="kw">fn</span> <span class="ident">srodata</span>();
+        <span class="kw">fn</span> <span class="ident">erodata</span>();
+        <span class="kw">fn</span> <span class="ident">sbss</span>();
+        <span class="kw">fn</span> <span class="ident">ebss</span>();
+    }
+    <span class="macro">println!</span>(
+        <span class="string">&quot;\
+stext = {:x}
+etext = {:x}
+sdata = {:x}
+edata = {:x}
+srodata = {:x}
+erodata = {:x}
+sbss = {:x}
+ebss = {:x}
+&quot;</span>,
+        <span class="ident">stext</span> <span class="kw">as</span> <span class="ident">usize</span>,
+        <span class="ident">etext</span> <span class="kw">as</span> <span class="ident">usize</span>,
+        <span class="ident">sdata</span> <span class="kw">as</span> <span class="ident">usize</span>,
+        <span class="ident">edata</span> <span class="kw">as</span> <span class="ident">usize</span>,
+        <span class="ident">srodata</span> <span class="kw">as</span> <span class="ident">usize</span>,
+        <span class="ident">erodata</span> <span class="kw">as</span> <span class="ident">usize</span>,
+        <span class="ident">sbss</span> <span class="kw">as</span> <span class="ident">usize</span>,
+        <span class="ident">ebss</span> <span class="kw">as</span> <span class="ident">usize</span>,
+    );
+}
+</code></pre></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="maturin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (1f7fb6413 2022-04-10)" ></div>
+</body></html>

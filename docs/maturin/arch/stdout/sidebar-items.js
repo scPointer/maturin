@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["putchar_raw","绕过所有锁打印一个字符"],["stderr_puts","输出到 stderr"],["stdout_puts","输出到 stdout"]],"static":[["STDERR",""],["STDOUT",""]],"struct":[["Stdout","标准输出"]]});

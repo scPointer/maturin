@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["enable_timer_interrupt","打开时间中断"],["init","设置寄存器 stvec 指向 __alltraps，它定义在 trap.S 中"],["kernel_trap_handler","处理来自内核的异常/中断"],["trap_handler","内核和用户Trap的共同入口"],["user_trap_handler","处理来自用户程序的异常/中断"]],"mod":[["context","中断上下文信息"]],"struct":[["TrapContext","异常/中断上下文"]]});

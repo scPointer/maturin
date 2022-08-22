@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["alloc_tid","分配一个 usize，并打包成 Tid"],["alloc_tid_raw","从 TID 分配器中分配一个 usize"],["dealloc_tid_raw","释放一个 usize，它必须已经被分配过"],["init","初始化 tid 分配"]],"static":[["TID_ALLOCATOR",""]],"struct":[["Tid","保存一个 TID ，当 Drop 时会自动释放"]],"type":[["TidAllocatorImpl",""]]});

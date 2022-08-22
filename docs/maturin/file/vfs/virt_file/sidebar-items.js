@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["VirtFile","临时文件"],["VirtFileInner","实际保存的文件内容"]]});

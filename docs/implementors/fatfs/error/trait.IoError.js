@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["maturin"] = [{"text":"impl IoError for <a class=\"struct\" href=\"maturin/drivers/memory/wrapper/struct.TransferError.html\" title=\"struct maturin::drivers::memory::wrapper::TransferError\">TransferError</a>","synthetic":false,"types":["maturin::drivers::memory::wrapper::TransferError"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

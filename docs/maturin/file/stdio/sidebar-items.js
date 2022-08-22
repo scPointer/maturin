@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Stderr","错误输出流。目前会和 Stdout 一样直接打印出来，但用的锁和 Stdout 不同"],["Stdin","标准输入流"],["Stdout","标准输出流"]]});

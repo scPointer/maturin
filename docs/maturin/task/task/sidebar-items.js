@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["TaskStatus","任务执行状态"]],"struct":[["TaskControlBlock","任务控制块，包含一个用户程序的所有状态信息，但不包括与调度有关的信息。 默认在TCB的外层对其的访问不会冲突，所以外部没有用锁保护，内部的 mutex 仅用来提供可变性"],["TaskControlBlockInner","任务控制块的可变部分"]]});

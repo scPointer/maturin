@@ -1,0 +1,258 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/constants.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>constants.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../maturin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../../maturin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../maturin/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+</pre><pre class="rust"><code><span class="doccomment">//! OS运行时用到的常量</span>
+
+<span class="comment">//#![deny(missing_docs)]</span>
+
+<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
+<span class="doccomment">/// 是否是 sifive 平台</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PLATFORM_SIFIVE</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
+<span class="doccomment">/// 编号最小的可用的 cpu_id</span>
+<span class="doccomment">/// - virt 下，每个核都可用，所以是从0开始</span>
+<span class="doccomment">/// - sifive 下，0号是小核，目前还用不到，所以从1开始</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FIRST_CPU_ID</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">PLATFORM_SIFIVE</span> { <span class="number">1</span> } <span class="kw">else</span> { <span class="number">0</span> };
+<span class="doccomment">/// 指定一个特定的 cpu，用于执行启动过程中只能进行一次的初始化过程</span>
+<span class="comment">//pub const BOOTSTRAP_CPU_ID: usize = FIRST_CPU_ID;</span>
+<span class="doccomment">/// 最大的cpu_id再+1，可以认为是总的核数(无论是否使用)。目前在 virt 下是 4，在 sifive 下是 5</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CPU_ID_LIMIT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">FIRST_CPU_ID</span> <span class="op">+</span> <span class="number">4</span>;
+<span class="doccomment">/// 最后一个 CPU 的编号</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LAST_CPU_ID</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">CPU_ID_LIMIT</span> <span class="op">-</span> <span class="number">1</span>;
+<span class="doccomment">/// 时钟频率，和平台有关</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CLOCK_FREQ</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">PLATFORM_SIFIVE</span> { <span class="number">100_0000</span> } <span class="kw">else</span> { <span class="number">1250_0000</span> };
+<span class="doccomment">/// 是否单核运行。单核运行时，则其他核只启动，不运行用户程序</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IS_SINGLE_CORE</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
+<span class="doccomment">/// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SPIN_LOOP_AFTER_BOOT</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">false</span>;
+<span class="doccomment">/// 运行时有多少内核输出</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LOG_LEVEL</span>: <span class="ident"><span class="kw">crate</span>::console::LogLevel</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::console::LogLevel::Error</span>;
+<span class="comment">//pub const LOG_LEVEL: crate::console::LogLevel = crate::console::LogLevel::Off; // 评测时使用这个等级</span>
+
+<span class="doccomment">/// 是否输出访存报错信息。这个信息会干扰到评测判定(换行问题)，但平时很有用</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">REPORT_PAGE_FAULT</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">false</span>;
+<span class="doccomment">/// 页表中每页的大小</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PAGE_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x1000</span>; <span class="comment">// 4 KB</span>
+<span class="doccomment">/// 即 log2(PAGE_SIZE)</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PAGE_SIZE_BITS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0xc</span>; <span class="comment">// 4 KB = 2^12</span>
+<span class="doccomment">/// 内核栈大小</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">KERNEL_STACK_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x800_000</span>; <span class="comment">// 512 KB</span>
+<span class="doccomment">/// 内核堆的大小</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">KERNEL_HEAP_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x200_0000</span>; <span class="comment">// 12 MB</span>
+<span class="doccomment">/// 用户栈大小</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">USER_STACK_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0xf0_0000</span>; <span class="comment">// 2 MB // `lmbench_all lat_fs /var/tmp` 会默认访问到 0x3ffdfb08 </span>
+<span class="doccomment">/// 初始用户栈大小，用于存放 argc/argv/envs/auxv</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">USER_INIT_STACK_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x4000</span>; <span class="comment">// 16 KB,</span>
+<span class="doccomment">/// 用户栈底位置。同时也是最开始的用户堆顶位置</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">USER_STACK_OFFSET</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x4000_0000</span> <span class="op">-</span> <span class="ident">USER_STACK_SIZE</span>;
+<span class="doccomment">/// 用户地址最大不能超过这个值</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">USER_VIRT_ADDR_LIMIT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0xFFFF_FFFF</span>;
+<span class="doccomment">/// 内核中虚拟地址相对于物理地址的偏移</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PHYS_VIRT_OFFSET</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0xFFFF_FFFF_0000_0000</span>;
+<span class="doccomment">/// 表示内存的地址段由此开始</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PHYS_MEMORY_OFFSET</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x8000_0000</span>;
+<span class="doccomment">/// 表示内存的地址段到此为止</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PHYS_MEMORY_END</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x9f00_0000</span>;
+
+<span class="doccomment">/// 入口用户程序。OS启动后，只会启动以此为名的用户程序。</span>
+<span class="doccomment">/// 一般来说，这个程序会通过 fork / exec 启动终端和其他程序</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ORIGIN_USER_PROC_NAME</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;start&quot;</span>;
+
+<span class="doccomment">/// 最小的 tid(进程号) 是 0，最大的 pid 是 TID_LIMIT-1</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">TID_LIMIT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4096</span>;
+<span class="doccomment">/// 预设的文件描述符数量限制</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FD_LIMIT_ORIGIN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">64</span>;
+<span class="doccomment">/// 最大允许的文件描述符数量</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FD_LIMIT_HARD</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">256</span>;
+<span class="doccomment">/// sys_pipe创建的管道的大小，单位为字节</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PIPE_SIZE_LIMIT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x40_000</span>; <span class="comment">// 64 KB</span>
+<span class="doccomment">/// socket 使用的 buffer 大小</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SOCKET_BUFFER_SIZE_LIMIT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x200000</span>; <span class="comment">// 2 MB</span>
+
+<span class="doccomment">/// 一段左闭右开的地址区间，.0 为左端点， .1 为右端点，</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AddrArea</span>(<span class="kw">pub</span> <span class="ident">usize</span>, <span class="kw">pub</span> <span class="ident">usize</span>);
+<span class="doccomment">/// 用于设备 MMIO 的内存段。这些地址会在页表中做恒等映射</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MMIO_REGIONS</span>: <span class="kw-2">&amp;</span>[<span class="ident">AddrArea</span>] <span class="op">=</span> <span class="kw-2">&amp;</span>[<span class="ident">AddrArea</span>(<span class="number">0x10001000</span>, <span class="number">0x10002000</span>)];
+
+<span class="doccomment">/// 是否是比赛评测。线上评测时要求OS像一个批处理系统一样工作，这可能导致内核不会直接去拿初始进程并运行</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IS_TEST_ENV</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
+<span class="doccomment">/// 测试环境下，文件系统镜像是否是由qemu引入</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IS_PRELOADED_FS_IMG</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">false</span>;
+<span class="doccomment">/// 文件系统镜像的大小。注意这个量和 fs-init 模块中 `/src/main.rs` 里生成镜像时的大小相同。</span>
+<span class="doccomment">/// 启动时会从 .data 段加载加载</span>
+<span class="kw">const</span> <span class="ident">LOCAL_FS_IMG_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x1000_0000</span>; <span class="comment">// 256MB</span>
+<span class="doccomment">/// 测试时的文件系统镜像大小。</span>
+<span class="doccomment">/// 注意因为这个文件太大，默认是已经被qemu加载好了，启动时不会加载</span>
+<span class="kw">const</span> <span class="ident">TEST_FS_IMG_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x4000_0000</span>; <span class="comment">// 1GB</span>
+<span class="doccomment">/// 文件系统镜像大小。只有这个常量可以被其他文件使用，而上面两个不能</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FS_IMG_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">IS_PRELOADED_FS_IMG</span> {
+    <span class="ident">TEST_FS_IMG_SIZE</span>
+} <span class="kw">else</span> {
+    <span class="ident">LOCAL_FS_IMG_SIZE</span>
+};
+<span class="doccomment">/// 设备(sdcard)映射到内存的起始位置</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DEVICE_START</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0xa000_0000</span>;
+<span class="doccomment">/// 设备映射到内存的最后位置</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DEVICE_END</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">DEVICE_START</span> <span class="op">+</span> <span class="ident">FS_IMG_SIZE</span>;
+
+<span class="doccomment">/// 文件系统的根目录，注意斜杠方向</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROOT_DIR</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;./&quot;</span>;
+<span class="doccomment">/// sys_open 时的参数，表示在当前目录下</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">AT_FDCWD</span>: <span class="ident">i32</span> <span class="op">=</span> <span class="op">-</span><span class="number">100</span>;
+<span class="doccomment">/// 无父进程</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">NO_PARENT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">usize::MAX</span>;
+<span class="doccomment">/// 临时文件的大小限制</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">TMP_SIZE_LIMIT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x8_000</span>; <span class="comment">// 1 MB</span>
+
+<span class="doccomment">/// 如果 elf 的 phdr 指示 base 是 0(如 libc-test 的 libc.so)，则需要找一个非0的位置放置</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ELF_BASE_RELOCATE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x400_0000</span>;
+
+<span class="doccomment">/// signal 中用到的 bitset 长度。</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SIGSET_SIZE_IN_BYTE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">8</span>;
+<span class="doccomment">/// 所有可能的信号数。有多少可能的信号，内核就要为其保存多少个 SigAction</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SIGSET_SIZE_IN_BIT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">SIGSET_SIZE_IN_BYTE</span> <span class="op">*</span> <span class="number">8</span>; <span class="comment">// =64</span>
+<span class="doccomment">/// SIGINFO 要求把一些信息存在用户栈上，从用户栈开辟一块空间来保存它们</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">USER_STACK_RED_ZONE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x200</span>; <span class="comment">// 512 B</span>
+<span class="doccomment">/// 一个在 Sv39 页表里不合法的地址。</span>
+<span class="doccomment">/// </span>
+<span class="doccomment">/// 如果 sigaction 中没有设置 SA_RESTORER，那么需要内核来代替libc库实现&quot;信号执行完成后通过sigreturn返回&quot;的效果</span>
+<span class="doccomment">/// 但是mmap一块地址把&quot;手动调用ecall执行 sigreturn&quot;写进去又显得不够优雅，因为用户地址空间会多出来一块它并不知道的trampoline</span>
+<span class="doccomment">/// 所以现在通过把 ra 写成一个特定地址的方式，让信号处理函数执行完之后，到这里触发 Page Fault，再由内核进行 sigreturn</span>
+<span class="doccomment">/// </span>
+<span class="doccomment">/// 另外，把触发signal的用户pc写成ra是行不通的，因为 signal 语义上要求信号处理结束时恢复之前的一切寄存器状态</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SIGNAL_RETURN_TRAP</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0xffff_0000_8080_0000</span>;
+
+<span class="doccomment">/// sys_sendfile64 中使用 buffer 的大小</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SENDFILE_BUFFER_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x2000</span>;
+<span class="doccomment">/// 标记是否使用 msync。不做实际的检查效率更高，</span>
+<span class="doccomment">/// 但如果它影响了用户程序的正确性，需要还是打开的</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">USE_MSYNC</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
+</code></pre></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="maturin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (1f7fb6413 2022-04-10)" ></div>
+</body></html>

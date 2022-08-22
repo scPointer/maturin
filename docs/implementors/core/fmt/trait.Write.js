@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["maturin"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/fmt/trait.Write.html\" title=\"trait core::fmt::Write\">Write</a> for <a class=\"struct\" href=\"maturin/arch/stdout/struct.Stdout.html\" title=\"struct maturin::arch::stdout::Stdout\">Stdout</a>","synthetic":false,"types":["maturin::arch::stdout::Stdout"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

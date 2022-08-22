@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["SyncPolicy","同步策略(本来想搞类型体操，但太花了"]],"struct":[["BackEndFile","和 mmap 段同步，只能通过 read_from_offset 和 write_to_offset 读写"]]});

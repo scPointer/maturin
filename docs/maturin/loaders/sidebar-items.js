@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["parse_user_app","执行用户程序并选择解释器："]],"mod":[["flags","初始化过程中 riscv 下 ELF 规范定义的一些常量 这里只给出了必要的，更详细的说明参见 `https://github.com/riscv-non-isa/riscv-elf-psabi-doc`"],["init_info","用户程序初始栈信息。 栈的空间排布参考了 `http://articles.manugarg.com/aboutelfauxiliaryvectors.html`"],["init_stack","初始化时用到的栈。 这里封装了序列化时将不同数据结构推入栈的过程"]],"struct":[["ElfLoader",""]]});

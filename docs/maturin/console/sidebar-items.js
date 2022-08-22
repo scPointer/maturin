@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["error_print",""],["init_logger",""],["level_to_color_code",""],["print",""]],"static":[["LOGGER",""]],"struct":[["SimpleLogger",""]],"type":[["LogLevel",""]]});

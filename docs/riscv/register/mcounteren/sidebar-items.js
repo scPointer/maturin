@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["clear_cy","Supervisor cycle Enable"],["clear_hpm",""],["clear_ir","Supervisor instret Enable"],["clear_tm","Supervisor time Enable"],["read","Reads the CSR"],["set_cy","Supervisor cycle Enable"],["set_hpm",""],["set_ir","Supervisor instret Enable"],["set_tm","Supervisor time Enable"]],"struct":[["Mcounteren","mcounteren register"]]});

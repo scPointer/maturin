@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["get_str_len","获取一个裸指针指向的字符串长度"],["raw_ptr_to_ref_str","从一个裸指针获取一个 &str 类型"],["raw_ptr_to_string","从一个裸指针获取一个 String 类型"],["str_ptr_array_to_vec_string","从一个字符串指针数组(一般是用户程序执行时的参数)获取所有字符串，存入一个 Vec 中"]]});

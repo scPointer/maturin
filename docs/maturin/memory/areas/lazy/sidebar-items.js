@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["PmAreaLazy","lazy 分配的物理地址段。当 page fault 发生时会由 VmArea 负责调用这段 PmAreaLazy 进行实际分配"]]});

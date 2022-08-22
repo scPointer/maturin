@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["new_memory_mapped_fs","创建文件系统实例"]],"mod":[["block",""],["memory","映射到内存的文件系统抽象。即将对一段内存的读写包装成对文件系统的读写"]],"struct":[["BLOCK_DEVICE",""]],"type":[["BlockDeviceImpl",""],["MemoryMappedFsIoType",""]]});

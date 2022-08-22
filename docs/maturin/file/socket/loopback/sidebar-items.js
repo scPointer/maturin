@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["LOCAL_LOOPBACK_ADDR","本地的网络地址，即 127.0.0.1"]],"fn":[["can_read",""],["can_write",""],["print_hex_dump",""],["read_from_port",""],["write_to_port",""]],"static":[["PORT_MAP","端口映射"]],"struct":[["PortData","端口上的被发送或等待接收的数据"]]});

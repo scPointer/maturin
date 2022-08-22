@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["init","Initialize the global heap alloactor."]],"static":[["HEAP_ALLOCATOR",""]]});
