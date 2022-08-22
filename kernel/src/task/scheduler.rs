@@ -1,26 +1,9 @@
-
-
-use lazy_static::*;
-use alloc::sync::Arc;
-use alloc::vec::Vec;
-use alloc::collections::VecDeque;
-use core::sync::atomic::{Ordering, AtomicUsize};
+use super::{TaskControlBlock, ORIGIN_USER_PROC};
+use crate::{arch::get_cpu_id, constants::IS_TEST_ENV, file::load_next_testcase};
+use alloc::{collections::VecDeque, sync::Arc};
 use lock::Mutex;
 
-
-//use crate::constants::{CPU_NUM, EMPTY_TASK, ORIGIN_USER_PROC_NAME};
-use crate::constants::IS_TEST_ENV;
-use crate::error::{OSResult, OSError};
-use crate::memory::{VirtAddr, PTEFlags};
-use crate::file::load_next_testcase;
-use crate::arch::get_cpu_id;
-
-use super::__switch;
-use super::{TaskControlBlock, TaskStatus, TaskContext};
-use super::ORIGIN_USER_PROC;
-
-
-lazy_static! {
+lazy_static::lazy_static! {
     /// 任务调度器。它是全局的，每次只能有一个核访问它
     /// 它启动时会自动在队列中插入 ORIGIN_USER_PROC 作为第一个用户程序
     pub static ref GLOBAL_TASK_SCHEDULER: Mutex<Scheduler> = {
@@ -78,10 +61,16 @@ pub fn fetch_task_from_scheduler() -> Option<Arc<TaskControlBlock>> {
                 return Some(new_tcb);
             }
             info!("[cpu {}] is idle now", get_cpu_id());
-            loop {
-
-            }
+            loop {}
         }
+
+        /*
+            if let Some(new_tcb) = load_next_testcase() {
+                return Some(new_tcb);
+            }
+            info!("[cpu {}] is idle now", get_cpu_id());
+            */
+
         //println!("[cpu {}] get task", get_cpu_id());
         task
     } else {

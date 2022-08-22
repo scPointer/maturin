@@ -1,58 +1,85 @@
 use core::fmt::Arguments;
+use log::*;
 
-#[allow(dead_code)]
+pub type LogLevel = log::LevelFilter;
+
+#[inline]
 pub fn print(args: Arguments) {
     crate::arch::stdout::stdout_puts(args);
 }
 
-#[allow(dead_code)]
-pub fn info(args: Arguments) {
-    if crate::constants::BASE_INFO {
-        crate::arch::stdout::stdout_puts(args);
-    }
-}
-
-#[allow(dead_code)]
+#[inline]
 pub fn error_print(args: Arguments) {
     crate::arch::stdout::stderr_puts(args);
-}
-
-/// 仅在开启信息输出时，打印格式字串
-#[macro_export]
-macro_rules! info {
-    ($fmt: literal $(, $($arg: tt)+)?) => {
-        $crate::console::info(format_args!(concat!($fmt, "\n") $(, $($arg)+)?));
-    }
 }
 
 /// 打印格式字串，无换行
 #[macro_export]
 macro_rules! print {
-    ($fmt: literal $(, $($arg: tt)+)?) => {
-        $crate::console::print(format_args!($fmt $(, $($arg)+)?));
+    ($($arg:tt)*) => {
+        $crate::console::print(core::format_args!($($arg)*));
     }
 }
 
 /// 打印格式字串，使用与 print 不同的 Mutex 锁
 #[macro_export]
-macro_rules! error_print {
-    ($fmt: literal $(, $($arg: tt)+)?) => {
-        $crate::console::error_print(format_args!($fmt $(, $($arg)+)?));
+macro_rules! eprint {
+    ($($arg:tt)*) => {
+        $crate::console::error_print(core::format_args!($($arg)*));
     }
 }
 
 /// 打印格式字串，有换行
 #[macro_export]
 macro_rules! println {
-    ($fmt: literal $(, $($arg: tt)+)?) => {
-        $crate::console::print(format_args!(concat!($fmt, "\n") $(, $($arg)+)?));
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => {
+        $crate::console::print(core::format_args!($($arg)*));
+        $crate::println!();
     }
 }
 
 /// 打印格式字串，使用与 println 不同的 Mutex 锁
 #[macro_export]
-macro_rules! error_println {
-    ($fmt: literal $(, $($arg: tt)+)?) => {
-        $crate::console::error_print(format_args!(concat!($fmt, "\n") $(, $($arg)+)?));
+macro_rules! eprintln {
+        () => ($crate::eprint!("\n"));
+    ($($arg:tt)*) => {
+        $crate::console::error_print(core::format_args!($($arg)*));
+        $crate::eprintln!();
+    }
+}
+
+static LOGGER: SimpleLogger = SimpleLogger;
+
+pub fn init_logger(level: LogLevel) -> Result<(), SetLoggerError> {
+    set_logger(&LOGGER).map(|()| set_max_level(level))
+}
+
+struct SimpleLogger;
+impl Log for SimpleLogger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= Level::Trace
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            println!(
+                "\x1b[{}m {} - {} \x1b[0m",
+                level_to_color_code(record.level()),
+                record.level(),
+                record.args()
+            );
+        }
+    }
+
+    fn flush(&self) {}
+}
+fn level_to_color_code(level: Level) -> u8 {
+    match level {
+        Level::Error => 31, // Red
+        Level::Warn => 33,  // Yellow
+        Level::Info => 32,  // Green
+        Level::Debug => 36, // SkyBlue
+        Level::Trace => 90, // BrightBlack
     }
 }

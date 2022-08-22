@@ -1,47 +1,52 @@
 //! 运行比赛测试
 
-//#![deny(missing_docs)]
-
-use alloc::sync::Arc;
-use alloc::boxed::Box;
-use alloc::vec::Vec;
-use alloc::string::String;
+use crate::{
+    constants::{NO_PARENT, ROOT_DIR},
+    task::TaskControlBlock,
+};
+use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use lock::Mutex;
-use core::slice::Iter;
-use lazy_static::*;
 
-pub use crate::task::Scheduler;
-pub use crate::task::TaskControlBlock;
-pub use crate::loaders::parse_user_app;
-pub use crate::constants::{ROOT_DIR, NO_PARENT};
-
-/*
-/// 加载用户程序。
-/// 因为是调度器 GLOBAL_TASK_SCHEDULER 初始化时就加载，所以不能用 task::push_task_to_scheduler
-pub fn load_testcases(scheduler: &mut Scheduler) {
-    info!("read testcases");
-    let iter = TESTCASES.into_iter();
-    for user_prog in TESTCASES {
-        info!("{}", user_prog);
-        let tcb = TaskControlBlock::from_app_name(ROOT_DIR, user_prog, NO_PARENT).unwrap();
-        scheduler.push(Arc::new(tcb));
+/// 分隔 argv 参数，处理带引号的情况
+pub fn split_argv(s: &[u8]) -> Vec<String> {
+    let mut argv: Vec<String> = Vec::new();
+    let mut in_quotation = false; // 当前是否在引号中
+    let mut start = 0; // 从何处开始
+    // 因为需要特判引号，所以这里用一种 c style 的方式处理
+    for pos in 0..s.len() {
+        if s[pos] == '\"' as u8 {
+            in_quotation = !in_quotation;
+        } else if s[pos] == ' ' as u8 && !in_quotation {
+            if pos > start { // 避免塞入空串
+                argv.push(core::str::from_utf8(&s[start..pos]).unwrap().into());
+            }
+            start = pos + 1;
+        }
     }
+    if start < s.len() {
+        argv.push(core::str::from_utf8(&s[start..]).unwrap().into());
+    }
+    argv
 }
-*/
 
 /// 加载下一个用户程序。
 pub fn load_next_testcase() -> Option<Arc<TaskControlBlock>> {
-    TESTCASES_ITER.lock().next().map_or_else(|| {
-        TEST_STATUS.lock().final_info();
-        None
-    },|&user_command| {
-        let mut argv: Vec<String> = user_command.split(' ').map(|s| s.into()).collect();
-        let argv = argv.drain_filter(|s| s != "").collect();
-        TEST_STATUS.lock().load(&user_command.into());
-        Some(Arc::new(TaskControlBlock::from_app_name(ROOT_DIR, NO_PARENT, argv).unwrap()))
-    })
+    TESTCASES_ITER.lock().next().map_or_else(
+        || {
+            TEST_STATUS.lock().final_info();
+            None
+        },
+        |&user_command| {
+            //let mut argv: Vec<String> = user_command.split(' ').map(|s| s.into()).collect();
+            //let argv = argv.drain_filter(|s| s != "").collect();
+            let argv = split_argv(user_command.as_bytes());
+            TEST_STATUS.lock().load(&user_command.into());
+            Some(Arc::new(
+                TaskControlBlock::from_app_name(ROOT_DIR, NO_PARENT, argv).unwrap(),
+            ))
+        },
+    )
 }
-
 
 /// 输出测试结果
 pub fn show_testcase_result(exit_code: i32) {
@@ -69,7 +74,10 @@ impl TestStatus {
 
     /// 输入测试
     pub fn load(&mut self, testcase: &String) {
-        info!(" --------------- load testcase: {} --------------- ", testcase);
+        info!(
+            " --------------- load testcase: {} --------------- ",
+            testcase
+        );
         self.now = Some(testcase.into());
     }
 
@@ -85,43 +93,66 @@ impl TestStatus {
         //cnt += 1;
         match exit_code {
             0 => {
-                info!(" --------------- test passed --------------- "); 
+                info!(" --------------- test passed --------------- ");
                 self.passed += 1;
                 self.now.take();
-            },
+            }
             _ => {
-                info!(" --------------- TEST FAILED, exit code = {} --------------- ", exit_code);
+                info!(
+                    " --------------- TEST FAILED, exit code = {} --------------- ",
+                    exit_code
+                );
                 self.failed_tests.push(self.now.take().unwrap());
-            },
+            }
         }
     }
 
     /// 最终输出测试信息
     pub fn final_info(&self) {
-        info!(" --------------- all test ended, passed {} / {} --------------- ", self.passed, self.cnt);
+        info!(
+            " --------------- all test ended, passed {} / {} --------------- ",
+            self.passed, self.cnt
+        );
         info!(" --------------- failed tests: --------------- ");
         for test in &self.failed_tests {
             info!("{}", test);
         }
         info!(" --------------- end --------------- ");
+        crate::file::list_files_at_root();
+        for info in SYS_INFO.lock().iter() {
+            info!("{info}");
+        }
         panic!("");
     }
 }
 
-lazy_static! {
+#[allow(dead_code)]
+const CASES: &[&str] = crate::testcases::TESTCASES;
+
+lazy_static::lazy_static! {
     //static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(FORMAT_LIBC_STATIC.into_iter().chain(FORMAT_LIBC_DYNAMIC.into_iter())));
     //static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(&[FORMAT_LIBC_STATIC, FORMAT_LIBC_DYNAMIC].concat()));
-    static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(SAMPLE.into_iter()));
-    static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(SAMPLE));
+    static ref TESTCASES_ITER: Mutex<Box<dyn Iterator<Item = &'static &'static str> + Send>> = Mutex::new(Box::new(CASES.into_iter()));
+    static ref TEST_STATUS: Mutex<TestStatus> = Mutex::new(TestStatus::new(CASES));
+    static ref SYS_INFO: Mutex<Vec<String>> = Mutex::new(Vec::new());
 }
 
+#[allow(unused)]
+pub fn add_sys_info(info: String) {
+    SYS_INFO.lock().push(info);
+}
+
+#[allow(dead_code)]
 pub const SAMPLE: &[&str] = &[
     //"lmbench_all lat_syscall -P 1 null",
     //"busybox kill 10",
+    //"busybox sh lua_testcode.sh",
+    "busybox sh busybox_testcode.sh",
+    //"busybox",
     //"sigreturn",
     //"dyn/tls_init.dout",
-    "./runtest.exe -w entry-dynamic.exe argv",
-    "./runtest.exe -w entry-dynamic.exe tls_init",
+    //"./runtest.exe -w entry-dynamic.exe argv",
+    //"./runtest.exe -w entry-dynamic.exe tls_init",
     //"./runtest.exe -w entry-dynamic.exe tls_local_exec",
     //"./runtest.exe -w entry-dynamic.exe pthread_exit_cancel",
 
@@ -136,17 +167,17 @@ pub const SAMPLE: &[&str] = &[
     //"./runtest.exe -w entry-static.exe socket",
 
     //"./runtest.exe -w entry-dynamic.exe fdopen",
-    //"./runtest.exe -w entry-dynamic.exe fscanf", 
-    //"./runtest.exe -w entry-dynamic.exe fwscanf", 
-    //"./runtest.exe -w entry-dynamic.exe ungetc", 
+    //"./runtest.exe -w entry-dynamic.exe fscanf",
+    //"./runtest.exe -w entry-dynamic.exe fwscanf",
+    //"./runtest.exe -w entry-dynamic.exe ungetc",
     //"./runtest.exe -w entry-dynamic.exe fflush_exit",
     //"./runtest.exe -w entry-dynamic.exe ftello_unflushed_append",
     //"./runtest.exe -w entry-dynamic.exe lseek_large",
     //"./runtest.exe -w entry-dynamic.exe syscall_sign_extend",
     //"./runtest.exe -w entry-dynamic.exe rlimit_open_files",
     //"./runtest.exe -w entry-dynamic.exe stat",
-    //"./runtest.exe -w entry-dynamic.exe statvfs", 
-    
+    //"./runtest.exe -w entry-dynamic.exe statvfs",
+
     //"./runtest.exe -w entry-static.exe pthread_robust_detach",
     //"./runtest.exe -w entry-static.exe pthread_cancel_sem_wait",//dead
     //"./runtest.exe -w entry-static.exe pthread_cond_smasher",
@@ -157,6 +188,7 @@ pub const SAMPLE: &[&str] = &[
 ];
 
 /// 来自busybox 的测例，每行是一个命令，除busybox 之外的是参数，按空格分隔
+#[allow(dead_code)]
 pub const BUSYBOX_TESTCASES: &[&str] = &[
     //"busybox sh ./busybox_testcode.sh", //最终测例，它包含了下面全部
     "busybox echo \"#### independent command test\"",
@@ -214,10 +246,10 @@ pub const BUSYBOX_TESTCASES: &[&str] = &[
     "busybox cp busybox_cmd.txt busybox_cmd.bak",
     "busybox rm busybox_cmd.bak",
     "busybox find -name \"busybox_cmd.txt\"",
-
 ];
 
 /// 来自 lua 的测例，每行是一个命令。lua 本身是执行程序，后面的文件名实际上是参数
+#[allow(dead_code)]
 pub const LUA_TESTCASES: &[&str] = &[
     "lua date.lua",
     "lua file_io.lua",
@@ -231,6 +263,7 @@ pub const LUA_TESTCASES: &[&str] = &[
 ];
 
 /// 来自 libc 的动态测例
+#[allow(dead_code)]
 pub const LIBC_DYNAMIC_TESTCASES: &[&str] = &[
     "dyn/getpwnam_r_crash.dout",
     "dyn/fflush_exit.dout",
@@ -346,6 +379,7 @@ pub const LIBC_DYNAMIC_TESTCASES: &[&str] = &[
 ];
 
 /// 来自 libc 的静态测例
+#[allow(dead_code)]
 pub const LIBX_STATIC_TESTCASES: &[&str] = &[
     "argv",
     "basename",
@@ -458,6 +492,7 @@ pub const LIBX_STATIC_TESTCASES: &[&str] = &[
 ];
 
 /// 初赛测例
+#[allow(dead_code)]
 pub const PRELIMINARY_TESTCASES: &[&str] = &[
     "brk",
     "chdir",
@@ -493,6 +528,7 @@ pub const PRELIMINARY_TESTCASES: &[&str] = &[
     "yield",
 ];
 
+#[allow(dead_code)]
 pub const FORMAT_LIBC_STATIC: &[&str] = &[
     "./runtest.exe -w entry-static.exe argv",
     "./runtest.exe -w entry-static.exe basename",
@@ -605,6 +641,7 @@ pub const FORMAT_LIBC_STATIC: &[&str] = &[
     "./runtest.exe -w entry-static.exe wcsstr_false_negative",
 ];
 
+#[allow(dead_code)]
 pub const FORMAT_LIBC_DYNAMIC: &[&str] = &[
     "./runtest.exe -w entry-dynamic.exe argv",
     "./runtest.exe -w entry-dynamic.exe basename",

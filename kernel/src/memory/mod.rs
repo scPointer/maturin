@@ -1,48 +1,25 @@
 //! 内存管理模块
 
-//#![deny(missing_docs)]
+pub mod addr;
+mod allocator;
+mod areas;
+mod page_table;
+mod user;
+mod vmm;
 
-//use alloc::vec::{self, Vec};
+use crate::{
+    constants::{
+        DEVICE_END, DEVICE_START, PAGE_SIZE, PHYS_MEMORY_END, PHYS_MEMORY_OFFSET, PHYS_VIRT_OFFSET,
+        USER_VIRT_ADDR_LIMIT,
+    },
+    error::OSResult,
+};
 use alloc::vec::Vec;
 use core::ops::Range;
 
-mod allocator;
-pub mod addr;
-mod page_table;
-mod areas;
-mod vmm;
-#[macro_use]
-mod user;
-use crate::constants::{
-    PAGE_SIZE,
-    PHYS_VIRT_OFFSET,
-    PHYS_MEMORY_OFFSET,
-    PHYS_MEMORY_END,
-    USER_VIRT_ADDR_LIMIT,
-    DEVICE_START,
-    DEVICE_END,
-};
-
-use crate::error::{
-    OSError,
-    OSResult,
-};
-
 pub use addr::*;
-
-pub use allocator::{
-    Frame,
-    Tid,
-    FdAllocator,
-    allocator_init,
-};
-
-//#[cfg(target_arch = "riscv64")]
-pub use page_table::{
-    PTEFlags, 
-    PageTable, 
-    PageTableEntry,
-};
+pub use allocator::{allocator_init, FdAllocator, Frame, Tid};
+pub use page_table::{PTEFlags, PageTable, PageTableEntry};
 
 /*
 #[cfg(target_arch = "riscv64")]
@@ -52,41 +29,13 @@ pub use page_table_impl_rv64_sv39::{
 };
 */
 
-pub use areas::{
-    VmArea,
-    PmArea,
-    PmAreaLazy,
-    PmAreaFixed,
-    DiffSet,
-};
+pub use areas::{DiffSet, CutSet, PmArea, PmAreaFixed, PmAreaLazy, VmArea};
 
 pub use vmm::{
-    MemorySet,
-    enable_kernel_page_table,
-    handle_kernel_page_fault,
-    new_memory_set_for_task,
+    enable_kernel_page_table, handle_kernel_page_fault, new_memory_set_for_task, MemorySet,
 };
 
-pub use user::{
-    UserPtr,
-    UserPtrUnchecked,
-};
-
-pub fn clear_bss() {
-    extern "C" {
-        fn sbss();
-        fn ebss();
-    }
-    let start = sbss as usize;
-    let end = ebss as usize;
-    //println!("clear bss {:x} {:x}", start, end);
-    let step = core::mem::size_of::<usize>();
-    for i in (start..end).step_by(step) {
-        unsafe { (i as *mut usize).write(0) };
-    }
-    //println!("clear bss end");
-}
-
+pub use user::{UserPtr, UserPtrUnchecked};
 
 /// 获取从kernel_end的下一页起，至物理内存最后一页的物理页号
 pub fn get_phys_memory_regions() -> Vec<Range<usize>> {
@@ -95,9 +44,10 @@ pub fn get_phys_memory_regions() -> Vec<Range<usize>> {
     }
     let start = align_up(virt_to_phys(kernel_end as usize));
     let end = PHYS_MEMORY_END;
-    vec![start..end]
+    vec![start..end, 0xd000_0000..0xfe00_0000]
 }
 
+#[allow(dead_code)]
 pub fn create_mapping(ms: &mut MemorySet) -> OSResult {
     ms.push(VmArea::from_fixed_pma(
         DEVICE_START,

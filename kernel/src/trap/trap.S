@@ -13,12 +13,18 @@ __alltraps:
 
     bgtz sp, __user_trap_start
 
+    # here is prework before kernel trap entry
+    # in "__real_trap_entry", tp will be replaced by 34*8(sp), where we assumed is saved by __restore before.
+    # but in kernel trap, it's NOT real cpu_id, we need to save current tp , and fetch it again in "__real_trap_entry"
+    # now size of TrapContext is 37, remember to modify the offset when update TrapContext!
+    sd tp, -3*8(sp)
+
     # now:
     # sp = kernel stack
     # sscratch = if trap from user (user stack) else ( if task is idle (0) else (kernel stack))
 __real_trap_entry:
 # allocate a TrapContext on kernel stack
-    addi sp, sp, -35*8
+    addi sp, sp, -37*8
     # save general-purpose registers
     sd x1, 1*8(sp)
     # skip sp(x2), we will save it later
@@ -38,6 +44,8 @@ __real_trap_entry:
     sd t1, 33*8(sp)
     # read user stack from sscratch and save it on the kernel stack
     csrr t2, sscratch
+    .short 0xae22 # fsd fs0, 280(sp)
+    .short 0xb226 # fsd fs1, 288(sp)
     sd t2, 2*8(sp)
     # load cpu_id
     ld tp, 34*8(sp)
@@ -72,8 +80,10 @@ __user_trap_end:
         LOAD_GP %n
         .set n, n+1
     .endr
+    .short 0x2472 # fld fs0, 280(sp)
+    .short 0x3492 # fld fs1, 288(sp)
     # release TrapContext on kernel stack
-    addi sp, sp, 35*8
+    addi sp, sp, 37*8
 
     csrrw sp, sscratch, sp
     # when sscratch == 0, trap is from kernel space
@@ -109,5 +119,5 @@ __kernel_trap_end:
         .set n, n+1
     .endr
     # release TrapContext on kernel stack
-    addi sp, sp, 35*8
+    addi sp, sp, 37*8
     sret

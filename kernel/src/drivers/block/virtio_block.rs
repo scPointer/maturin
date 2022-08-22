@@ -1,15 +1,6 @@
-use super::BlockDevice;
-use crate::memory::{
-    Frame, 
-    PageTable, 
-    PhysAddr, 
-    VirtAddr, 
-    virt_to_phys, 
-    phys_to_virt
-};
+use crate::drivers::block::BlockDevice;
+use crate::memory::{phys_to_virt, virt_to_phys, Frame, PhysAddr, VirtAddr};
 use lock::Mutex;
-use alloc::vec::Vec;
-use lazy_static::*;
 use virtio_drivers::{VirtIOBlk, VirtIOHeader};
 
 #[allow(unused)]
@@ -17,9 +8,7 @@ const VIRTIO0: usize = 0x10001000;
 
 pub struct VirtIOBlock(Mutex<VirtIOBlk<'static>>);
 
-lazy_static! {
-    static ref QUEUE_FRAMES: Mutex<Option<Frame>> = Mutex::new(None);
-}
+static QUEUE_FRAMES: Mutex<Option<Frame>> = Mutex::new(None);
 
 impl BlockDevice for VirtIOBlock {
     fn read_block(&self, block_id: usize, buf: &mut [u8]) {
@@ -60,7 +49,7 @@ pub extern "C" fn virtio_dma_alloc(pages: usize) -> PhysAddr {
 
 #[no_mangle]
 /// Frame 在 Drop 时会释放页帧，所以这里不用做其他处理
-pub extern "C" fn virtio_dma_dealloc(pa: PhysAddr, pages: usize) -> i32 {
+pub extern "C" fn virtio_dma_dealloc(_pa: PhysAddr, _pages: usize) -> i32 {
     *QUEUE_FRAMES.lock() = None;
     0
 }

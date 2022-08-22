@@ -7,11 +7,12 @@
 use bitflags::*;
 use core::mem::size_of;
 
+use crate::file::{SyncPolicy, PollEvents};
 use crate::memory::PTEFlags;
 use crate::signal::SignalNo;
 use crate::task::CloneFlags;
 
-bitflags! {    
+bitflags! {
     /// 指定 sys_wait4 的选项
     pub struct WaitFlags: u32 {
         /// 不挂起当前进程，直接返回
@@ -23,7 +24,7 @@ bitflags! {
     }
 }
 
-bitflags! {    
+bitflags! {
     /// 指定 mmap 的选项
     pub struct MMAPPROT: u32 {
         /// 不挂起当前进程，直接返回
@@ -49,6 +50,19 @@ impl Into<PTEFlags> for MMAPPROT {
             flag |= PTEFlags::EXECUTE;
         }
         flag
+    }
+}
+
+impl Into<SyncPolicy> for MMAPPROT {
+    fn into(self) -> SyncPolicy {
+        if self.contains(MMAPPROT::PROT_READ) && self.contains(MMAPPROT::PROT_WRITE) {
+            SyncPolicy::SyncReadWrite
+        } else if self.contains(MMAPPROT::PROT_WRITE) {
+            SyncPolicy::SyncWrite
+        } else {
+            // 其他情况默认为读。此时如果实际上是不可读的，那么页表+VmArea 可以直接判断出来，不需要操作到 backend 文件
+            SyncPolicy::SyncRead
+        }
     }
 }
 
@@ -90,7 +104,6 @@ bitflags! {
 #define MAP_SYNC       0x80000
 #define MAP_FIXED_NOREPLACE 0x100000
 */
-
 
 /// sys_times 中指定的结构体类型
 #[repr(C)]
@@ -141,7 +154,7 @@ impl UtsName {
             domainname: Self::from_str("https://github.com/scPointer/maturin"),
         }
     }
-    
+
     fn from_str(info: &str) -> [u8; 65] {
         let mut data: [u8; 65] = [0; 65];
         data[..info.len()].copy_from_slice(info.as_bytes());
@@ -161,13 +174,16 @@ pub struct Dirent64 {
     /// 文件类型
     pub d_type: u8,
     /// 文件名
-    pub d_name: *mut u8,
+    pub d_name: [u8; 0],
 }
 
-pub enum Dirent64_Type {
+#[allow(unused)]
+pub enum Dirent64Type {
+    /// 未知类型文件
     UNKNOWN = 0,
     /// 先进先出的文件/队列
     FIFO = 1,
+    /// 字符设备
     CHR = 2,
     /// 目录
     DIR = 4,
@@ -177,17 +193,21 @@ pub enum Dirent64_Type {
     REG = 8,
     /// 符号链接
     LNK = 10,
+    /// socket
     SOCK = 12,
     WHT = 14,
 }
 impl Dirent64 {
-    /// 设置文件类型
-    pub fn set_type(&mut self, d_type: Dirent64_Type) {
+    /// 设置一个目录项的信息
+    pub fn set_info(&mut self, ino: usize, reclen: usize, d_type: Dirent64Type) {
+        self.d_ino = ino as u64;
+        self.d_off = -1;
+        self.d_reclen = reclen as u16;
         self.d_type = d_type as u8;
     }
     /// 文件名字存的位置相对于结构体指针是多少
-    pub fn d_name_offset(&self) -> usize {
-        size_of::<u64>() + size_of::<i64>() +  size_of::<u16>() +  size_of::<u8>()
+    pub fn d_name_offset() -> usize {
+        size_of::<u64>() + size_of::<i64>() + size_of::<u16>() + size_of::<u8>()
     }
 }
 
@@ -200,51 +220,63 @@ pub struct IoVec {
 
 /// 错误编号
 #[repr(C)]
+#[derive(Debug)]
 pub enum ErrorNo {
     /// 非法操作
-    EPERM = -1, 
+    EPERM = -1,
     /// 找不到文件或目录
-    ENOENT = -2, 
+    ENOENT = -2,
+    /// 找不到对应进程
+    ESRCH = -3,
     /// 错误的文件描述符
-    EBADF = -9, 
+    EBADF = -9,
     /// 资源暂时不可用。也可因为 futex_wait 时对应用户地址处的值与给定值不符
     EAGAIN = -11,
+    /// 内存耗尽，或者没有对应的内存映射
+    ENOMEM = -12,
     /// 无效地址
     EFAULT = -14,
     /// 设备或者资源被占用
-    EBUSY = -16, 
+    EBUSY = -16,
     /// 文件已存在
     EEXIST = -17,
-    /// 不是一个目录
+    /// 不是一个目录(但要求需要是一个目录)
     ENOTDIR = -20,
+    /// 是一个目录(但要求不能是)
+    EISDIR = -21,
     /// 非法参数
-    EINVAL = -22, 
+    EINVAL = -22,
     /// fd（文件描述符）已满
-    EMFILE = -24, 
+    EMFILE = -24,
+    /// 对文件进行了无效的 seek
+    ESPIPE = -29,
     /// 超过范围。例如用户提供的buffer不够长
-    ERANGE = -34, 
+    ERANGE = -34,
+    EPFNOSUPPORT = -96,
+    EAFNOSUPPORT = -97,
+    ECONNREFUSED = -111,
 }
 
 // sys_lseek 时对应的条件
 /// 从文件开头
-pub const SEEK_SET:isize = 0;
+pub const SEEK_SET: isize = 0;
 /// 从当前位置
-pub const SEEK_CUR:isize = 1;
+pub const SEEK_CUR: isize = 1;
 /// 从文件结尾
-pub const SEEK_END:isize = 2;
+pub const SEEK_END: isize = 2;
 
 // sys_sigprocmask 时对应的选择
 /// 和当前 mask 取并集
-pub const SIG_BLOCK:i32 = 0;
+pub const SIG_BLOCK: i32 = 0;
 /// 从当前 mask 中去除对应位
-pub const SIG_UNBLOCK:i32 = 1;
+pub const SIG_UNBLOCK: i32 = 1;
 /// 重新设置当前 mask
-pub const SIG_SETMASK:i32 = 2;
+pub const SIG_SETMASK: i32 = 2;
 
 pub fn resolve_clone_flags_and_signal(flag: usize) -> (CloneFlags, SignalNo) {
     (
         CloneFlags::from_bits(flag as u32 & (!0x3f)).unwrap(),
-        SignalNo::from(flag as u8 & 0x3f)
+        SignalNo::try_from(flag as u8 & 0x3f).unwrap(),
     )
 }
 
@@ -259,20 +291,102 @@ pub struct RLimit {
 
 // sys_prlimit64 使用的选项
 /// 用户栈大小
-pub const RLIMIT_STACK:i32 = 3;
+pub const RLIMIT_STACK: i32 = 3;
 /// 可以打开的 fd 数
-pub const RLIMIT_NOFILE:i32 = 7;
+pub const RLIMIT_NOFILE: i32 = 7;
 /// 用户地址空间的最大大小
-pub const RLIMIT_AS:i32 = 9;
+pub const RLIMIT_AS: i32 = 9;
 
-// sys_fcntl64 使用的选项
-/// 复制这个 fd，相当于 sys_dup
-pub const F_DUPFD: usize = 0;
-/// 获取 cloexec 信息
-pub const F_GETFD: usize = 1;
-/// 设置 cloexec 信息
-pub const F_SETFD: usize = 2;
-/// 获取 flags 信息
-pub const F_GETFL: usize = 3;
-/// 设置 flags 信息
-pub const F_SETFL: usize = 4;
+numeric_enum_macro::numeric_enum! {
+    #[repr(usize)]
+    #[allow(non_camel_case_types)]
+    #[derive(Debug)]
+    /// sys_fcntl64 使用的选项
+    pub enum Fcntl64Cmd {
+        /// 复制这个 fd，相当于 sys_dup
+        F_DUPFD = 0,
+        /// 获取 cloexec 信息，即 exec 成功时是否删除该 fd
+        F_GETFD = 1,
+        /// 设置 cloexec 信息，即 exec 成功时删除该 fd
+        F_SETFD = 2,
+        /// 获取 flags 信息
+        F_GETFL = 3,
+        /// 设置 flags 信息
+        F_SETFL = 4,
+        /// 复制 fd，然后设置 cloexec 信息，即 exec 成功时删除该 fd
+        F_DUPFD_CLOEXEC = 1030,
+    }
+}
+
+// sys_getrusage 用到的选项
+/// 获取当前进程的资源统计
+pub const RUSAGE_SELF: i32 = 0;
+/// 获取当前进程的所有 **已结束并等待资源回收的** 子进程资源统计
+pub const RUSAGE_CHILDREN: i32 = -1;
+/// 获取当前线程的资源统计
+pub const RUSAGE_THREAD: i32 = 1;
+
+/// sys_sysinfo 用到的类型，详见 `https://man7.org/linux/man-pages/man2/sysinfo.2.html`
+#[repr(C)]
+#[derive(Debug)]
+pub struct SysInfo {
+    /// 启动时间(以秒计)
+    pub uptime: isize,
+    /// 1 / 5 / 15 分钟平均负载
+    pub loads: [usize; 3],
+    /// 内存总量，单位为 mem_unit Byte(见下)
+    pub totalram: usize,
+    /// 当前可用内存，单位为 mem_unit Byte(见下)
+    pub freeram: usize,
+    /// 共享内存大小，单位为 mem_unit Byte(见下)
+    pub sharedram: usize,
+    /// 用于缓存的内存大小，单位为 mem_unit Byte(见下)
+    pub bufferram: usize,
+    /// swap空间大小，即主存上用于替换内存中非活跃部分的空间大小，单位为 mem_unit Byte(见下)
+    pub totalswap: usize,
+    /// 可用的swap空间大小，单位为 mem_unit Byte(见下)
+    pub freeswap: usize,
+    /// 当前进程数，单位为 mem_unit Byte(见下)
+    pub procs: u16,
+    /// 高地址段的内存大小，单位为 mem_unit Byte(见下)
+    pub totalhigh: usize,
+    /// 可用的高地址段的内存大小，单位为 mem_unit Byte(见下)
+    pub freehigh: usize,
+    /// 指定 sys_info 的结构中用到的内存值的单位。
+    /// 如 mem_unit = 1024, totalram = 100, 则指示总内存为 100K
+    pub mem_unit: u32,
+}
+
+bitflags! {
+    /// sys_renameat2 用到的选项
+    pub struct RenameFlags: u32 {
+        /// 不要替换目标位置的文件，如果预定位置已经有文件，不要删除它
+        const NOREPLACE = 1 << 0;
+        /// 交换原位置和目标位置的文件
+        const EXCHANGE = 1 << 1;
+        /// 替换后在原位置放一个 "whiteout" 类型对象，仅在一些文件系统中有用，这里不考虑
+        const WHITEOUT = 1 << 2;
+    }
+}
+
+bitflags! {
+    /// sys_renameat2 用到的选项
+    pub struct MSyncFlags: u32 {
+        /// 可以异步做
+        const ASYNC = 1 << 0;
+        /// 删除同一文件的其他内存映射
+        /// （这样把同一文件映射到其他位置的进程/线程可以马上得知文件被修改，然后更换新的值）
+        const INVALIDATE = 1 << 1;
+        /// 要求同步，即立即检查
+        const SYNC = 1 << 2;
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+/// poll 和 ppoll 用到的结构
+pub struct PollFd {
+    pub fd: i32, /// 等待的 fd
+    pub events: PollEvents, /// 等待的事件
+    pub revents: PollEvents,
+}

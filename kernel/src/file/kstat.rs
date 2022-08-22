@@ -1,5 +1,5 @@
 //! 文件信息类
-//! 
+//!
 //! 如果文件在文件系统中，应返回具体信息
 
 //#![deny(missing_docs)]
@@ -45,7 +45,7 @@ pub struct Kstat {
     pub st_ctime_nsec: isize,
 }
 
-bitflags! {    
+bitflags! {
     /// 指定 st_mode 的选项
     pub struct StMode: u32 {
         /// 是普通文件

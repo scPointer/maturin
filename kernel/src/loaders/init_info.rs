@@ -8,10 +8,11 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::ptr::null;
 
-use super::InitStack;
 use super::flags::*;
+use super::InitStack;
 
 /// 初始化信息
+#[derive(Debug)]
 pub struct InitInfo {
     /// args strings
     pub args: Vec<String>,
@@ -33,9 +34,17 @@ impl InitInfo {
         writer.push_slice(random_str.as_slice());
         let random_pos = writer.sp;
         // 环境变量
-        let envs: Vec<_> = self.envs.iter().map(|item| writer.push_str(item.as_str())).collect();
+        let envs: Vec<_> = self
+            .envs
+            .iter()
+            .map(|item| writer.push_str(item.as_str()))
+            .collect();
         // 执行参数
-        let argv: Vec<_> = self.args.iter().map(|item| writer.push_str(item.as_str())).collect();
+        let argv: Vec<_> = self
+            .args
+            .iter()
+            .map(|item| writer.push_str(item.as_str()))
+            .collect();
         // 辅助参数
         writer.push_slice(&[null::<u8>(), null::<u8>()]);
         for (&type_, &value) in self.auxv.iter() {

@@ -2,8 +2,8 @@
 
 //#![deny(missing_docs)]
 
-use core::mem::size_of;
 use super::{PAGE_SIZE, PHYS_VIRT_OFFSET};
+use core::mem::size_of;
 
 pub type VirtAddr = usize;
 pub type PhysAddr = usize;
@@ -33,11 +33,6 @@ pub fn cross_page<T>(addr: usize) -> bool {
     (addr ^ (addr + size_of::<T>())) >= PAGE_SIZE
 }
 
-/// 是否是页首
-pub fn is_aligned(addr: usize) -> bool {
-    page_offset(addr) == 0
-}
-
 /// 需要多少页来存放 size Byte 的数据
 pub fn page_count(size: usize) -> usize {
     align_up(size) / PAGE_SIZE
@@ -48,17 +43,21 @@ pub fn addr_to_page_id(addr: usize) -> usize {
     addr / PAGE_SIZE
 }
 
+/// 从页号获取开头地址
+pub fn page_id_to_addr(page_id: usize) -> usize {
+    page_id * PAGE_SIZE
+}
+
 /// 地址转页内偏移
 pub fn page_offset(addr: usize) -> usize {
     addr & (PAGE_SIZE - 1)
 }
 
-/// 页号转页头首址
-pub fn page_id_to_addr(id: usize) -> usize {
-    id * PAGE_SIZE
-}
-
-/// 虚拟地址所对应的Sv39的三级页表项，即第 [38:30],[29:21],[20:12] 位
+/// 虚拟地址所对应的Sv39的三级页表项，即第 \[38:30\],\[29:21\],\[20:12\] 位
 pub fn pte_idx_of_virt_addr(vaddr: VirtAddr) -> (usize, usize, usize) {
-    ((vaddr >> 30) & 0x1ff, (vaddr >> 21) & 0x1ff, (vaddr >> 12) & 0x1ff)
+    (
+        (vaddr >> 30) & 0x1ff,
+        (vaddr >> 21) & 0x1ff,
+        (vaddr >> 12) & 0x1ff,
+    )
 }

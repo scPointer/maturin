@@ -1,0 +1,15 @@
+[package]
+name = "numeric-enum-macro"
+version = "0.2.0"
+authors = ["mexus"]
+edition = "2018"
+keywords = [ "nostd", "enum", "macros" ]
+description = "A declarative macro for type-safe enum-to-numbers conversion"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/mexus/numeric-enum-macro"
+documentation = "https://docs.rs/numeric-enum-macro"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]

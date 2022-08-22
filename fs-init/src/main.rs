@@ -5,7 +5,6 @@
 #![deny(missing_docs)]
 
 use clap::{App, Arg, ArgMatches};
-use std::env;
 use std::fs::{self, File, DirEntry};
 use fatfs::{
     format_volume, 
@@ -108,7 +107,7 @@ fn resolve_parser() -> ArgMatches<'static> {
 /// 创建新的 FAT 格式文件系统镜像，存放在 name 指定的文件名(可能带路径)中
 fn create_new_fs(name: &str) -> io::Result<()> {
     let img_file = fs::OpenOptions::new().read(true).write(true).create(true).open(&name).unwrap();
-    img_file.set_len(16 * 2048 * 512).unwrap();
+    img_file.set_len(256 * 2048 * 512).unwrap();
     let buf_file = BufStream::new(img_file);
     format_volume(&mut StdIoWrapper::from(buf_file), FormatVolumeOptions::new()).unwrap();
     Ok(())

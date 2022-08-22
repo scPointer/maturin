@@ -6,7 +6,7 @@
 use alloc::string::String;
 
 use super::File;
-use crate::file::{Kstat, StMode, normal_file_mode};
+use crate::file::{normal_file_mode, Kstat, StMode};
 
 /// 仅保存路径的文件描述符实现
 pub struct FdDir {
@@ -21,24 +21,26 @@ impl FdDir {
         if !dir.ends_with("/") {
             dir.push('/');
         }
-        Self {
-            dir: dir
-        }
+        Self { dir: dir }
     }
 }
 
 impl File for FdDir {
     /// 路径本身不可读
-    fn read(&self, buf: &mut [u8]) -> Option<usize> {
+    fn read(&self, _buf: &mut [u8]) -> Option<usize> {
         None
     }
     /// 路径本身不可写
-    fn write(&self, buf: &[u8]) -> Option<usize> {
+    fn write(&self, _buf: &[u8]) -> Option<usize> {
         None
     }
     /// 获取路径
     fn get_dir(&self) -> Option<&str> {
         Some(self.dir.as_str())
+    }
+    /// 可修改 CLOEXEC 信息
+    fn set_close_on_exec(&self, _is_set: bool) -> bool {
+        true
     }
     /// 文件属性
     fn get_stat(&self, stat: *mut Kstat) -> bool {

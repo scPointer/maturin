@@ -1,17 +1,20 @@
-use std::fs::{read_dir, File};
-use std::io::{Result, Write};
-use std::path::Path;
+use std::{
+    env,
+    fs::{self, File},
+    io::{Result, Write},
+    path::{Path, PathBuf},
+};
 
 fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
+
     println!("cargo:rerun-if-changed=../fat.img");
-    //println!("cargo:rerun-if-changed={}", TARGET_PATH);
-
     insert_fs_img().unwrap();
-    //insert_app_data().unwrap();
-}
 
-//static TARGET_PATH: &str = "../user/target/riscv64imac-unknown-none-elf/release/";
-static IMG_PATH: &str = "../fat.img";
+    let ld = &PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("linker.ld");
+    fs::write(ld, LINKER).unwrap();
+    println!("cargo:rustc-link-arg=-T{}", ld.display());
+}
 
 fn insert_fs_img() -> Result<()> {
     let mut f = File::create("src/fs.S").unwrap();
@@ -28,7 +31,55 @@ fn insert_fs_img() -> Result<()> {
 img_start:
     .incbin "{}"
 img_end:"#,
-    IMG_PATH,
+        IMG_PATH,
     )?;
     Ok(())
 }
+
+const IMG_PATH: &str = "../fat.img";
+
+const LINKER: &str = "\
+OUTPUT_ARCH(riscv)
+ENTRY(_start)
+
+BASE_ADDRESS = 0xffffffff80200000;
+
+SECTIONS
+{
+    . = BASE_ADDRESS;
+
+    .text : {
+        stext = .;
+        *(.text.entry)
+        *(.text .text.*)
+        etext = .;
+    }
+
+    . = ALIGN(4K);
+    .rodata : {
+        srodata = .;
+        *(.rodata .rodata.*)
+        erodata = .;
+    }
+
+    . = ALIGN(4K);
+    .data : {
+        sdata = .;
+        *(.data .data.*)
+        edata = .;
+    }
+
+    . = ALIGN(4K);
+    sbss_with_stack = .;
+    .bss : {
+	    *(.bss.stack)
+        sbss = .;
+        *(.sbss .bss .bss.*)
+        ebss = .;
+    }
+
+    . = ALIGN(4K);
+    kernel_end = .;
+    PROVIDE(end = .);
+}
+";

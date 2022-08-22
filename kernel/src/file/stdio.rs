@@ -1,12 +1,13 @@
 //! 标准输入输出流的 File 封装
-//! 
-//! 输出流调用的 print! 和 error_print! 宏是由 crate::arch::stdout 提供的。
+//!
+//! 输出流调用的 print! 和 eprint! 宏是由 crate::arch::stdout 提供的。
 //! 保证多核调用时不互相冲突的 Mutex 锁也在 crate::arch::{stdin, stdout} 中实现，这个模块只是封装了 Trait File
 
 //#![deny(missing_docs)]
 
-use super::File;
+use super::{normal_file_mode, File, Kstat, StMode};
 use crate::arch::stdin::getchar;
+use crate::task::suspend_current_task;
 
 /// 标准输入流
 pub struct Stdin;
@@ -19,12 +20,13 @@ impl File for Stdin {
     /// 目前 Stdin 只支持读一个字符
     fn read(&self, buf: &mut [u8]) -> Option<usize> {
         if buf.len() == 0 {
-            return Some(0)
+            return Some(0);
         }
         buf[0] = loop {
             // 目前调用 sys_read 会导致当前进程阻塞在用户输入上
             let c = getchar();
             if c == 0 || c == 255 {
+                suspend_current_task(); //yield cpu
                 continue;
             } else {
                 break c;
@@ -33,14 +35,35 @@ impl File for Stdin {
         Some(1)
     }
     /// Stdin 不可写
-    fn write(&self, buf: &[u8]) -> Option<usize> {
+    fn write(&self, _buf: &[u8]) -> Option<usize> {
         None
+    }
+    /// 文件属性
+    fn get_stat(&self, stat: *mut Kstat) -> bool {
+        unsafe {
+            (*stat).st_dev = 1;
+            (*stat).st_ino = 1;
+            (*stat).st_nlink = 1;
+            (*stat).st_mode = normal_file_mode(StMode::S_IFCHR).bits();
+            (*stat).st_size = 0;
+            (*stat).st_uid = 0;
+            (*stat).st_gid = 0;
+        }
+        true
+    }
+    /// 已准备好读
+    fn ready_to_read(&self) -> bool {
+        true
+    }
+    /// 已准备好写
+    fn ready_to_write(&self) -> bool {
+        false
     }
 }
 
 impl File for Stdout {
     /// Stdout 不可读
-    fn read(&self, buf: &mut [u8]) -> Option<usize> {
+    fn read(&self, _buf: &mut [u8]) -> Option<usize> {
         None
     }
     /// UTF-8 格式写
@@ -52,23 +75,65 @@ impl File for Stdout {
             None
         }
     }
+    /// 文件属性
+    fn get_stat(&self, stat: *mut Kstat) -> bool {
+        unsafe {
+            (*stat).st_dev = 1;
+            (*stat).st_ino = 1;
+            (*stat).st_nlink = 1;
+            (*stat).st_mode = normal_file_mode(StMode::S_IFCHR).bits();
+            (*stat).st_size = 0;
+            (*stat).st_uid = 0;
+            (*stat).st_gid = 0;
+        }
+        true
+    }
+    /// 已准备好读
+    fn ready_to_read(&self) -> bool {
+        false
+    }
+    /// 已准备好写
+    fn ready_to_write(&self) -> bool {
+        true
+    }
 }
 
 impl File for Stderr {
     /// Stdout 不可读
-    fn read(&self, buf: &mut [u8]) -> Option<usize> {
+    fn read(&self, _buf: &mut [u8]) -> Option<usize> {
         None
     }
     /// UTF-8 格式写
     fn write(&self, buf: &[u8]) -> Option<usize> {
         if let Ok(data) = core::str::from_utf8(buf) {
-            error_print!("{}", data);
+            eprint!("{}", data);
             Some(buf.len())
         } else {
             for i in 0..buf.len() {
-                error_print!("{} ", buf[i]);
+                eprint!("{} ", buf[i]);
             }
             Some(buf.len())
         }
+    }
+    /// 文件属性
+    fn get_stat(&self, stat: *mut Kstat) -> bool {
+        unsafe {
+            (*stat).st_dev = 1;
+            (*stat).st_ino = 1;
+            (*stat).st_nlink = 1;
+            (*stat).st_mode = normal_file_mode(StMode::S_IFCHR).bits();
+            (*stat).st_size = 0;
+            (*stat).st_uid = 0;
+            (*stat).st_gid = 0;
+        }
+        true
+    }
+    /// 已准备好读
+    fn ready_to_read(&self) -> bool {
+        false
+    }
+    /// 已准备好写
+    fn ready_to_write(&self) -> bool {
+        true
     }
 }

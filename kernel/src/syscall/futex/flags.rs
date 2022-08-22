@@ -1,13 +1,13 @@
 //! futex 用到的参数定义
-//! 
+//!
 //! 详见 `https://man7.org/linux/man-pages/man2/futex.2.html`
 
 /// 对 futex 的操作
 pub enum Flags {
     /// 检查用户地址 uaddr 处的值。如果不是要求的值则等待 wake
-    WAIT = 0, 
+    WAIT = 0,
     /// 唤醒最多 val 个在等待 uaddr 位置的线程。
-    WAKE = 1, 
+    WAKE = 1,
     /// 唤醒最多 val 个在等待 uaddr 位置的线程。如果有更多，则将它们转移到 uaddr2 处，至多转移 val2 个
     REQUEUE = 3,
     UNSUPPORTED,

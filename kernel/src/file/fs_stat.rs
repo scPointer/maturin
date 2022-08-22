@@ -4,7 +4,7 @@
 /// 具体参数定义信息来自 `https://man7.org/linux/man-pages/man2/statfs64.2.html`
 pub struct FsStat {
     /// 是个 magic number，每个知名的 fs 都各有定义，但显然我们没有
-    pub f_type: i64, 
+    pub f_type: i64,
     /// 最优传输块大小
     pub f_bsize: i64,
     /// 总的块数

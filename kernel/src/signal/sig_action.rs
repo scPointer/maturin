@@ -1,11 +1,12 @@
 //! 信号处理函数
-//! 
+//!
 
-use bitflags::*;
 use super::{Bitset, SignalNo};
+use crate::constants::SIGNAL_RETURN_TRAP;
+use bitflags::*;
 
 /// SigAction::handler 的特殊取值，表示默认处理函数
-pub const SIG_DFL: usize = 0; 
+pub const SIG_DFL: usize = 0;
 /// SigAction::handler 的特殊取值，表示忽略这个信号
 pub const SIG_IGN: usize = 1;
 
@@ -14,11 +15,11 @@ pub const SIG_IGN: usize = 1;
 #[derive(Clone, Copy, Debug)]
 pub struct SigAction {
     /// 用户定义的处理函数地址
-    /// 
+    ///
     /// 1. 如果是上述特殊值 SIG_DFL 或 SIG_IGN，则按描述处理
     /// 2. 如果 flags 里没有 SA_SIGINFO，则它是 void (*sa_handler)(int);
     /// 3. 如果有，则它是 void (*sa_sigaction)(int, siginfo_t *, void *);
-    /// 
+    ///
     /// - 第一个参数 int 都是 sig_no 即信号编号。
     /// - 第二个参数 siginfo_t 是  {int si_signo; int si_errno; int si_code; ...}，总长为 128 Bytes
     /// - - 后边省略的参数根据信号不同有不同的定义，先不处理。
@@ -28,12 +29,24 @@ pub struct SigAction {
     pub handler: usize,
     /// 处理时指定的参数
     pub flags: SigActionFlags,
-    /// 信号处理时的栈，也被视为 `signal trampoline`，由用户给出
+    /// 信号处理时的栈，也被视为 `signal trampoline`，由用户给出，但一般是pthread库使用。
+    /// (如果指定)，这个值需要被写入用户程序上下文的 ra 中
     /// 
-    /// 一般来说，需要 flags 里给出 SA_RESTORER 这里才有意义，但这里默认都是这种情况
-    pub restorer: usize,
+    /// 只有制定了 SA_RESTORER 参数才需要设置，请通过 get_restorer 调用
+    restorer: usize,
     /// 信号的掩码
     pub mask: Bitset,
+}
+
+impl SigAction {
+    /// 获取 restorer，如果没有 SA_RESTORER 参数，则设置为OS指定的magic number
+    pub fn get_restorer(&self) -> usize {
+        if self.flags.contains(SigActionFlags::SA_RESTORER) {
+            self.restorer
+        } else {
+            SIGNAL_RETURN_TRAP
+        }
+    }
 }
 
 bitflags! {
@@ -55,7 +68,7 @@ bitflags! {
 /// 参见 `https://venam.nixers.net/blog/unix/2016/10/21/unix-signals.html`
 pub enum SigActionDefault {
     Terminate, // 结束进程。其实更标准的实现应该细分为 terminate / terminate(core dump) / stop
-    Ignore, // 忽略信号
+    Ignore,    // 忽略信号
 }
 
 impl SigActionDefault {

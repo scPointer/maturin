@@ -1,13 +1,13 @@
 //! 空文件，用于 dev/null
 
 use super::{File, Kstat};
-use crate::file::{StMode, normal_file_mode};
+use crate::file::{normal_file_mode, StMode};
 
 pub struct NullFile;
 
 impl File for NullFile {
     /// null 无法读到任何信息
-    fn read(&self, buf: &mut [u8]) -> Option<usize> {
+    fn read(&self, _buf: &mut [u8]) -> Option<usize> {
         None
     }
     /// null 可写，但没有反馈

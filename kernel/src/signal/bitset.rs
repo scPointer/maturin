@@ -1,5 +1,5 @@
 //! 字符数组。可取并集和差集，也可对给定的 mask 取首位
-//! 
+//!
 
 #[derive(Clone, Copy, Debug)]
 /// bit数组
@@ -8,7 +8,15 @@ pub struct Bitset(pub usize);
 impl Bitset {
     /// 新建一个数组，长为 usize = 8Byte
     pub fn new(v: usize) -> Self {
-        Bitset(v)
+        Self(v)
+    }
+    /// 直接暴力写入 bitset
+    pub fn reset(&mut self, v: usize) {
+        self.0 = v;
+    }
+    /// 清空 bitset
+    pub fn clear(&mut self) {
+        self.0 = 0;
     }
     /// 是否包含第 k 个 bit
     pub fn contain_bit(&self, kth: usize) -> bool {
@@ -34,9 +42,23 @@ impl Bitset {
     pub fn set_new(&mut self, set: Bitset) {
         self.0 = set.0;
     }
+    /// 获取后缀0个数，可以用来寻找最小的1
+    pub fn get_trailing_zeros(&self) -> u32 {
+        self.0.trailing_zeros()
+    }
     /// 寻找不在mask中的最小的 1 的位置，如果有，返回其位置，如没有则返回 None。
     pub fn find_first_one(&self, mask: Bitset) -> Option<usize> {
         let ans = (self.0 & !mask.0).trailing_zeros() as usize;
-        if ans == 64 { None } else { Some(ans) }
+        if ans == 64 {
+            None
+        } else {
+            Some(ans)
+        }
+    }
+}
+
+impl From<usize> for Bitset {
+    fn from(v: usize) -> Self {
+        Self(v)
     }
 }

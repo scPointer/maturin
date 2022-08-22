@@ -1,16 +1,14 @@
-use core::panic::PanicInfo;
-
 #[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
+fn panic(info: &core::panic::PanicInfo) -> ! {
     if let Some(location) = info.location() {
-        error_println!(
+        eprintln!(
             "[kernel] Panicked at {}:{} {}",
             location.file(),
             location.line(),
             info.message().unwrap()
         );
     } else {
-        error_println!("[kernel] Panicked: {}", info.message().unwrap());
+        eprintln!("[kernel] Panicked: {}", info.message().unwrap());
     }
-    crate::arch::shutdown()
+    crate::arch::shutdown_failure()
 }
