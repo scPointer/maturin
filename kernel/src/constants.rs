@@ -57,7 +57,7 @@ pub const ORIGIN_USER_PROC_NAME: &str = "start";
 /// 最小的 tid(进程号) 是 0，最大的 pid 是 TID_LIMIT-1
 pub const TID_LIMIT: usize = 4096;
 /// 预设的文件描述符数量限制
-pub const FD_LIMIT_ORIGIN: usize = 64;
+pub const FD_LIMIT_ORIGIN: usize = 256;
 /// 最大允许的文件描述符数量
 pub const FD_LIMIT_HARD: usize = 256;
 /// sys_pipe创建的管道的大小，单位为字节

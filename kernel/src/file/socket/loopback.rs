@@ -82,6 +82,7 @@ pub fn can_write(port: u16) -> Option<usize> {
 }
 
 pub fn read_from_port(port: u16, buf: &mut [u8]) -> Option<usize> {
+    info!("To read len: {:?} from port: {}", buf.len(), port);
     let map = PORT_MAP.lock();
     match map.get(&port) {
         Some(data) => {
@@ -90,7 +91,7 @@ pub fn read_from_port(port: u16, buf: &mut [u8]) -> Option<usize> {
                 info!("Read len: {} from port: {}", len.unwrap_or(0), port);
                 //print_hex_dump(buf, 64);
                 len
-            }else{
+            } else {
                 None
             }
         }

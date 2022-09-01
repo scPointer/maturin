@@ -5,6 +5,7 @@
 
 use super::{get_link_count, File, FsFile, OpenFlags};
 use crate::{
+    constants::FS_IMG_SIZE,
     file::{normal_file_mode, Kstat, StMode},
     timer::TimeSpec,
 };
@@ -195,7 +196,7 @@ impl File for FatFile {
                 match seekfrom {
                     SeekFrom::Start(origin) => {
                         let len = file.seek(SeekFrom::End(0)).unwrap();
-                        if len < origin {
+                        if len < origin && origin - len <= FS_IMG_SIZE as u64 {
                             let mut buf: Vec<u8> = Vec::new();
                             buf.resize(origin as usize - len as usize, 0);
                             file.write(buf.as_slice()).unwrap();

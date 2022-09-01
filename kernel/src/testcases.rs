@@ -5,9 +5,14 @@
 #[allow(dead_code)]
 pub const TESTCASES: &[&str] = &[
 
-    // 运行 redis 示例
+    "busybox sh",
+
+    // 运行 redis 示例（不是在这里打开，而是在 busybox sh 的终端中输入）
     //"./redis-server /redis.conf --loglevel verbose &", // 打开 redis 服务端，后台运行
-    //"redis-cli-static", // 打开 redis 客户端
+    //"./redis-cli-static", // 打开 redis 客户端
+    //"kill 3", // 退出 redis 客户端后，服务端的输出可能比较烦，可以在 busybox sh 的终端中杀掉服务端。
+    // 因为终端的pid是2，所以按上面的步骤启动的服务端pid是3。当然如果之前开了其他程序，可能服务端就不是3了。
+    // 或者也可以一开始就使用 "./redis-server /redis.conf &" 启动服务端，这样它就不会频繁输出 log。
 
     // 运行 gcc 示例
     //"./riscv64-linux-musl-native/bin/riscv64-linux-musl-gcc ./2.c -static", // 直接生成可执行文件
@@ -17,7 +22,7 @@ pub const TESTCASES: &[&str] = &[
     //"./a.out",
     //"busybox hexdump -C 2.o",
 
-    "busybox sh",
+    
 
     // 测 lua 或者 busybox 的时候**不要**打开 base_info，内核输出非常多
 

@@ -445,6 +445,10 @@ pub fn sys_mkdir(dir_fd: i32, path: *const u8, _user_mode: u32) -> SysResult {
 pub fn sys_chdir(path: *const u8) -> SysResult {
     let task = get_current_task().unwrap();
     let mut tcb_inner = task.inner.lock();
+    let mut task_vm = task.vm.lock();
+    if task_vm.manually_alloc_page(path as usize).is_err() {
+        return Err(ErrorNo::EINVAL);
+    }
     let file_path = unsafe { raw_ptr_to_ref_str(path) };
 
     let new_path = {
@@ -472,9 +476,13 @@ pub fn sys_chdir(path: *const u8) -> SysResult {
 pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: i32) -> SysResult {
     let task = get_current_task().unwrap();
     let mut task_fd_manager = task.fd_manager.lock();
+    let mut task_vm = task.vm.lock();
     // 如果 fd 已满，则不再添加
     if task_fd_manager.is_full() {
         return Err(ErrorNo::EMFILE);
+    }
+    if task_vm.manually_alloc_page(path as usize).is_err() {
+        return Err(ErrorNo::EINVAL);
     }
     let tmp_path = unsafe { raw_ptr_to_ref_str(path) };
     info!(

@@ -164,8 +164,18 @@ impl File for Socket {
                 if (ip == 0) || (ip == LOCAL_LOOPBACK_ADDR) {
                     //Fixme, 用于建立TCP连接
                     let port = if flags == 100 {
-                        port + 100
-                    } else { port };
+                        if port == 0 {
+                            get_ephemeral_port() + 100 - 2
+                        } else {
+                            port + 100
+                        }
+                    } else {
+                        if port == 0 {
+                            get_ephemeral_port() - 1
+                        } else {
+                            port
+                        }
+                    };
                     write_to_port(port, buf)
                 } else {
                     warn!("Unknown IP: {:#x}", ip);

@@ -5,7 +5,7 @@ use super::{
     MMAPPROT, MSyncFlags, RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK,
 };
 use crate::{
-    constants::{SIGSET_SIZE_IN_BYTE, USER_STACK_SIZE, USER_VIRT_ADDR_LIMIT, FD_LIMIT_HARD, USE_MSYNC},
+    constants::{SIGSET_SIZE_IN_BYTE, USER_STACK_SIZE, USER_VIRT_ADDR_LIMIT, USE_MSYNC},
     file::{SeekFrom, BackEndFile},
     signal::{send_signal, Bitset, SigAction, SignalNo},
     memory::{page_offset, align_up, align_down},
@@ -587,7 +587,7 @@ pub fn sys_prlimt64(
                     unsafe {
                         *old_limit = RLimit {
                             rlim_cur: limit as u64,
-                            rlim_max: FD_LIMIT_HARD as u64,
+                            rlim_max: limit as u64,
                         };
                     }
                 }

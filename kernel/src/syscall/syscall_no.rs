@@ -47,6 +47,8 @@ numeric_enum_macro::numeric_enum! {
         EXIT_GROUP = 94,
         SET_TID_ADDRESS = 96,
         FUTEX = 98,
+        SET_ROBUST_LIST	= 99,
+        GET_ROBUST_LIST = 100,
         NANOSLEEP = 101,
         GETITIMER = 102,
         SETITIMER = 103,
