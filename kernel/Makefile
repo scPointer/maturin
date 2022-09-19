@@ -4,6 +4,7 @@ PLATFORM ?= qemu
 SMP ?= 1
 MACHINE ?= virt
 SBI ?= default
+ONLINE ?= 1
 
 OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy
