@@ -280,6 +280,8 @@ impl<'a> ElfLoader<'a> {
                 );
                 map.insert(AT_PHENT, self.elf.header.pt2.ph_entry_size() as usize);
                 map.insert(AT_PHNUM, self.elf.header.pt2.ph_count() as usize);
+                // AT_RANDOM 比较特殊，要求指向栈上的 16Byte 的随机子串。因此这里的 0 只是占位，在之后序列化时会特殊处理
+                map.insert(AT_RANDOM, 0);
                 map.insert(AT_PAGESZ, PAGE_SIZE);
                 map
             },

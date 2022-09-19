@@ -54,13 +54,13 @@ impl SignalHandlers {
     }
     /// 获取某个信号对应的 SigAction，如果存在，则返回其引用
     /// 因为 signum 的范围是 \[1,64\]，所以要 -1
-    pub fn get_action_ref<'a>(&self, signum: usize) -> &Option<SigAction> {
+    pub fn get_action_ref(&self, signum: usize) -> Option<&SigAction> {
         if self.actions[signum - 1].is_some()
             && self.actions[signum - 1].unwrap().handler == SIG_DFL
         {
-            &None
+            None
         } else {
-            &self.actions[signum - 1]
+            self.actions[signum - 1].as_ref()
         }
         //if signum != 33 {&self.actions[signum - 1]} else {&None}
     }

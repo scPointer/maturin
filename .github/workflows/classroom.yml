@@ -1,0 +1,75 @@
+name: GitHub Classroom Workflow
+
+on: [push]
+
+permissions:
+  checks: write
+  actions: read
+  contents: read
+
+env:
+  IMG_URL: https://github.com/os-autograding/testsuits-in-one/raw/gh-pages/fat32.img    # 镜像url
+  TIMEOUT: 60                                                                           # 超时时间
+  SCRIPT_REPO: https://github.com/os-autograding/EvaluationScript                       # 脚本仓库
+
+jobs:
+  build:
+    name: Autograding
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly-2022-08-08
+          components: rust-src, llvm-tools-preview
+          target: riscv64imac-unknown-none-elf
+          override: true
+      - uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-binutils
+          cache-key: cargo-binutils
+      - name: Cache QEMU
+        id: qemu
+        uses: actions/cache@v3
+        with:
+          path: qemu-7.0.0
+          key: qemu-7.0.0-x86_64-riscv64
+      - name: Compile QEMU
+        if: steps.qemu.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install ninja-build -y
+          wget https://download.qemu.org/qemu-7.0.0.tar.xz
+          tar -xf qemu-7.0.0.tar.xz
+          cd qemu-7.0.0
+          ./configure --target-list=riscv64-softmmu
+          make -j
+      - name: Install QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install ninja-build -y
+          cd qemu-7.0.0
+          sudo make install
+          qemu-system-riscv64 --version
+      - name: build os.bin
+        run: |
+          make
+      - name: run os
+        run: |
+          wget $IMG_URL -O fat32.img
+          timeout $TIMEOUT qemu-system-riscv64 \
+            -machine virt \
+            -bios default \
+            -device loader,file=kernel-qemu,addr=0x80200000 \
+            -drive file=fat32.img,if=none,format=raw,id=x0 \
+            -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
+            -kernel os.bin \
+            -nographic \
+            -smp 4 -m 128m | tee qemu_run_output.txt
+      - name: Download Scripts
+        run: |
+          git clone $SCRIPT_REPO .github/classroom
+      - uses: yfblock/os-autograding@master
+        with:
+          outputFile: qemu_run_output.txt
