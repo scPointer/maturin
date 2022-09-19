@@ -32,7 +32,7 @@ ifeq ($(MODE), release)
 build_args += --release
 endif
 
-ifndef ($(ONLINE))
+ifneq ($(ONLINE), 1)
 build_args += --offline
 endif
 
