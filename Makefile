@@ -1,2 +1,2 @@
 all:
-	cd ./kernel && make build
+	cd ./kernel && make testcases-img && make build
