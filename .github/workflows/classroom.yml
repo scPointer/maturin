@@ -58,7 +58,7 @@ jobs:
       - name: run os
         run: |
           wget $IMG_URL -O fat32.img
-          getcwd
+          pwd
           ls
           timeout $TIMEOUT qemu-system-riscv64 \
             -machine virt \
