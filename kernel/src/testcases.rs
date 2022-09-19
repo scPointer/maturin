@@ -5,7 +5,7 @@
 #[allow(dead_code)]
 pub const TESTCASES: &[&str] = &[
 
-    "busybox sh",
+    //"busybox sh",
 
     // 运行 redis 示例（不是在这里打开，而是在 busybox sh 的终端中输入）
     //"./redis-server /redis.conf --loglevel verbose &", // 打开 redis 服务端，后台运行

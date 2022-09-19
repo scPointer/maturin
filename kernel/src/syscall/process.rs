@@ -345,7 +345,7 @@ pub fn sys_msync(
         return Err(ErrorNo::EINVAL);
     }
     if flags.contains(MSyncFlags::INVALIDATE) {
-        error!("MSyncFlags::INVALIDATE is unsupported!");
+        warn!("MSyncFlags::INVALIDATE is unsupported!");
         return Ok(0);
     }
     if get_current_task().unwrap().msync(start, start + len) {
