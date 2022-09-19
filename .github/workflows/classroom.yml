@@ -58,12 +58,14 @@ jobs:
       - name: run os
         run: |
           wget $IMG_URL -O fat32.img
+          getcwd
+          ls
           timeout $TIMEOUT qemu-system-riscv64 \
             -machine virt \
             -bios default \
             -drive file=fat32.img,if=none,format=raw,id=x0 \
             -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 \
-            -kernel os.bin \
+            -kernel ../os.bin \
             -nographic \
             -smp 4 -m 128m | tee qemu_run_output.txt
       - name: Download Scripts
