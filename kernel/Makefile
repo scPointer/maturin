@@ -36,7 +36,7 @@ ifneq ($(ONLINE), 1)
 build_args += --offline
 endif
 
-qemu_args := -nographic -smp $(SMP) -m 8G
+qemu_args := -nographic -smp $(SMP) -m 1G
 ifeq ($(ARCH), riscv64)
 qemu_args += \
 	-machine $(MACHINE) \

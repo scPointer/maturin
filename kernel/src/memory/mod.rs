@@ -44,7 +44,7 @@ pub fn get_phys_memory_regions() -> Vec<Range<usize>> {
     }
     let start = align_up(virt_to_phys(kernel_end as usize));
     let end = PHYS_MEMORY_END;
-    vec![start..end, 0xd000_0000..0xfe00_0000]
+    vec![start..end, 0xa000_0000..0xbe00_0000]
 }
 
 #[allow(dead_code)]

@@ -32,11 +32,11 @@ pub const PAGE_SIZE: usize = 0x1000; // 4 KB
 /// 即 log2(PAGE_SIZE)
 pub const PAGE_SIZE_BITS: usize = 0xc; // 4 KB = 2^12
 /// 内核栈大小
-pub const KERNEL_STACK_SIZE: usize = 0x800_000; // 512 KB
+pub const KERNEL_STACK_SIZE: usize = 0x80_000; // 8 MB -> 512 KB
 /// 内核堆的大小
-pub const KERNEL_HEAP_SIZE: usize = 0x200_0000; // 12 MB
+pub const KERNEL_HEAP_SIZE: usize = 0xc0_0000; // 32 MB -> 12 MB
 /// 用户栈大小
-pub const USER_STACK_SIZE: usize = 0xf0_0000; // 2 MB // `lmbench_all lat_fs /var/tmp` 会默认访问到 0x3ffdfb08 
+pub const USER_STACK_SIZE: usize = 0x20_0000; // 15 MB -> 2 MB // `lmbench_all lat_fs /var/tmp` 会默认访问到 0x3ffdfb08 
 /// 初始用户栈大小，用于存放 argc/argv/envs/auxv
 pub const USER_INIT_STACK_SIZE: usize = 0x4000; // 16 KB,
 /// 用户栈底位置。同时也是最开始的用户堆顶位置
@@ -48,7 +48,7 @@ pub const PHYS_VIRT_OFFSET: usize = 0xFFFF_FFFF_0000_0000;
 /// 表示内存的地址段由此开始
 pub const PHYS_MEMORY_OFFSET: usize = 0x8000_0000;
 /// 表示内存的地址段到此为止
-pub const PHYS_MEMORY_END: usize = 0x9f00_0000;
+pub const PHYS_MEMORY_END: usize = 0x8800_0000;
 
 /// 入口用户程序。OS启动后，只会启动以此为名的用户程序。
 /// 一般来说，这个程序会通过 fork / exec 启动终端和其他程序
@@ -76,7 +76,7 @@ pub const IS_TEST_ENV: bool = true;
 pub const IS_PRELOADED_FS_IMG: bool = false;
 /// 文件系统镜像的大小。注意这个量和 fs-init 模块中 `/src/main.rs` 里生成镜像时的大小相同。
 /// 启动时会从 .data 段加载加载
-const LOCAL_FS_IMG_SIZE: usize = 0x1000_0000; // 256MB
+const LOCAL_FS_IMG_SIZE: usize = 0x200_0000; // 16MB
 /// 测试时的文件系统镜像大小。
 /// 注意因为这个文件太大，默认是已经被qemu加载好了，启动时不会加载
 const TEST_FS_IMG_SIZE: usize = 0x4000_0000; // 1GB
@@ -87,7 +87,7 @@ pub const FS_IMG_SIZE: usize = if IS_PRELOADED_FS_IMG {
     LOCAL_FS_IMG_SIZE
 };
 /// 设备(sdcard)映射到内存的起始位置
-pub const DEVICE_START: usize = 0xa000_0000;
+pub const DEVICE_START: usize = 0x9000_0000;
 /// 设备映射到内存的最后位置
 pub const DEVICE_END: usize = DEVICE_START + FS_IMG_SIZE;
 
