@@ -3,10 +3,12 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::mem::size_of;
+use base_file::{AsAny, File};
+use epoll::{EpollEvent, EpollEventType, EpollCtl, EpollFile, EpollErrorNo};
 use lock::MutexGuard;
 
 use crate::constants::FD_LIMIT_HARD;
-use crate::file::{FdManager, File, PollEvents, EpollFile, EpollEvent, EpollEventType, EpollCtl};
+use crate::file::{FdManager, PollEvents};
 use crate::memory::MemorySet;
 use crate::signal::ShadowBitset;
 use crate::task::{get_current_task, suspend_current_task};
@@ -52,6 +54,23 @@ fn init_fd_sets(
     }
 }
 
+/// poll / ppoll 用到的选项，输入一个要求监控的事件集(events)，返回一个实际发生的事件集(request events)
+fn poll(file: Arc<dyn File>, events: PollEvents) -> PollEvents {
+    let mut ret = PollEvents::empty();
+    if file.in_exceptional_conditions() {
+        ret |= PollEvents::ERR;
+    }
+    if file.is_hang_up() {
+        ret |= PollEvents::HUP;
+    }
+    if events.contains(PollEvents::IN) && file.ready_to_read() {
+        ret |= PollEvents::IN;
+    }
+    if events.contains(PollEvents::OUT) && file.ready_to_write() {
+        ret |= PollEvents::OUT;
+    }
+    ret
+}
 
 pub fn sys_pselect6(
     nfds: usize,
@@ -177,7 +196,7 @@ pub fn sys_ppoll(
         let mut set: usize = 0;
         for req_fd in &mut fds {
             if let Ok(file) = fd_manager.get_file(req_fd.fd as usize) {
-                req_fd.revents = file.poll(req_fd.events);
+                req_fd.revents = poll(file, req_fd.events);
                 if !req_fd.revents.is_empty() {
                     set += 1;
                 }
@@ -226,14 +245,18 @@ pub fn sys_epoll_ctl(epfd: i32, op: i32, fd: i32, event: *const EpollEvent) -> S
         unsafe { *event }
     };
     let operator = EpollCtl::try_from(op).map_err(|_| ErrorNo::EINVAL)?; // 操作符不合法
-    if let Some(epoll_file) = fd_manager
-        .get_file(epfd as usize)
-        .map(|file| file.get_epoll_fd())
-        .map_err(|_| ErrorNo::EBADF)? {
-        if fd_manager.get_file(fd as usize).is_err() {
-            return Err(ErrorNo::EBADF); // 错误的文件描述符
+    if let Ok(file) = fd_manager.get_file(epfd as usize) {
+        return if let Some(epoll_file) = file.as_any().downcast_ref::<EpollFile>() {
+            if fd_manager.get_file(fd as usize).is_err() {
+                return Err(ErrorNo::EBADF); // 错误的文件描述符
+            }
+            epoll_file.epoll_ctl(operator, fd, event).map(|_| 0).map_err(|e| match e {
+                EpollErrorNo::EEXIST => ErrorNo::EEXIST,
+                EpollErrorNo::ENOENT => ErrorNo::ENOENT,
+            })
+        } else {
+            Err(ErrorNo::EBADF) // 错误的文件描述符
         }
-        return epoll_file.epoll_ctl(operator, fd, event).map(|_| 0);
     }
     Err(ErrorNo::EBADF) // 错误的文件描述符
 }
@@ -246,10 +269,15 @@ pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout
         return Err(ErrorNo::EFAULT); // 地址不合法
     };
     let fd_manager = task.fd_manager.lock();
-    let epoll_file = fd_manager
-        .get_file(epfd as usize)
-        .map(|file| file.get_epoll_fd())
-        .map_err(|_| ErrorNo::EBADF)?.unwrap();
+    let epoll_file = if let Ok(file) = fd_manager.get_file(epfd as usize) {
+        if let Some(epoll_file) = file.as_any().downcast_ref::<EpollFile>() {
+            epoll_file.clone()
+        } else {
+            return Err(ErrorNo::EBADF) // 错误的文件描述符
+        }
+    } else {
+        return Err(ErrorNo::EBADF) // 错误的文件描述符
+    };
 
     //类似poll
     let interest = &epoll_file.inner.lock().interest_list;
@@ -276,7 +304,7 @@ pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout
         let mut set: usize = 0;
         for req_fd in &epolls {
             if let Ok(file) = fd_manager.get_file(req_fd.data as usize) {
-                let revents = file.poll(PollEvents::from_bits_truncate(req_fd.events.bits() as u16));
+                let revents = poll(file, PollEvents::from_bits_truncate(req_fd.events.bits() as u16));
                 if !revents.is_empty() {
                     info!("Epoll found fd {} revent {:?}", req_fd.data, revents);
                     // 回写epollevent, 

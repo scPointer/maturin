@@ -2,7 +2,7 @@
 //! 可以根据需要和源文件同步
 
 use alloc::sync::Arc;
-use super::File;
+use base_file::File;
 
 /// 同步策略(本来想搞类型体操，但太花了
 #[derive(Eq, PartialEq, Copy, Clone)]

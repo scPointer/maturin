@@ -4,9 +4,10 @@
 //! Pipe 的读写可能会触发进程切换。
 //! 目前的实现中，Pipe会请求并获取页帧，不占用内核堆/栈
 
-use super::{File, BufferFile, OpenFlags};
+use super::{BufferFile};
 use crate::{constants::PIPE_SIZE_LIMIT, task::suspend_current_task};
 use alloc::sync::Arc;
+use base_file::{File, OpenFlags};
 use lock::Mutex;
 
 /// 管道内部的 buffer，是个循环队列

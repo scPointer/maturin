@@ -5,12 +5,12 @@
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use base_file::{File, OpenFlags};
 
 use crate::constants::{FD_LIMIT_HARD, FD_LIMIT_ORIGIN};
 use crate::error::{OSError, OSResult};
 use crate::memory::FdAllocator;
 
-use super::{File, OpenFlags};
 use super::stdio::{Stderr, Stdin, Stdout};
 
 /// 文件描述符管理，每个进程应该有一个
