@@ -4,19 +4,20 @@ use base_file::File;
 use lock::Mutex;
 use alloc::sync::Arc;
 use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::vec::Vec;
 use crate::{EpollEvent, EpollCtl, EpollErrorNo};
 
 /// 用作 epoll 的文件
 pub struct EpollFile {
-    pub inner: Arc<Mutex<EpollFileInner>>,
+    inner: Arc<Mutex<EpollFileInner>>,
 }
 
 /// epoll 内部可变部分
-pub struct EpollFileInner {
+struct EpollFileInner {
     /// 监控的所有文件(fd)。key 不用 Arc<dyn File> 只是因为不好针对 map 做
-    pub interest_list: BTreeMap<i32, EpollEvent>,
+    interest_list: BTreeMap<i32, EpollEvent>,
     /// 已经相应事件的文件(fd)
-    pub _ready_list: BTreeSet<i32>,
+    _ready_list: BTreeSet<i32>,
 }
 
 impl EpollFile {
@@ -62,6 +63,20 @@ impl EpollFile {
             }
         }
         Ok(())
+    }
+    /// 获取 interest_list 中的所有 epoll 事件
+    pub fn get_epoll_events(&self) -> Vec<EpollEvent> {
+        let interest = &self.inner.lock().interest_list;
+        let mut events: Vec<EpollEvent> = Vec::new();
+        for (fd, evt) in interest {
+            let mut nevt = *evt;
+            if *fd as u64 != nevt.data {
+                // warn!("fd: {} is not in Event: {:?}", fd, evt);
+                nevt.data = *fd as u64;
+            }
+            events.push(nevt);
+        }
+        return events;
     }
 }
 

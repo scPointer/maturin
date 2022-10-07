@@ -280,16 +280,7 @@ pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout
     };
 
     //类似poll
-    let interest = &epoll_file.inner.lock().interest_list;
-    let mut epolls: Vec<EpollEvent> = Vec::new();
-    for (fd, evt) in interest {
-        let mut nevt = *evt;
-        if *fd as u64 != nevt.data {
-            warn!("fd: {} is not in Event: {:?}", fd, evt);
-            nevt.data = *fd as u64;
-        }
-        epolls.push(nevt);
-    }
+    let epolls = epoll_file.get_epoll_events();
     let expire_time = if timeout >= 0 {
         get_time_ms() + timeout as usize
     } else {
