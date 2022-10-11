@@ -13,7 +13,7 @@ log = { path = "../dependencies/log", version = "0.4" }
 xmas-elf = "0.7"
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
-virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers" }
+virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers", rev = "f2fb8b9" }
 bitmap-allocator = { path = "../dependencies/bitmap-allocator" }
 lock = { path = "../dependencies/kernel-sync" }
 # lock = { git = "https://github.com/DeathWish5/kernel-sync" }
