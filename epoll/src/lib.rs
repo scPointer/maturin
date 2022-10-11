@@ -5,6 +5,7 @@ extern crate alloc;
 mod flags;
 pub use flags::{EpollEvent, EpollEventType, EpollCtl};
 mod epoll_file;
+pub use base_file::File;
 pub use epoll_file::EpollFile;
 
 
