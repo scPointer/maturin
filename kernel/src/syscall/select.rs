@@ -3,8 +3,7 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::mem::size_of;
-use base_file::{AsAny, File};
-use epoll::{EpollEvent, EpollEventType, EpollCtl, EpollFile, EpollErrorNo};
+use epoll::{EpollEvent, EpollEventType, EpollCtl, EpollFile, EpollErrorNo, File};
 use lock::MutexGuard;
 
 use crate::constants::FD_LIMIT_HARD;
