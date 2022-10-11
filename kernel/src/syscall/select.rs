@@ -3,8 +3,7 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::mem::size_of;
-extern crate base_file;
-//use base_file::{AsAny, File};
+use base_file::File;
 use epoll::{EpollEvent, EpollEventType, EpollCtl, EpollFile, EpollErrorNo};
 use lock::MutexGuard;
 
@@ -29,7 +28,7 @@ fn init_fd_sets(
     len: usize,
     vm: &mut MutexGuard<MemorySet>,
     fd_manager: &MutexGuard<FdManager>,
-) -> Result<(Vec<Arc<dyn base_file::File>>, Vec<usize>, ShadowBitset), ErrorNo> {
+) -> Result<(Vec<Arc<dyn File>>, Vec<usize>, ShadowBitset), ErrorNo> {
     let shadow_bitset = unsafe { ShadowBitset::from_addr(addr, len) };
     if addr as usize == 0 {
         // 检查输入地址，如果为空则这个集合为空
@@ -56,7 +55,7 @@ fn init_fd_sets(
 }
 
 /// poll / ppoll 用到的选项，输入一个要求监控的事件集(events)，返回一个实际发生的事件集(request events)
-fn poll(file: Arc<dyn base_file::File>, events: PollEvents) -> PollEvents {
+fn poll(file: Arc<dyn File>, events: PollEvents) -> PollEvents {
     let mut ret = PollEvents::empty();
     if file.in_exceptional_conditions() {
         ret |= PollEvents::ERR;
