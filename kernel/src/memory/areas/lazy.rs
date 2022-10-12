@@ -3,13 +3,14 @@
 //#![deny(missing_docs)]
 
 use alloc::{sync::Arc, vec::Vec};
+use base_file::File;
 use core::fmt::{Debug, Formatter, Result};
 
 use lock::Mutex;
 
 use super::{PmArea, VmArea};
 use crate::error::{OSError, OSResult};
-use crate::file::{File, BackEndFile};
+use crate::file::{BackEndFile};
 use crate::memory::{
     addr::{self, addr_to_page_id, align_down},
     Frame, PTEFlags, PhysAddr, VirtAddr, PAGE_SIZE, USER_VIRT_ADDR_LIMIT,

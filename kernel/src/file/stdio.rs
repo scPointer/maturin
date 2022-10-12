@@ -5,7 +5,7 @@
 
 //#![deny(missing_docs)]
 
-use super::{normal_file_mode, File, Kstat, StMode};
+use base_file::{normal_file_mode, File, Kstat, StMode};
 use crate::arch::stdin::getchar;
 use crate::task::suspend_current_task;
 

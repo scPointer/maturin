@@ -3,7 +3,7 @@
 mod loopback;
 mod resolution;
 
-use super::{File, OpenFlags};
+use base_file::{File, OpenFlags};
 use core::mem::size_of;
 use lock::RwLock;
 use loopback::{can_read, can_write, read_from_port, write_to_port, LOCAL_LOOPBACK_ADDR};

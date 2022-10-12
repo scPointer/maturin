@@ -15,12 +15,13 @@ use crate::{
         check_dir_exists, check_file_exists, get_dir_entry_iter, mkdir, mount_fat_fs, open_file,
         origin_fs_stat, try_add_link, try_remove_link, read_link, umount_fat_fs, rename_or_move,
     },
-    file::{FsStat, Kstat, OpenFlags, Pipe, SeekFrom},
+    file::{FatFile, FsStat, Pipe, SeekFrom},
     task::{get_current_task, TaskControlBlock},
     timer::TimeSpec,
     utils::raw_ptr_to_ref_str,
 };
 use alloc::{string::String, sync::Arc};
+use base_file::{Kstat, OpenFlags};
 
 /// 获取当前工作路径
 pub fn sys_getcwd(buf: *mut u8, len: usize) -> SysResult {
@@ -677,13 +678,20 @@ pub fn sys_utimensat(
     };
     if dir_fd > 0 {
         if let Ok(file) = fd_manager.get_file(dir_fd as usize) {
-            file.set_time(&new_atime, &new_mtime);
+            if let Some(fat_file) = file.as_any().downcast_ref::<FatFile>() {
+                let mut inner = fat_file.inner.lock();
+                inner.atime.set_as_utime(&new_atime);
+                inner.mtime.set_as_utime(&new_mtime);
+            }
             return Ok(0);
         }
     } else if let Some((parent_dir, file_path)) = resolve_path_from_fd(&task, dir_fd, path) {
         if check_file_exists(parent_dir.as_str(), file_path) {
             if let Some(file) = open_file(parent_dir.as_str(), file_path, OpenFlags::empty()) {
-                if file.set_time(&new_atime, &new_mtime) {
+                if let Some(fat_file) = file.as_any().downcast_ref::<FatFile>() {
+                    let mut inner = fat_file.inner.lock();
+                    inner.atime.set_as_utime(&new_atime);
+                    inner.mtime.set_as_utime(&new_mtime);
                     return Ok(0);
                 }
             }

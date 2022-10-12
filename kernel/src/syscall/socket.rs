@@ -3,8 +3,9 @@
 use super::{ErrorNo, SysResult};
 use crate::task::suspend_current_task;
 use crate::file::socket::*;
-use crate::{file::{Socket, OpenFlags}, task::get_current_task};
+use crate::{file::{Socket}, task::get_current_task};
 use alloc::sync::Arc;
+use base_file::{OpenFlags};
 use core::mem::size_of;
 
 /// 创建一个 socket

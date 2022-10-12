@@ -1,22 +1,23 @@
 //! epoll 类型文件
 
+use base_file::File;
 use lock::Mutex;
 use alloc::sync::Arc;
 use alloc::collections::{BTreeMap, BTreeSet};
-use super::{File, EpollEvent, EpollCtl};
-use crate::syscall::ErrorNo;
+use alloc::vec::Vec;
+use crate::{EpollEvent, EpollCtl, EpollErrorNo};
 
 /// 用作 epoll 的文件
 pub struct EpollFile {
-    pub inner: Arc<Mutex<EpollFileInner>>,
+    inner: Arc<Mutex<EpollFileInner>>,
 }
 
 /// epoll 内部可变部分
-pub struct EpollFileInner {
+struct EpollFileInner {
     /// 监控的所有文件(fd)。key 不用 Arc<dyn File> 只是因为不好针对 map 做
-    pub interest_list: BTreeMap<i32, EpollEvent>,
+    interest_list: BTreeMap<i32, EpollEvent>,
     /// 已经相应事件的文件(fd)
-    pub _ready_list: BTreeSet<i32>,
+    _ready_list: BTreeSet<i32>,
 }
 
 impl EpollFile {
@@ -37,13 +38,12 @@ impl EpollFile {
         }
     }
     /// 进行控制操作，如成功则返回 Ok(())，否则返回对应的错误编号
-    pub fn epoll_ctl(&self, op: EpollCtl, fd: i32, event: EpollEvent) -> Result<(), ErrorNo> {
-        info!("epool ctl: {:?}, fd: {}, event: {:?}", op, fd, event);
+    pub fn epoll_ctl(&self, op: EpollCtl, fd: i32, event: EpollEvent) -> Result<(), EpollErrorNo> {
         let list = &mut self.inner.lock().interest_list;
         match op {
             EpollCtl::ADD => {
                 if list.contains_key(&fd) {
-                    return Err(ErrorNo::EEXIST);
+                    return Err(EpollErrorNo::EEXIST);
                 } else {
                     list.insert(fd, event);
                 }
@@ -53,16 +53,30 @@ impl EpollFile {
                     // 根据 BTreeMap 的语义，这里的 insert 相当于把原来的值替换掉
                     list.insert(fd, event);
                 } else {
-                    return Err(ErrorNo::ENOENT);
+                    return Err(EpollErrorNo::ENOENT);
                 }
             },
             EpollCtl::DEL => {
                 if list.remove(&fd).is_none() {
-                    return Err(ErrorNo::ENOENT);
+                    return Err(EpollErrorNo::ENOENT);
                 }
             }
         }
         Ok(())
+    }
+    /// 获取 interest_list 中的所有 epoll 事件
+    pub fn get_epoll_events(&self) -> Vec<EpollEvent> {
+        let interest = &self.inner.lock().interest_list;
+        let mut events: Vec<EpollEvent> = Vec::new();
+        for (fd, evt) in interest {
+            let mut nevt = *evt;
+            if *fd as u64 != nevt.data {
+                // warn!("fd: {} is not in Event: {:?}", fd, evt);
+                nevt.data = *fd as u64;
+            }
+            events.push(nevt);
+        }
+        return events;
     }
 }
 
@@ -74,9 +88,5 @@ impl File for EpollFile {
     /// epoll 文件不可直接写
     fn write(&self, _buf: &[u8]) -> Option<usize> {
         None
-    }
-    /// 如果这个文件对应的是一个 epoll，则获取 epoll 文件。否则，返回 None
-    fn get_epoll_fd(&self) -> Option<EpollFile> {
-        Some(self.clone())
     }
 }

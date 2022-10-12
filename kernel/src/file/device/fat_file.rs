@@ -3,13 +3,13 @@
 
 //#![deny(missing_docs)]
 
-use super::{get_link_count, File, FsFile, OpenFlags};
+use super::{get_link_count, FsFile};
 use crate::{
     constants::FS_IMG_SIZE,
-    file::{normal_file_mode, Kstat, StMode},
     timer::TimeSpec,
 };
 use alloc::{string::String, sync::Arc, vec::Vec};
+use base_file::{File, Kstat, normal_file_mode, OpenFlags, StMode};
 use fatfs::{Read, Seek, SeekFrom, Write};
 use lock::Mutex;
 
@@ -233,13 +233,6 @@ impl File for FatFile {
                 }
                 None
             })
-    }
-    /// 设置时间，返回是否设置成功。
-    fn set_time(&self, atime: &TimeSpec, mtime: &TimeSpec) -> bool {
-        let mut inner = self.inner.lock();
-        inner.atime.set_as_utime(atime);
-        inner.mtime.set_as_utime(mtime);
-        true
     }
     /// 设置文件状态信息，返回设置是否成功。
     fn set_status(&self, flags: OpenFlags) -> bool {

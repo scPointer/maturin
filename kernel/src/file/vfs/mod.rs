@@ -12,8 +12,8 @@ use lock::Mutex;
 // 其实这里不要求有序性，可以不用 BTree。
 // 但 std::collections::HashMap 不是那么容易在 no_std 下找到，需要引入依赖库
 // 所以方便起见就不用 HashMap 了
-use super::{File, Kstat, OpenFlags};
 use alloc::collections::BTreeMap;
+use base_file::{File, OpenFlags};
 use null::NullFile;
 use virt_dir::VirtDir;
 use virt_file::{VirtFile, VirtFileInner};

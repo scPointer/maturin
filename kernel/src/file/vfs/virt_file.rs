@@ -1,8 +1,9 @@
 //! 内存中保存的虚文件，可以有 backend 指向它实际映射的内容
 
 use alloc::{vec::Vec};
+use base_file::{File, Kstat, normal_file_mode, OpenFlags, StMode};
 use lock::Mutex;
-use crate::file::{File, Kstat, StMode, OpenFlags, SeekFrom, normal_file_mode};
+use crate::file::{SeekFrom};
 use crate::memory::{Frame, addr_to_page_id, page_offset};
 use crate::constants::PAGE_SIZE;
 

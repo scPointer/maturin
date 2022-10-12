@@ -7,6 +7,7 @@ use init_stack::InitStack;
 
 use alloc::{string::{String, ToString}, sync::Arc, vec::Vec};
 use core::convert::From;
+use base_file::{OpenFlags};
 use lock::Mutex;
 use xmas_elf::{
     header,
@@ -27,7 +28,7 @@ use crate::constants::{
     USER_STACK_SIZE,
 };
 use crate::error::{OSError, OSResult};
-use crate::file::{open_file, OpenFlags};
+use crate::file::{open_file};
 use crate::memory::addr::{page_count, page_offset, VirtAddr};
 use crate::memory::{MemorySet, PTEFlags};
 use crate::memory::{PmArea, PmAreaLazy, VmArea};

@@ -7,7 +7,6 @@ mod fat_dir;
 mod fat_file;
 mod fd_dir;
 mod link;
-mod open_flags;
 mod stat;
 mod test;
 
@@ -18,7 +17,6 @@ use super::{
     check_virt_file_exists,
     try_remove_virt_file,
     try_make_virt_dir,
-    File
 };
 use crate::{
     constants::ROOT_DIR,
@@ -38,6 +36,7 @@ type FsDirIter<'a> = fatfs::DirIter<'a, FsIO, FsTP, FsOCC>;
 type FsFile = fatfs::File<'static, FsIO, FsTP, FsOCC>;
 type FATFileSystem = FileSystem<FsIO, FsTP, FsOCC>;
 
+use base_file::{File, OpenFlags};
 pub use fat_dir::FatDir;
 pub use fat_file::FatFile;
 pub use fd_dir::FdDir;
@@ -51,7 +50,6 @@ pub use link::{
     try_remove_link,
     umount_fat_fs,
 };
-pub use open_flags::OpenFlags;
 pub use stat::get_fs_stat as origin_fs_stat;
 pub use test::{
     //load_testcases,
