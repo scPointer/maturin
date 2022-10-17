@@ -57,11 +57,20 @@ core::arch::global_asm!(include_str!("fs.S"));
 // static BOOTED_CPU_NUM: AtomicUsize = AtomicUsize::new(0);
 use log::*;
 
+struct TaskTrampoline;
+
+impl task_trampoline::TaskTrampoline for TaskTrampoline {
+    fn suspend_current_task(&self) {
+        task::suspend_current_task()
+    }
+}
+
 #[no_mangle]
 /// 主核启动OS
 pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     arch::clear_bss(); // 清空 bss 段
     console::init_logger(crate::constants::LOG_LEVEL).unwrap();
+    task_trampoline::init_task_trampoline(&TaskTrampoline);
     memory::allocator_init(); // 初始化堆分配器和页帧分配器
     memory::enable_kernel_page_table(); // 构造并切换到内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec

@@ -26,3 +26,4 @@ sbi-rt = { path = "../dependencies/sbi-rt" }
 numeric-enum-macro = { path = "../dependencies/numeric-enum-macro" }
 epoll = { path = "../epoll" }
 base-file = { path = "../base-file" }
+task-trampoline = { path = "../task-trampoline" }
