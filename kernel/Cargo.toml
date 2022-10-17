@@ -25,4 +25,4 @@ fscommon = { path = "../fscommon", version = "0.1.1" }
 sbi-rt = { path = "../dependencies/sbi-rt" }
 numeric-enum-macro = { path = "../dependencies/numeric-enum-macro" }
 epoll = { path = "../epoll" }
-base_file = { path = "../base_file" }
+base-file = { path = "../base-file" }
