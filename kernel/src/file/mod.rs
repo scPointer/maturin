@@ -5,7 +5,6 @@ mod device;
 mod fd_manager;
 mod fs_stat;
 mod pipe;
-mod poll_events;
 mod stdio;
 mod vfs;
 pub mod socket;
@@ -38,7 +37,6 @@ pub use device::{FatFile, FileDisc};
 pub use fd_manager::FdManager;
 pub use fs_stat::FsStat;
 pub use pipe::{Pipe, RingBuffer};
-pub use poll_events::PollEvents;
 pub use socket::Socket;
 pub use vfs::{
     BufferFile,

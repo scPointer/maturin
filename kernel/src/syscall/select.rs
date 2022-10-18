@@ -6,15 +6,16 @@ use core::mem::size_of;
 use base_file::File;
 use epoll::{EpollEvent, EpollEventType, EpollCtl, EpollFile, EpollErrorNo};
 use lock::MutexGuard;
+use poll::{PollFd, ppoll};
 
 use crate::constants::FD_LIMIT_HARD;
-use crate::file::{FdManager, PollEvents};
+use crate::file::FdManager;
 use crate::memory::MemorySet;
 use crate::signal::ShadowBitset;
 use crate::task::{get_current_task, suspend_current_task};
 use crate::timer::{get_time, get_time_ms, TimeSpec};
 
-use super::{ErrorNo, SysResult, PollFd};
+use super::{ErrorNo, SysResult};
 
 /// 获取 fd 指向文件的集合，
 /// 每个文件存在 arc 里，每个 fd 值存在一个 usize 里，然后在用户地址原地清空建立一个 ShadowBitset。
@@ -55,19 +56,19 @@ fn init_fd_sets(
 }
 
 /// poll / ppoll 用到的选项，输入一个要求监控的事件集(events)，返回一个实际发生的事件集(request events)
-fn poll(file: Arc<dyn File>, events: PollEvents) -> PollEvents {
-    let mut ret = PollEvents::empty();
+fn poll(file: Arc<dyn File>, events: EpollEventType) -> EpollEventType {
+    let mut ret = EpollEventType::empty();
     if file.in_exceptional_conditions() {
-        ret |= PollEvents::ERR;
+        ret |= EpollEventType::EPOLLERR;
     }
     if file.is_hang_up() {
-        ret |= PollEvents::HUP;
+        ret |= EpollEventType::EPOLLHUP;
     }
-    if events.contains(PollEvents::IN) && file.ready_to_read() {
-        ret |= PollEvents::IN;
+    if events.contains(EpollEventType::EPOLLIN) && file.ready_to_read() {
+        ret |= EpollEventType::EPOLLIN;
     }
-    if events.contains(PollEvents::OUT) && file.ready_to_write() {
-        ret |= PollEvents::OUT;
+    if events.contains(EpollEventType::EPOLLOUT) && file.ready_to_write() {
+        ret |= EpollEventType::EPOLLOUT;
     }
     ret
 }
@@ -190,39 +191,11 @@ pub fn sys_ppoll(
         usize::MAX // 没有过期时间
     };
     drop(task_vm); // select 的时间可能很长，之后不用 vm 了就及时释放
-    loop {
-        let fd_manager = task.fd_manager.lock();
-        // 已触发的 fd
-        let mut set: usize = 0;
-        for req_fd in &mut fds {
-            if let Ok(file) = fd_manager.get_file(req_fd.fd as usize) {
-                req_fd.revents = poll(file, req_fd.events);
-                if !req_fd.revents.is_empty() {
-                    set += 1;
-                }
-            } else {
-                req_fd.revents = PollEvents::ERR;
-                set += 1;
-            }
-        }
-        if set > 0 {
-            // 如果找到满足条件的 fd，则返回找到的 fd 数量
-            for i in 0..fds.len() {
-                unsafe { *ufds.add(i) = fds[i]; }
-            }
-            return Ok(set);
-        }
-        // 否则暂时 block 住
-        if get_time() > expire_time {
-            // 检查超时
-            for i in 0..fds.len() {
-                unsafe { *ufds.add(i) = fds[i]; }
-            }
-            return Ok(0);
-        }
-        drop(fd_manager); // fd_manager 同理
-        suspend_current_task();
+    let (result, ret_fds) = ppoll(fds, expire_time);
+    for i in 0..ret_fds.len() {
+        unsafe { *ufds.add(i) = ret_fds[i]; }
     }
+    Ok(result)
 }
 
 /// 创建一个 epoll 文件
@@ -295,19 +268,18 @@ pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout
         let mut set: usize = 0;
         for req_fd in &epolls {
             if let Ok(file) = fd_manager.get_file(req_fd.data as usize) {
-                let revents = poll(file, PollEvents::from_bits_truncate(req_fd.events.bits() as u16));
+                let revents = poll(file, req_fd.events);
                 if !revents.is_empty() {
                     info!("Epoll found fd {} revent {:?}", req_fd.data, revents);
                     // 回写epollevent, 
                     unsafe {
                         *event.add(set) = *req_fd;
-                        (*event.add(set)).events = EpollEventType::from_bits_truncate(revents.bits() as u32);
+                        (*event.add(set)).events = revents;
                     }
                     set += 1;
                 }
             } else {
                 warn!("epoll can not get fd: {}", req_fd.data);
-                //let revents = PollEvents::ERR;
                 unsafe {
                     *event.add(set) = *req_fd;
                     (*event.add(set)).events = EpollEventType::EPOLLERR;

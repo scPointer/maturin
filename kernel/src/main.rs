@@ -53,6 +53,7 @@ mod fsio {
 
 core::arch::global_asm!(include_str!("fs.S"));
 
+use alloc::sync::Arc;
 // use core::sync::atomic::AtomicUsize;
 // static BOOTED_CPU_NUM: AtomicUsize = AtomicUsize::new(0);
 use log::*;
@@ -62,6 +63,20 @@ struct TaskTrampoline;
 impl task_trampoline::TaskTrampoline for TaskTrampoline {
     fn suspend_current_task(&self) {
         task::suspend_current_task()
+    }
+
+    fn get_file(&self, fd: usize) -> Option<Arc<dyn base_file::File>> {
+        let task = task::get_current_task().unwrap();
+        let fd_manager = task.fd_manager.lock();
+        if let Ok(file) = fd_manager.get_file(fd) {
+            Some(file)
+        } else {
+            None
+        }
+    }
+
+    fn get_time(&self) -> usize {
+        timer::get_time()
     }
 }
 

@@ -22,12 +22,13 @@ mod syscall_no;
 mod times;
 
 use base_file::Kstat;
-pub use flags::{PollFd, ErrorNo};
+pub use flags::ErrorNo;
 use flags::*;
 use fs::*;
 use futex::*;
 pub use futex::{check_thread_blocked, wake_thread, set_waiter_for_thread};
 use epoll::EpollEvent;
+use poll::PollFd;
 use loops::*;
 pub use loops::clear_loop_checker;
 use process::*;
