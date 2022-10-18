@@ -4,7 +4,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::mem::size_of;
 use base_file::File;
-use epoll::{EpollEvent, EpollEventType, EpollCtl, EpollFile, EpollErrorNo};
+use epoll::{EpollEvent, EpollCtl, EpollFile, EpollErrorNo};
 use lock::MutexGuard;
 use poll::{PollFd, ppoll};
 
@@ -53,24 +53,6 @@ fn init_fd_sets(
     } else {
         Err(ErrorNo::EBADF)
     }
-}
-
-/// poll / ppoll 用到的选项，输入一个要求监控的事件集(events)，返回一个实际发生的事件集(request events)
-fn poll(file: Arc<dyn File>, events: EpollEventType) -> EpollEventType {
-    let mut ret = EpollEventType::empty();
-    if file.in_exceptional_conditions() {
-        ret |= EpollEventType::EPOLLERR;
-    }
-    if file.is_hang_up() {
-        ret |= EpollEventType::EPOLLHUP;
-    }
-    if events.contains(EpollEventType::EPOLLIN) && file.ready_to_read() {
-        ret |= EpollEventType::EPOLLIN;
-    }
-    if events.contains(EpollEventType::EPOLLOUT) && file.ready_to_write() {
-        ret |= EpollEventType::EPOLLOUT;
-    }
-    ret
 }
 
 pub fn sys_pselect6(
@@ -253,7 +235,6 @@ pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout
     };
 
     //类似poll
-    let epolls = epoll_file.get_epoll_events();
     let expire_time = if timeout >= 0 {
         get_time_ms() + timeout as usize
     } else {
@@ -261,46 +242,14 @@ pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout
     };
     drop(fd_manager);
     drop(task_vm); // select 的时间可能很长，之后不用 vm 了就及时释放
-
-    loop {
-        let fd_manager = task.fd_manager.lock();
-        // 已触发的 fd
-        let mut set: usize = 0;
-        for req_fd in &epolls {
-            if let Ok(file) = fd_manager.get_file(req_fd.data as usize) {
-                let revents = poll(file, req_fd.events);
-                if !revents.is_empty() {
-                    info!("Epoll found fd {} revent {:?}", req_fd.data, revents);
-                    // 回写epollevent, 
-                    unsafe {
-                        *event.add(set) = *req_fd;
-                        (*event.add(set)).events = revents;
-                    }
-                    set += 1;
-                }
-            } else {
-                warn!("epoll can not get fd: {}", req_fd.data);
-                unsafe {
-                    *event.add(set) = *req_fd;
-                    (*event.add(set)).events = EpollEventType::EPOLLERR;
-                }
-                set += 1;
-            }
+    let ret_events = epoll_file.epoll_wait(expire_time);
+    for i in 0..ret_events.len() {
+        // 回写epollevent,
+        unsafe {
+            (*event.add(i)).events = ret_events[i].events;
+            (*event.add(i)).data = ret_events[i].data;
         }
-        if set > 0 {
-            unsafe {
-                info!("Epoll ret: {:?}", *event);
-            }
-            // 正常返回响应了事件的fd个数
-            return Ok(set);
-        }
-        // 否则暂时 block 住
-        if get_time_ms() > expire_time {
-            // 超时返回0
-            return Ok(0);
-        }
-        drop(fd_manager); // fd_manager 同理
-        suspend_current_task();
     }
+    Ok(ret_events.len())
 }
 

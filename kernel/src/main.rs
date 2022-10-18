@@ -78,6 +78,10 @@ impl task_trampoline::TaskTrampoline for TaskTrampoline {
     fn get_time(&self) -> usize {
         timer::get_time()
     }
+
+    fn get_time_ms(&self) -> usize {
+        timer::get_time_ms()
+    }
 }
 
 #[no_mangle]

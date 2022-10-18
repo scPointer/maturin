@@ -13,6 +13,7 @@ pub trait TaskTrampoline: Sync {
     fn suspend_current_task(&self);
     fn get_file(&self, fd: usize) -> Option<Arc<dyn File>>;
     fn get_time(&self) -> usize;
+    fn get_time_ms(&self) -> usize;
 }
 
 static TASK: Once<&'static dyn TaskTrampoline> = Once::new();
@@ -36,4 +37,10 @@ pub fn get_file(fd: usize) -> Option<Arc<dyn File>> {
 /// 严格来讲，这并不是 Task 的方法，不过为了方便起见，暂时先放到这个模块中。
 pub fn get_time() -> usize {
     TASK.get().unwrap().get_time()
+}
+
+/// 获取系统毫秒格式的时间值。
+/// 严格来讲，这并不是 Task 的方法，不过为了方便起见，暂时先放到这个模块中。
+pub fn get_time_ms() -> usize {
+    TASK.get().unwrap().get_time_ms()
 }
