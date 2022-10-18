@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 //use alloc::collections::BTreeMap;
 
 mod pteflags;
-pub use pteflags::PTEFlags;
+pub use pteflags::*;
 mod segment;
 pub use segment::Segment;
 mod types;

@@ -1,2 +1,3 @@
 pub type CmpType = usize;
-pub type FlagType = super::PTEFlags;
+pub type IdentType = super::PTEFlags;
+pub type ArgsType = ();
