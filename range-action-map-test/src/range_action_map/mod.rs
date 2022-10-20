@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 //use alloc::collections::BTreeMap;
 
+#[allow(dead_code)]
+#[allow(non_snake_case)]
 mod pteflags;
 pub use pteflags::*;
 mod segment;
