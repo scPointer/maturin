@@ -1,4 +1,44 @@
 //! OS运行时用到的常量
+//! 
+//! 内存地址分布说明：
+//! /* ------------------------------ 用户程序 ------------------------------*/
+//! /// 用户栈大小
+//! pub const USER_STACK_SIZE: usize = 0xf0_0000; // 2 MB
+//! /// 初始用户栈大小，用于存放 argc/argv/envs/auxv
+//! pub const USER_INIT_STACK_SIZE: usize = 0x4000; // 16 KB,
+//! /// 用户栈底位置。同时也是最开始的用户堆顶位置
+//! pub const USER_STACK_OFFSET: usize = 0x4000_0000 - USER_STACK_SIZE;
+//! /// 用户地址最大不能超过这个值
+//! pub const USER_VIRT_ADDR_LIMIT: usize = 0xFFFF_FFFF;
+//! 
+//! /* ------------------------------ MMIO ------------------------------*/
+//! /// 用于设备 MMIO 的内存段。这些地址会在页表中做恒等映射
+//! pub const MMIO_REGIONS: &[AddrArea] = &[AddrArea(0x10001000, 0x10002000)];
+//! 
+//! /* ------------------------------ 内核 ------------------------------*/
+//! /// 内核中虚拟地址相对于物理地址的偏移
+//! pub const PHYS_VIRT_OFFSET: usize = 0xFFFF_FFFF_0000_0000;
+//! /// 表示内存的地址段起始
+//! pub const PHYS_MEMORY_OFFSET: usize = 0x8000_0000;
+//! // 内核起始地址 0x8020_0000
+//! 
+//! // 内核的各段、堆栈分配等在 memory/vmm.rs:414 init_kernel_memory_set()，详细的大小设定在 constants.rs
+//! 
+//! /// 表示内存的地址段结束
+//! pub const PHYS_MEMORY_END: usize = 0x9f00_0000;
+//! // free memory 段 (这段代码在 memory/mod.rs)
+//! let start = align_up(virt_to_phys(kernel_end as usize));
+//! let end = PHYS_MEMORY_END;
+//! vec![start..end, 0xd000_0000..0xfe00_0000]
+
+/// 文件系统镜像大小。
+pub const FS_IMG_SIZE: usize = 0x1000_0000; // 256MB
+/// 设备(sdcard)映射到内存的起始位置
+pub const DEVICE_START: usize = 0xa000_0000;
+/// 设备映射到内存的最后位置
+pub const DEVICE_END: usize = DEVICE_START + FS_IMG_SIZE;
+
+
 
 //#![deny(missing_docs)]
 
