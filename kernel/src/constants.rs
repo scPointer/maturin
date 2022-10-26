@@ -30,13 +30,13 @@
 //! let start = align_up(virt_to_phys(kernel_end as usize));
 //! let end = PHYS_MEMORY_END;
 //! vec![start..end, 0xd000_0000..0xfe00_0000]
-
-/// 文件系统镜像大小。
-pub const FS_IMG_SIZE: usize = 0x1000_0000; // 256MB
-/// 设备(sdcard)映射到内存的起始位置
-pub const DEVICE_START: usize = 0xa000_0000;
-/// 设备映射到内存的最后位置
-pub const DEVICE_END: usize = DEVICE_START + FS_IMG_SIZE;
+//! 
+//! /// 文件系统镜像大小。
+//! pub const FS_IMG_SIZE: usize = 0x1000_0000; // 256MB
+//! /// 设备(sdcard)映射到内存的起始位置
+//! pub const DEVICE_START: usize = 0xa000_0000;
+//! /// 设备映射到内存的最后位置
+//! pub const DEVICE_END: usize = DEVICE_START + FS_IMG_SIZE;
 
 
 
