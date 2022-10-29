@@ -15,7 +15,8 @@ pub use waiting_board::{check_thread_blocked, wake_thread, set_waiter_for_thread
 use flags::{Flags, FutexFlag};
 use lock::Mutex;
 use alloc::boxed::Box;
-use super::{sys_gettid, ErrorNo, SysResult};
+use syscall::ErrorNo;
+use super::{sys_gettid, SysResult};
 use crate::task::{get_current_task, suspend_current_task};
 use crate::timer::{TimeSpec, TimeVal};
 

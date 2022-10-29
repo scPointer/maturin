@@ -6,7 +6,7 @@
 //#![deny(missing_docs)]
 
 use super::{
-    Dirent64, Dirent64Type, ErrorNo, Fcntl64Cmd, IoVec, SysResult, UtimensatFlags, RenameFlags, 
+    Dirent64, Dirent64Type, Fcntl64Cmd, IoVec, SysResult, UtimensatFlags, RenameFlags,
     SEEK_CUR, SEEK_END, SEEK_SET,
 };
 use crate::{
@@ -22,6 +22,7 @@ use crate::{
 };
 use alloc::{string::String, sync::Arc};
 use base_file::{Kstat, OpenFlags};
+use syscall::ErrorNo;
 
 /// 获取当前工作路径
 pub fn sys_getcwd(buf: *mut u8, len: usize) -> SysResult {

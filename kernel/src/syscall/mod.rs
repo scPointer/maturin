@@ -22,7 +22,6 @@ mod syscall_no;
 mod times;
 
 use base_file::Kstat;
-pub use flags::ErrorNo;
 use flags::*;
 use fs::*;
 use futex::*;
@@ -42,7 +41,7 @@ use crate::signal::SigAction;
 use crate::task::ITimerVal;
 use crate::timer::{TimeSpec, TimeVal};
 
-type SysResult = Result<usize, ErrorNo>;
+type SysResult = Result<usize, syscall::ErrorNo>;
 
 /// 处理系统调用
 pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {

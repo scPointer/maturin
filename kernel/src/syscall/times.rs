@@ -2,7 +2,8 @@
 
 //#![deny(missing_docs)]
 
-use super::{ErrorNo, RUSAGE_CHILDREN, RUSAGE_SELF, RUSAGE_THREAD};
+use syscall::ErrorNo;
+use super::{RUSAGE_CHILDREN, RUSAGE_SELF, RUSAGE_THREAD};
 use crate::task::ITimerVal;
 use crate::task::{get_current_task, suspend_current_task};
 use crate::timer::{get_time_f64, get_time_us, get_time_sec, USEC_PER_INTERRUPT};

@@ -1,7 +1,7 @@
 //! 与进程相关的系统调用
 
 use super::{
-    resolve_clone_flags_and_signal, ErrorNo, MMAPFlags, RLimit, SysResult, UtsName, WaitFlags,
+    resolve_clone_flags_and_signal, MMAPFlags, RLimit, SysResult, UtsName, WaitFlags,
     MMAPPROT, MSyncFlags, RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK,
 };
 use crate::{
@@ -16,6 +16,7 @@ use crate::{
     utils::{raw_ptr_to_string, str_ptr_array_to_vec_string},
 };
 use core::mem::size_of;
+use syscall::ErrorNo;
 
 /// 进程退出，并提供 exit_code 供 wait 等 syscall 拿取
 pub fn sys_exit(exit_code: i32) -> ! {

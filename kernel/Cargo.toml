@@ -24,6 +24,7 @@ fatfs = { path = "../rust-fatfs", version = "0.4", default-features = false, fea
 fscommon = { path = "../fscommon", version = "0.1.1" }
 sbi-rt = { path = "../dependencies/sbi-rt" }
 numeric-enum-macro = { path = "../dependencies/numeric-enum-macro" }
+syscall = { path = "../syscall" }
 epoll = { path = "../epoll" }
 base-file = { path = "../base-file" }
 task-trampoline = { path = "../task-trampoline" }

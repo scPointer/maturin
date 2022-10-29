@@ -7,6 +7,7 @@ use base_file::File;
 use epoll::{EpollEvent, EpollCtl, EpollFile, EpollErrorNo};
 use lock::MutexGuard;
 use poll::{PollFd, ppoll};
+use syscall::ErrorNo;
 
 use crate::constants::FD_LIMIT_HARD;
 use crate::file::FdManager;
@@ -15,7 +16,7 @@ use crate::signal::ShadowBitset;
 use crate::task::{get_current_task, suspend_current_task};
 use crate::timer::{get_time, get_time_ms, TimeSpec};
 
-use super::{ErrorNo, SysResult};
+use super::SysResult;
 
 /// 获取 fd 指向文件的集合，
 /// 每个文件存在 arc 里，每个 fd 值存在一个 usize 里，然后在用户地址原地清空建立一个 ShadowBitset。
