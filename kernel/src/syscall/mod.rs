@@ -18,7 +18,6 @@ mod loops;
 mod process;
 mod socket;
 mod syscall_no;
-mod times;
 
 use base_file::Kstat;
 use flags::*;
@@ -32,12 +31,10 @@ pub use loops::clear_loop_checker;
 use process::*;
 use socket::*;
 use syscall_no::SyscallNo;
-use timer::{TimeSpec, TimeVal};
-use times::*;
+use timer::{ITimerVal, TimeSpec, TimeVal, TMS};
 
 use crate::file::FsStat;
 use crate::signal::SigAction;
-use crate::task::ITimerVal;
 
 type SysResult = Result<usize, syscall::ErrorNo>;
 
@@ -138,14 +135,14 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[4],
             args[5] as u32,
         ),
-        SyscallNo::NANOSLEEP => sys_nanosleep(args[0] as *const TimeSpec, args[1] as *mut TimeSpec),
-        SyscallNo::GETITIMER => sys_gettimer(args[0], args[1] as *mut ITimerVal),
-        SyscallNo::SETITIMER => sys_settimer(
+        SyscallNo::NANOSLEEP => timer::sys_nanosleep(args[0] as *const TimeSpec, args[1] as *mut TimeSpec),
+        SyscallNo::GETITIMER => timer::sys_gettimer(args[0], args[1] as *mut ITimerVal),
+        SyscallNo::SETITIMER => timer::sys_settimer(
             args[0],
             args[1] as *const ITimerVal,
             args[2] as *mut ITimerVal,
         ),
-        SyscallNo::CLOCK_GET_TIME => sys_clock_gettime(args[0], args[1] as *mut TimeSpec),
+        SyscallNo::CLOCK_GET_TIME => timer::sys_clock_gettime(args[0], args[1] as *mut TimeSpec),
         SyscallNo::YIELD => sys_yield(),
         SyscallNo::KILL => sys_kill(args[0] as isize, args[1] as isize),
         SyscallNo::TKILL => sys_tkill(args[0] as isize, args[1] as isize),
@@ -161,11 +158,11 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[3],
         ),
         SyscallNo::SIGRETURN => sys_sigreturn(),
-        SyscallNo::TIMES => sys_times(args[0] as *mut TMS),
+        SyscallNo::TIMES => timer::sys_times(args[0] as *mut TMS),
         SyscallNo::UNAME => sys_uname(args[0] as *mut UtsName),
-        SyscallNo::GETRUSAGE => sys_getrusage(args[0] as i32, args[1] as *mut TimeVal),
+        SyscallNo::GETRUSAGE => timer::sys_getrusage(args[0] as i32, args[1] as *mut TimeVal),
         SyscallNo::UMASK => sys_umask(args[0] as i32),
-        SyscallNo::GET_TIME_OF_DAY => sys_get_time_of_day(args[0] as *mut TimeVal),
+        SyscallNo::GET_TIME_OF_DAY => timer::sys_get_time_of_day(args[0] as *mut TimeVal),
         SyscallNo::GETPID => sys_getpid(),
         SyscallNo::GETPPID => sys_getppid(),
         SyscallNo::GETUID => sys_getuid(),

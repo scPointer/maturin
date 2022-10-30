@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
+syscall = { path = "../syscall" }
+task-trampoline = { path = "../task-trampoline" }
 
 [features]
 sifive = []

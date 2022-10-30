@@ -105,19 +105,6 @@ bitflags! {
 #define MAP_FIXED_NOREPLACE 0x100000
 */
 
-/// sys_times 中指定的结构体类型
-#[repr(C)]
-pub struct TMS {
-    /// 进程用户态执行时间
-    pub tms_utime: usize,
-    /// 进程内核态执行时间
-    pub tms_stime: usize,
-    /// 子进程用户态执行时间和
-    pub tms_cutime: usize,
-    /// 子进程内核态执行时间和
-    pub tms_cstime: usize,
-}
-
 bitflags! {
     pub struct UtimensatFlags: u32 {
         /// 表示更新时间时如果是指向符号链接，则仅更新符号链接本身的时间，不更新其指向文件的时间
@@ -278,14 +265,6 @@ numeric_enum_macro::numeric_enum! {
         F_DUPFD_CLOEXEC = 1030,
     }
 }
-
-// sys_getrusage 用到的选项
-/// 获取当前进程的资源统计
-pub const RUSAGE_SELF: i32 = 0;
-/// 获取当前进程的所有 **已结束并等待资源回收的** 子进程资源统计
-pub const RUSAGE_CHILDREN: i32 = -1;
-/// 获取当前线程的资源统计
-pub const RUSAGE_THREAD: i32 = 1;
 
 /// sys_sysinfo 用到的类型，详见 `https://man7.org/linux/man-pages/man2/sysinfo.2.html`
 #[repr(C)]

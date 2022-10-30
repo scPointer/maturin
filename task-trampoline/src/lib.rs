@@ -16,6 +16,9 @@ pub trait TaskTrampoline: Sync {
     fn push_file(&self, file: Arc<dyn File>) -> Result<usize, u64>;
     fn manually_alloc_user_str(&self, buf: *const u8, len: usize) -> Result<(), u64>;
     fn manually_alloc_range(&self, start_vaddr: usize, end_vaddr: usize) -> Result<(), u64>;
+    fn raw_time(&self) -> (usize, usize);
+    fn raw_timer(&self) -> (usize, usize);
+    fn set_timer(&self, timer_interval_us: usize, timer_remained_us: usize, timer_type: usize) -> bool;
 }
 
 static TASK: Once<&'static dyn TaskTrampoline> = Once::new();
@@ -55,4 +58,19 @@ pub fn manually_alloc_type<T>(user_obj: *const T) -> Result<(), u64> {
     let start_vaddr = user_obj as usize;
     let end_vaddr = start_vaddr + size_of::<T>() - 1;
     TASK.get().unwrap().manually_alloc_range(start_vaddr, end_vaddr)
+}
+
+/// 输出微秒形式的时间统计，用于调试
+pub fn raw_time() -> (usize, usize) {
+    TASK.get().unwrap().raw_time()
+}
+
+/// 以 TimeVal 字段格式输出计时器信息，第一个是 timer_interval_us，第二个是 timer_remained_us
+pub fn raw_timer() -> (usize, usize) {
+    TASK.get().unwrap().raw_timer()
+}
+
+/// 以 TimeVal 字段格式形式读入计时器信息，返回是否设置成功(类型参数对就算设置成功)
+pub fn set_timer(timer_interval_us: usize, timer_remained_us: usize, timer_type: usize) -> bool {
+    TASK.get().unwrap().set_timer(timer_interval_us, timer_remained_us, timer_type)
 }

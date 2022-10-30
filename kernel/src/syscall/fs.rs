@@ -646,7 +646,7 @@ pub fn sys_getdents64(fd: usize, buf: *mut u8, len: usize) -> SysResult {
 ///
 /// 如果 fir_fd < 0，它和 path 共同决定要找的文件；
 /// 如果 fir_fd >=0，它就是文件对应的 fd
-/// 因为它要求文件访问的部分更多，因此放在 fs.rs 而非 times.rs
+/// 因为它要求文件访问的部分更多，因此放在 fs.rs 而非 timer 模块中
 pub fn sys_utimensat(
     dir_fd: i32,
     path: *const u8,

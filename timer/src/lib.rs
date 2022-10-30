@@ -4,6 +4,10 @@
 
 use core::ops::Add;
 use riscv::register::time;
+use syscall::ErrorNo;
+use task_trampoline::{manually_alloc_type, raw_time, raw_timer, set_timer, suspend_current_task};
+
+/* Constants */
 
 /// 时钟频率，和平台有关
 pub const CLOCK_FREQ: usize = if cfg!(feature = "sifive") { 100_0000 } else { 1250_0000 };
@@ -23,6 +27,16 @@ pub const NSEC_PER_MACHINE_TICKS: usize = NSEC_PER_SEC / CLOCK_FREQ;
 pub const UTIME_NOW: usize = 0x3fffffff;
 /// 当 nsec 为这个特殊值时，指示不修改时间
 pub const UTIME_OMIT: usize = 0x3ffffffe;
+
+// sys_getrusage 用到的选项
+/// 获取当前进程的资源统计
+pub const RUSAGE_SELF: i32 = 0;
+/// 获取当前进程的所有 **已结束并等待资源回收的** 子进程资源统计
+pub const RUSAGE_CHILDREN: i32 = -1;
+/// 获取当前线程的资源统计
+pub const RUSAGE_THREAD: i32 = 1;
+
+/* Methods */
 
 /// 读 mtime 计时器的值
 pub fn get_time() -> usize {
@@ -51,6 +65,8 @@ pub fn get_time_f64() -> f64 {
 pub fn get_next_trigger() -> u64 {
     (get_time() + CLOCK_FREQ / INTERRUPT_PER_SEC).try_into().unwrap()
 }
+
+/* Structs */
 
 /// sys_nanosleep / sys_utimensat 中指定的结构体类型
 #[repr(C)]
@@ -165,5 +181,146 @@ impl Into<usize> for TimeVal {
     /// 输入微秒数，自动转换成秒+微秒
     fn into(self) -> usize {
         self.sec * USEC_PER_SEC + self.usec
+    }
+}
+
+/// sys_times 中指定的结构体类型
+#[repr(C)]
+pub struct TMS {
+    /// 进程用户态执行时间
+    pub tms_utime: usize,
+    /// 进程内核态执行时间
+    pub tms_stime: usize,
+    /// 子进程用户态执行时间和
+    pub tms_cutime: usize,
+    /// 子进程内核态执行时间和
+    pub tms_cstime: usize,
+}
+
+/// sys_gettimer / sys_settimer 指定的类型，用户输入输出计时器
+pub struct ITimerVal {
+    it_interval: TimeVal,
+    it_value: TimeVal,
+}
+
+/* Syscall */
+
+/// 获取系统时间并存放在参数提供的数组里
+pub fn sys_get_time_of_day(time_val: *mut TimeVal) -> Result<usize, ErrorNo> {
+    //info!("sys_gettimeofday at {:x}", time_val as usize);
+    if manually_alloc_type(time_val).is_err() {
+        return Err(ErrorNo::EFAULT);
+    }
+    unsafe {
+        (*time_val) = TimeVal::now();
+        //info!("sec = {}, usec = {}", (*time_val).sec, (*time_val).usec);
+    }
+    Ok(0)
+}
+
+pub fn sys_clock_gettime(_clockid: usize, time_spec: *mut TimeSpec) -> Result<usize, ErrorNo> {
+    //info!("sys_clock_gettime clock id = {clockid} at {:x}", time_spec as usize);
+    if manually_alloc_type(time_spec).is_err() {
+        return Err(ErrorNo::EFAULT);
+    }
+    unsafe {
+        (*time_spec) = TimeSpec::now();
+        //info!("sec = {}, nsec = {}", (*time_spec).tv_sec, (*time_spec).tv_nsec);
+    }
+    Ok(0)
+}
+
+/// 该进程休眠一段时间
+pub fn sys_nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> Result<usize, ErrorNo> {
+    let end_time = unsafe { get_time_f64() + (*req).time_in_sec() };
+    //let now = get_time_f64();
+    //info!("now {} end time {}", now, end_time);
+    while get_time_f64() < end_time {
+        suspend_current_task();
+    }
+    // 如果用户提供了 rem 数组，则需要修改它
+    if rem as usize != 0 {
+        unsafe {
+            (*rem) = TimeSpec::new(0.0);
+        }
+    }
+    Ok(0)
+}
+
+/// 将进程的运行时间信息传入用户提供的数组。详见 TMS 类型声明
+pub fn sys_times(tms_ptr: *mut TMS) -> Result<usize, ErrorNo> {
+    let (utime, stime) = raw_time();
+    //info!("times: get utime {utime}ms, stime {stime}ms");
+    unsafe {
+        (*tms_ptr).tms_utime = utime;
+        (*tms_ptr).tms_stime = stime;
+        (*tms_ptr).tms_cutime = utime;
+        (*tms_ptr).tms_cstime = stime;
+    }
+    Ok(get_time_us() / USEC_PER_INTERRUPT)
+}
+
+pub fn sys_getrusage(who: i32, utime: *mut TimeVal) -> Result<usize, ErrorNo> {
+    let stime = unsafe { utime.add(1) };
+    if manually_alloc_type(utime).is_err() || manually_alloc_type(stime).is_err() {
+        return Err(ErrorNo::EFAULT);
+    }
+    match who {
+        RUSAGE_SELF | RUSAGE_CHILDREN | RUSAGE_THREAD => {
+            // todo: 目前对于所有的 who 都只统计了当前任务，其实应该细化
+            let (utime_us, stime_us) = raw_time();
+            unsafe {
+                *utime = utime_us.into();
+                *stime = stime_us.into();
+            }
+            //unsafe {*utime = get_time_us().into(); *stime = get_time_us().into();}
+            //unsafe { if task.get_tid_num() == 4  {*utime = (get_time_us() * 10).into();} }
+            //println!("utime {}",  get_time_us());
+            //let (utime, stime) = task_time.output_raw();
+            //println!("tid {} who {who} getrusage: utime {utime}us, stime {stime}us", task.get_tid_num());
+            Ok(0)
+        }
+        _ => Err(ErrorNo::EINVAL),
+    }
+}
+
+pub fn sys_gettimer(_which: usize, curr_value: *mut ITimerVal) -> Result<usize, ErrorNo> {
+    if manually_alloc_type(curr_value).is_err() {
+        return Err(ErrorNo::EFAULT);
+    }
+    let (timer_interval_us, timer_remained_us) = raw_timer();
+    unsafe {
+        (*curr_value).it_interval = timer_interval_us.into();
+        (*curr_value).it_value = timer_remained_us.into();
+    };
+    Ok(0)
+}
+
+pub fn sys_settimer(
+    which: usize,
+    new_value: *const ITimerVal,
+    old_value: *mut ITimerVal,
+) -> Result<usize, ErrorNo> {
+    if manually_alloc_type(new_value).is_err() {
+        return Err(ErrorNo::EFAULT);
+    }
+    if old_value as usize != 0 {
+        // 需要返回旧值
+        if manually_alloc_type(old_value).is_err() {
+            return Err(ErrorNo::EFAULT);
+        }
+        let (timer_interval_us, timer_remained_us) = raw_timer();
+        unsafe {
+            (*old_value).it_interval = timer_interval_us.into();
+            (*old_value).it_value = timer_remained_us.into();
+        };
+    }
+    let (timer_interval_us, timer_remained_us) = unsafe {
+        ((*new_value).it_interval.into(), (*new_value).it_value.into())
+    };
+    if set_timer(timer_interval_us, timer_remained_us, which) {
+        Ok(0)
+    } else {
+        Err(ErrorNo::EFAULT) // 设置不成功，说明参数 which 错误
     }
 }
