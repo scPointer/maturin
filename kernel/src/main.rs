@@ -53,6 +53,7 @@ mod fsio {
 core::arch::global_asm!(include_str!("fs.S"));
 
 use alloc::sync::Arc;
+use base_file::File;
 // use core::sync::atomic::AtomicUsize;
 // static BOOTED_CPU_NUM: AtomicUsize = AtomicUsize::new(0);
 use log::*;
@@ -72,6 +73,13 @@ impl task_trampoline::TaskTrampoline for TaskTrampoline {
         } else {
             None
         }
+    }
+
+    fn push_file(&self, file: Arc<dyn File>) -> Result<usize, u64> {
+        let task = task::get_current_task().unwrap();
+        let mut fd_manager = task.fd_manager.lock();
+        // TODO: 考虑是否要将错误类型返回给用户
+        fd_manager.push(file).map_err(|_| 1)
     }
 
     fn manually_alloc_user_str(&self, buf: *const u8, len: usize) -> Result<(), u64> {

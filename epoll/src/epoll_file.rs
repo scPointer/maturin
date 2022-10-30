@@ -5,8 +5,9 @@ use lock::Mutex;
 use alloc::sync::Arc;
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
+use syscall::ErrorNo;
 use task_trampoline::{get_file, suspend_current_task};
-use crate::{EpollEvent, EpollCtl, EpollErrorNo, EpollEventType};
+use crate::{EpollEvent, EpollCtl, EpollEventType};
 
 /// 用作 epoll 的文件
 pub struct EpollFile {
@@ -58,12 +59,12 @@ impl EpollFile {
         }
     }
     /// 进行控制操作，如成功则返回 Ok(())，否则返回对应的错误编号
-    pub fn epoll_ctl(&self, op: EpollCtl, fd: i32, event: EpollEvent) -> Result<(), EpollErrorNo> {
+    pub fn epoll_ctl(&self, op: EpollCtl, fd: i32, event: EpollEvent) -> Result<(), ErrorNo> {
         let list = &mut self.inner.lock().interest_list;
         match op {
             EpollCtl::ADD => {
                 if list.contains_key(&fd) {
-                    return Err(EpollErrorNo::EEXIST);
+                    return Err(ErrorNo::EEXIST);
                 } else {
                     list.insert(fd, event);
                 }
@@ -73,12 +74,12 @@ impl EpollFile {
                     // 根据 BTreeMap 的语义，这里的 insert 相当于把原来的值替换掉
                     list.insert(fd, event);
                 } else {
-                    return Err(EpollErrorNo::ENOENT);
+                    return Err(ErrorNo::ENOENT);
                 }
             },
             EpollCtl::DEL => {
                 if list.remove(&fd).is_none() {
-                    return Err(EpollErrorNo::ENOENT);
+                    return Err(ErrorNo::ENOENT);
                 }
             }
         }

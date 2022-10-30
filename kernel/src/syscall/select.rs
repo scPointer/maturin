@@ -3,7 +3,6 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use base_file::File;
-use epoll::{EpollEvent, EpollCtl, EpollFile, EpollErrorNo};
 use lock::MutexGuard;
 use syscall::ErrorNo;
 
@@ -142,77 +141,3 @@ pub fn sys_pselect6(
         }
     }
 }
-
-/// 创建一个 epoll 文件
-pub fn sys_epoll_create(_flags: usize) -> SysResult {
-    info!("epoll create");
-    let task = get_current_task().unwrap();
-    let mut fd_manager = task.fd_manager.lock();
-    let epoll_file = EpollFile::new();
-    fd_manager.push(Arc::new(epoll_file)).map_err(|_| ErrorNo::EMFILE)
-}
-
-pub fn sys_epoll_ctl(epfd: i32, op: i32, fd: i32, event: *const EpollEvent) -> SysResult {
-    info!("epoll ctl: epfd {epfd} op {op} fd {fd}");
-    let task = get_current_task().unwrap();
-    let mut task_vm = task.vm.lock();
-    let fd_manager = task.fd_manager.lock();
-    let event = if task_vm.manually_alloc_type(event).is_err() {
-        return Err(ErrorNo::EFAULT); // 地址不合法
-    } else {
-        unsafe { *event }
-    };
-    let operator = EpollCtl::try_from(op).map_err(|_| ErrorNo::EINVAL)?; // 操作符不合法
-    if let Ok(file) = fd_manager.get_file(epfd as usize) {
-        return if let Some(epoll_file) = file.as_any().downcast_ref::<EpollFile>() {
-            if fd_manager.get_file(fd as usize).is_err() {
-                return Err(ErrorNo::EBADF); // 错误的文件描述符
-            }
-            epoll_file.epoll_ctl(operator, fd, event).map(|_| 0).map_err(|e| match e {
-                EpollErrorNo::EEXIST => ErrorNo::EEXIST,
-                EpollErrorNo::ENOENT => ErrorNo::ENOENT,
-            })
-        } else {
-            Err(ErrorNo::EBADF) // 错误的文件描述符
-        }
-    }
-    Err(ErrorNo::EBADF) // 错误的文件描述符
-}
-
-pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout: i32) -> SysResult {
-    info!("epoll wait: epfd {epfd} event {event:?} maxevents {maxevents} timeout {timeout}");
-    let task = get_current_task().unwrap();
-    let mut task_vm = task.vm.lock();
-    if task_vm.manually_alloc_type(event).is_err() {
-        return Err(ErrorNo::EFAULT); // 地址不合法
-    };
-    let fd_manager = task.fd_manager.lock();
-    let epoll_file = if let Ok(file) = fd_manager.get_file(epfd as usize) {
-        if let Some(epoll_file) = file.as_any().downcast_ref::<EpollFile>() {
-            epoll_file.clone()
-        } else {
-            return Err(ErrorNo::EBADF) // 错误的文件描述符
-        }
-    } else {
-        return Err(ErrorNo::EBADF) // 错误的文件描述符
-    };
-
-    //类似poll
-    let expire_time = if timeout >= 0 {
-        timer::get_time_ms() + timeout as usize
-    } else {
-        usize::MAX // 没有过期时间
-    };
-    drop(fd_manager);
-    drop(task_vm); // select 的时间可能很长，之后不用 vm 了就及时释放
-    let ret_events = epoll_file.epoll_wait(expire_time);
-    for i in 0..ret_events.len() {
-        // 回写epollevent,
-        unsafe {
-            (*event.add(i)).events = ret_events[i].events;
-            (*event.add(i)).data = ret_events[i].data;
-        }
-    }
-    Ok(ret_events.len())
-}
-

@@ -13,6 +13,7 @@ use spin::Once;
 pub trait TaskTrampoline: Sync {
     fn suspend_current_task(&self);
     fn get_file(&self, fd: usize) -> Option<Arc<dyn File>>;
+    fn push_file(&self, file: Arc<dyn File>) -> Result<usize, u64>;
     fn manually_alloc_user_str(&self, buf: *const u8, len: usize) -> Result<(), u64>;
     fn manually_alloc_range(&self, start_vaddr: usize, end_vaddr: usize) -> Result<(), u64>;
 }
@@ -32,6 +33,11 @@ pub fn suspend_current_task() {
 /// 从当前任务的文件描述符中找到指定文件。
 pub fn get_file(fd: usize) -> Option<Arc<dyn File>> {
     TASK.get().unwrap().get_file(fd)
+}
+
+/// 插入一个新文件，返回对应的文件描述符。
+pub fn push_file(file: Arc<dyn File>) -> Result<usize, u64> {
+    TASK.get().unwrap().push_file(file)
 }
 
 /// 检查一段用户地址空间传来的字符串是否已分配空间，如果未分配则强制分配它

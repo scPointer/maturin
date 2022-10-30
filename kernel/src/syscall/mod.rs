@@ -59,9 +59,9 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
 
     let result = match syscall_id {
         SyscallNo::GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
-        SyscallNo::EPOLL_CREATE => sys_epoll_create(args[0]),
-        SyscallNo::EPOLL_CTL => sys_epoll_ctl(args[0] as i32, args[1] as i32, args[2] as i32, args[3] as *const EpollEvent),
-        SyscallNo::EPOLL_WAIT => sys_epoll_wait(args[0] as i32, args[1] as *mut EpollEvent, args[2] as i32, args[3] as i32),
+        SyscallNo::EPOLL_CREATE => epoll::sys_epoll_create(args[0]),
+        SyscallNo::EPOLL_CTL => epoll::sys_epoll_ctl(args[0] as i32, args[1] as i32, args[2] as i32, args[3] as *const EpollEvent),
+        SyscallNo::EPOLL_WAIT => epoll::sys_epoll_wait(args[0] as i32, args[1] as *mut EpollEvent, args[2] as i32, args[3] as i32),
         SyscallNo::DUP => sys_dup(args[0]),
         SyscallNo::DUP3 => sys_dup3(args[0], args[1]),
         SyscallNo::FCNTL64 => sys_fcntl64(args[0], args[1], args[2]),
