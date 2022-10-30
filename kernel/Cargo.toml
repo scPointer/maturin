@@ -27,6 +27,7 @@ numeric-enum-macro = { path = "../dependencies/numeric-enum-macro" }
 syscall = { path = "../syscall" }
 epoll = { path = "../epoll" }
 base-file = { path = "../base-file" }
+bitset = { path = "../bitset" }
 task-trampoline = { path = "../task-trampoline" }
 poll = { path = "../poll" }
 select = { path = "../select" }

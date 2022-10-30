@@ -4,13 +4,10 @@
 
 extern crate alloc;
 
-mod shadow_bitset;
-
-pub use shadow_bitset::ShadowBitset;
-
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use base_file::File;
+use bitset::ShadowBitset;
 use syscall::ErrorNo;
 use task_trampoline::{get_file, manually_alloc_range, manually_alloc_type, suspend_current_task};
 

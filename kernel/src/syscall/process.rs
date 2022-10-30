@@ -7,7 +7,7 @@ use super::{
 use crate::{
     constants::{SIGSET_SIZE_IN_BYTE, USER_STACK_SIZE, USER_VIRT_ADDR_LIMIT, USE_MSYNC},
     file::{SeekFrom, BackEndFile},
-    signal::{send_signal, Bitset, SigAction, SignalNo},
+    signal::{send_signal, SigAction, SignalNo},
     memory::{page_offset, align_up, align_down},
     task::{
         exec_new_task, exit_current_task, get_current_task, push_task_to_scheduler, signal_return,
@@ -17,6 +17,7 @@ use crate::{
     syscall::flags::SysInfo,
 };
 use core::mem::size_of;
+use bitset::Bitset;
 use syscall::ErrorNo;
 use timer::get_time_sec;
 
