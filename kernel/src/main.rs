@@ -73,6 +73,20 @@ impl task_trampoline::TaskTrampoline for TaskTrampoline {
             None
         }
     }
+
+    fn manually_alloc_user_str(&self, buf: *const u8, len: usize) -> Result<(), u64> {
+        let task = task::get_current_task().unwrap();
+        let mut task_vm = task.vm.lock();
+        // TODO: 考虑是否要将错误类型返回给用户
+        task_vm.manually_alloc_user_str(buf, len).map_err(|_| 1)
+    }
+
+    fn manually_alloc_range(&self, start_vaddr: usize, end_vaddr: usize) -> Result<(), u64> {
+        let task = task::get_current_task().unwrap();
+        let mut task_vm = task.vm.lock();
+        // TODO: 考虑是否要将错误类型返回给用户
+        task_vm.manually_alloc_range(start_vaddr, end_vaddr).map_err(|_| 1)
+    }
 }
 
 #[no_mangle]

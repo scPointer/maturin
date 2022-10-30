@@ -9,4 +9,5 @@ edition = "2021"
 bitflags = "= 1.3.2"
 base-file = { path = "../base-file" }
 task-trampoline = { path = "../task-trampoline" }
+syscall = { path = "../syscall" }
 timer = { path = "../timer" }

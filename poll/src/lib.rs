@@ -4,9 +4,10 @@ extern crate alloc;
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use core::mem::size_of;
 use base_file::File;
 use bitflags::bitflags;
-use task_trampoline::{get_file, suspend_current_task};
+use task_trampoline::{get_file, manually_alloc_type, manually_alloc_user_str, suspend_current_task};
 
 bitflags! {
     /// poll 和 ppoll 用到的选项，表示对应在文件上等待或者发生过的事件
@@ -62,7 +63,7 @@ fn poll(file: Arc<dyn File>, events: PollEvents) -> PollEvents {
 /// * `expire_time`: 超时的时间戳，会与 `get_time()` 接口返回的时间戳比较。
 ///
 /// returns: (usize, Vec<PollFd>) 第一个参数遵守 ppoll 系统调用的返回值约定，第二个参数为返回的 `PollFd` 列表
-pub fn ppoll(mut fds: Vec<PollFd>, expire_time: usize) -> (usize, Vec<PollFd>) {
+fn ppoll(mut fds: Vec<PollFd>, expire_time: usize) -> (usize, Vec<PollFd>) {
     loop {
         // 已触发的 fd
         let mut set: usize = 0;
@@ -87,4 +88,44 @@ pub fn ppoll(mut fds: Vec<PollFd>, expire_time: usize) -> (usize, Vec<PollFd>) {
         }
         suspend_current_task();
     }
+}
+
+pub fn sys_ppoll(
+    ufds: *mut PollFd,
+    nfds: usize,
+    timeout: *const timer::TimeSpec, // ppoll 不会更新 timeout 的值，而 poll 会
+    _sigmask: *const usize
+) -> Result<usize, syscall::ErrorNo> {
+    // TODO: MemorySet 模块化之后，是否可以不再依赖 task-trampoline 的 manually_alloc_user_str 接口
+    // let task = get_current_task().unwrap();
+    // let mut task_vm = task.vm.lock();
+    // if task_vm.manually_alloc_user_str(ufds as *const u8, nfds * size_of::<PollFd>()).is_err() {
+    //     return Err(syscall::ErrorNo::EFAULT); // 无效地址
+    // }
+    if manually_alloc_user_str(ufds as *const u8, nfds * size_of::<PollFd>()).is_err() {
+        return Err(syscall::ErrorNo::EFAULT); // 无效地址
+    }
+    let mut fds: Vec<PollFd> = Vec::new();
+    for i in 0..nfds {
+        unsafe { fds.push(*ufds.add(i)); }
+    }
+    // 过期时间
+    // 这里用**时钟周期数**来记录，足够精确的同时 usize 也能存下。实际用微秒或者纳秒应该也没问题。
+    let expire_time = if timeout as usize != 0 {
+        // if task_vm.manually_alloc_type(timeout).is_err() {
+        //     return Err(syscall::ErrorNo::EFAULT); // 无效地址
+        // }
+        if manually_alloc_type(timeout).is_err() {
+            return Err(syscall::ErrorNo::EFAULT); // 无效地址
+        }
+        timer::get_time() + unsafe { (*timeout).get_ticks() }
+    } else {
+        usize::MAX // 没有过期时间
+    };
+    // drop(task_vm); // select 的时间可能很长，之后不用 vm 了就及时释放
+    let (result, ret_fds) = ppoll(fds, expire_time);
+    for i in 0..ret_fds.len() {
+        unsafe { *ufds.add(i) = ret_fds[i]; }
+    }
+    Ok(result)
 }

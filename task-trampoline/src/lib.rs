@@ -5,6 +5,7 @@
 extern crate alloc;
 
 use alloc::sync::Arc;
+use core::mem::size_of;
 use base_file::File;
 use spin::Once;
 
@@ -12,6 +13,8 @@ use spin::Once;
 pub trait TaskTrampoline: Sync {
     fn suspend_current_task(&self);
     fn get_file(&self, fd: usize) -> Option<Arc<dyn File>>;
+    fn manually_alloc_user_str(&self, buf: *const u8, len: usize) -> Result<(), u64>;
+    fn manually_alloc_range(&self, start_vaddr: usize, end_vaddr: usize) -> Result<(), u64>;
 }
 
 static TASK: Once<&'static dyn TaskTrampoline> = Once::new();
@@ -29,4 +32,21 @@ pub fn suspend_current_task() {
 /// 从当前任务的文件描述符中找到指定文件。
 pub fn get_file(fd: usize) -> Option<Arc<dyn File>> {
     TASK.get().unwrap().get_file(fd)
+}
+
+/// 检查一段用户地址空间传来的字符串是否已分配空间，如果未分配则强制分配它
+pub fn manually_alloc_user_str(buf: *const u8, len: usize) -> Result<(), u64> {
+    TASK.get().unwrap().manually_alloc_user_str(buf, len)
+}
+
+/// 检查一段地址是否每一页都已分配空间，如果未分配则强制分配它
+pub fn manually_alloc_range(start_vaddr: usize, end_vaddr: usize) -> Result<(), u64> {
+    TASK.get().unwrap().manually_alloc_range(start_vaddr, end_vaddr)
+}
+
+/// 检查一个放在某个地址上的结构是否分配空间，如果未分配则强制分配它
+pub fn manually_alloc_type<T>(user_obj: *const T) -> Result<(), u64> {
+    let start_vaddr = user_obj as usize;
+    let end_vaddr = start_vaddr + size_of::<T>() - 1;
+    TASK.get().unwrap().manually_alloc_range(start_vaddr, end_vaddr)
 }

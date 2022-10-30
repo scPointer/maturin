@@ -109,7 +109,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[4] as *const TimeSpec,
             args[5] as *const usize,
         ),
-        SyscallNo::PPOLL => sys_ppoll(
+        SyscallNo::PPOLL => poll::sys_ppoll(
             args[0] as *mut PollFd,
             args[1],
             args[2] as *const TimeSpec,

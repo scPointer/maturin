@@ -2,11 +2,9 @@
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use core::mem::size_of;
 use base_file::File;
 use epoll::{EpollEvent, EpollCtl, EpollFile, EpollErrorNo};
 use lock::MutexGuard;
-use poll::{PollFd, ppoll};
 use syscall::ErrorNo;
 
 use crate::constants::FD_LIMIT_HARD;
@@ -143,41 +141,6 @@ pub fn sys_pselect6(
             return Ok(0);
         }
     }
-}
-
-pub fn sys_ppoll(
-    ufds: *mut PollFd,
-    nfds: usize,
-    timeout: *const timer::TimeSpec, // ppoll 不会更新 timeout 的值，而 poll 会
-    _sigmask: *const usize
-) -> SysResult {
-    //if nfds > 0 { return Ok(1); }
-    let task = get_current_task().unwrap();
-    let mut task_vm = task.vm.lock();
-    debug!("ppoll ufds at {:x} nfds {} timeout at {:x}", ufds as usize, nfds, timeout as usize);
-    if task_vm.manually_alloc_user_str(ufds as *const u8, nfds * size_of::<PollFd>()).is_err() {
-        return Err(ErrorNo::EFAULT); // 无效地址
-    }
-    let mut fds: Vec<PollFd> = Vec::new();
-    for i in 0..nfds {
-        unsafe { fds.push(*ufds.add(i)); }
-    }
-    // 过期时间
-    // 这里用**时钟周期数**来记录，足够精确的同时 usize 也能存下。实际用微秒或者纳秒应该也没问题。
-    let expire_time = if timeout as usize != 0 {
-        if task_vm.manually_alloc_type(timeout).is_err() {
-            return Err(ErrorNo::EFAULT); // 无效地址
-        }
-        timer::get_time() + unsafe { (*timeout).get_ticks() }
-    } else {
-        usize::MAX // 没有过期时间
-    };
-    drop(task_vm); // select 的时间可能很长，之后不用 vm 了就及时释放
-    let (result, ret_fds) = ppoll(fds, expire_time);
-    for i in 0..ret_fds.len() {
-        unsafe { *ufds.add(i) = ret_fds[i]; }
-    }
-    Ok(result)
 }
 
 /// 创建一个 epoll 文件
