@@ -10,7 +10,7 @@
 //! > 这样统计的时间仍然是对的
 
 use crate::signal::{send_signal, SignalNo};
-use crate::timer::{get_time_us, TimeVal};
+use timer::{get_time_us, TimeVal};
 
 /// 进程的时间统计，基于 lmbench 需要，主要用于 sys_getrusage
 pub struct TimeStat {

@@ -1,7 +1,5 @@
 //! 等待机制，记录线程是否等待在某个事件
 
-use crate::timer::get_time_us;
-
 pub trait Waiter: Send + Sync {
     /// 唤醒这个waiter
     fn wake(&mut self);
@@ -34,7 +32,7 @@ impl Waiter for FutexWaiter {
         if self.woken { // 主动唤醒
             true
         } else { // 超时唤醒
-            get_time_us() >= self.timed_out_us
+            timer::get_time_us() >= self.timed_out_us
         }
     }
 }

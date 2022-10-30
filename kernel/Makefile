@@ -4,6 +4,7 @@ PLATFORM ?= qemu
 SMP ?= 1
 MACHINE ?= virt
 SBI ?= default
+SIFIVE ?= y
 
 OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy
@@ -33,6 +34,10 @@ endif
 
 ifndef ($(ONLINE))
 build_args += --offline
+endif
+
+ifeq ($(SIFIVE), y)
+build_args += --features sifive
 endif
 
 qemu_args := -nographic -smp $(SMP) -m 8G

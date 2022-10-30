@@ -1,9 +1,12 @@
 //! 和 RISC-V 时间处理相关的方法
 
-use crate::{arch::set_timer, constants::CLOCK_FREQ};
+#![no_std]
+
 use core::ops::Add;
 use riscv::register::time;
 
+/// 时钟频率，和平台有关
+pub const CLOCK_FREQ: usize = if cfg!(feature = "sifive") { 100_0000 } else { 1250_0000 };
 /// 每秒的时钟中断数
 pub const INTERRUPT_PER_SEC: usize = 10;
 /// 每微秒的时钟周期数
@@ -44,13 +47,9 @@ pub fn get_time_f64() -> f64 {
     get_time() as f64 / CLOCK_FREQ as f64
 }
 
-/// 设置下一次时间中断
-pub fn set_next_trigger() {
-    set_timer(
-        (get_time() + CLOCK_FREQ / INTERRUPT_PER_SEC)
-            .try_into()
-            .unwrap(),
-    );
+/// 获取下一次中断时间
+pub fn get_next_trigger() -> u64 {
+    (get_time() + CLOCK_FREQ / INTERRUPT_PER_SEC).try_into().unwrap()
 }
 
 /// sys_nanosleep / sys_utimensat 中指定的结构体类型

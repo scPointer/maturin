@@ -6,7 +6,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use base_file::File;
 use bitflags::bitflags;
-use task_trampoline::{get_file, get_time, suspend_current_task};
+use task_trampoline::{get_file, suspend_current_task};
 
 bitflags! {
     /// poll 和 ppoll 用到的选项，表示对应在文件上等待或者发生过的事件
@@ -82,7 +82,7 @@ pub fn ppoll(mut fds: Vec<PollFd>, expire_time: usize) -> (usize, Vec<PollFd>) {
             return (set, fds);
         }
         // 否则暂时 block 住
-        if get_time() > expire_time {
+        if timer::get_time() > expire_time {
             return (0, fds);
         }
         suspend_current_task();

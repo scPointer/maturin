@@ -16,9 +16,9 @@ use flags::{Flags, FutexFlag};
 use lock::Mutex;
 use alloc::boxed::Box;
 use syscall::ErrorNo;
+use timer::{TimeSpec, TimeVal};
 use super::{sys_gettid, SysResult};
 use crate::task::{get_current_task, suspend_current_task};
-use crate::timer::{TimeSpec, TimeVal};
 
 
 static FCOUNT: Mutex<usize> = Mutex::new(0);

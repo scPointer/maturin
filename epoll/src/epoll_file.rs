@@ -5,7 +5,7 @@ use lock::Mutex;
 use alloc::sync::Arc;
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
-use task_trampoline::{get_file, get_time_ms, suspend_current_task};
+use task_trampoline::{get_file, suspend_current_task};
 use crate::{EpollEvent, EpollCtl, EpollErrorNo, EpollEventType};
 
 /// 用作 epoll 的文件
@@ -126,7 +126,7 @@ impl EpollFile {
                 return ret_events;
             }
             // 否则暂时 block 住
-            if get_time_ms() > expire_time {
+            if timer::get_time_ms() > expire_time {
                 // 超时返回0
                 return ret_events;
             }

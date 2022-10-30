@@ -34,12 +34,12 @@ use process::*;
 use select::*;
 use socket::*;
 use syscall_no::SyscallNo;
+use timer::{TimeSpec, TimeVal};
 use times::*;
 
 use crate::file::FsStat;
 use crate::signal::SigAction;
 use crate::task::ITimerVal;
-use crate::timer::{TimeSpec, TimeVal};
 
 type SysResult = Result<usize, syscall::ErrorNo>;
 

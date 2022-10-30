@@ -30,7 +30,6 @@ pub mod signal;
 pub mod syscall;
 pub mod task;
 pub mod testcases;
-pub mod timer;
 pub mod trap;
 pub mod utils;
 
@@ -73,14 +72,6 @@ impl task_trampoline::TaskTrampoline for TaskTrampoline {
         } else {
             None
         }
-    }
-
-    fn get_time(&self) -> usize {
-        timer::get_time()
-    }
-
-    fn get_time_ms(&self) -> usize {
-        timer::get_time_ms()
     }
 }
 

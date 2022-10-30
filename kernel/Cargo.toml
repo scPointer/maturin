@@ -29,3 +29,8 @@ epoll = { path = "../epoll" }
 base-file = { path = "../base-file" }
 task-trampoline = { path = "../task-trampoline" }
 poll = { path = "../poll" }
+timer = { path = "../timer" }
+
+
+[features]
+sifive = ["timer/sifive"]

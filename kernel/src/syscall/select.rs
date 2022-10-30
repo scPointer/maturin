@@ -14,7 +14,6 @@ use crate::file::FdManager;
 use crate::memory::MemorySet;
 use crate::signal::ShadowBitset;
 use crate::task::{get_current_task, suspend_current_task};
-use crate::timer::{get_time, get_time_ms, TimeSpec};
 
 use super::SysResult;
 
@@ -61,7 +60,7 @@ pub fn sys_pselect6(
     readfds: *mut usize,
     writefds: *mut usize,
     exceptfds: *mut usize,
-    timeout: *const TimeSpec, // pselect 不会更新 timeout 的值，而 select 会
+    timeout: *const timer::TimeSpec, // pselect 不会更新 timeout 的值，而 select 会
     _sigmask: *const usize,
 ) -> SysResult {
     let task = get_current_task().unwrap();
@@ -80,7 +79,7 @@ pub fn sys_pselect6(
         if task_vm.manually_alloc_type(timeout).is_err() {
             return Err(ErrorNo::EFAULT); // 无效地址
         }
-        get_time() + unsafe { (*timeout).get_ticks() }
+        timer::get_time() + unsafe { (*timeout).get_ticks() }
     } else {
         usize::MAX // 没有过期时间
     };
@@ -92,7 +91,7 @@ pub fn sys_pselect6(
         wfd,
         efd,
         expire_time,
-        get_time()
+        timer::get_time()
     );
 
     drop(task_vm); // select 的时间可能很长，之后不用 vm 了就及时释放
@@ -139,7 +138,7 @@ pub fn sys_pselect6(
         }
         // 否则暂时 block 住
         suspend_current_task();
-        if get_time() > expire_time {
+        if timer::get_time() > expire_time {
             // 检查超时
             return Ok(0);
         }
@@ -149,7 +148,7 @@ pub fn sys_pselect6(
 pub fn sys_ppoll(
     ufds: *mut PollFd,
     nfds: usize,
-    timeout: *const TimeSpec, // ppoll 不会更新 timeout 的值，而 poll 会
+    timeout: *const timer::TimeSpec, // ppoll 不会更新 timeout 的值，而 poll 会
     _sigmask: *const usize
 ) -> SysResult {
     //if nfds > 0 { return Ok(1); }
@@ -169,7 +168,7 @@ pub fn sys_ppoll(
         if task_vm.manually_alloc_type(timeout).is_err() {
             return Err(ErrorNo::EFAULT); // 无效地址
         }
-        get_time() + unsafe { (*timeout).get_ticks() }
+        timer::get_time() + unsafe { (*timeout).get_ticks() }
     } else {
         usize::MAX // 没有过期时间
     };
@@ -237,7 +236,7 @@ pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout
 
     //类似poll
     let expire_time = if timeout >= 0 {
-        get_time_ms() + timeout as usize
+        timer::get_time_ms() + timeout as usize
     } else {
         usize::MAX // 没有过期时间
     };
