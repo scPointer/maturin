@@ -16,8 +16,6 @@ mod bitset;
 pub use bitset::Bitset;
 mod long_bitset;
 pub use long_bitset::LongBitset;
-mod shadow_bitset;
-pub use shadow_bitset::ShadowBitset;
 mod tid2signals;
 use crate::constants::SIGSET_SIZE_IN_BIT;
 pub use tid2signals::{get_signals_from_tid, global_logoff_signals, global_register_signals};
