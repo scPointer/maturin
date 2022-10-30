@@ -1,0 +1,13 @@
+[package]
+name = "select"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+base-file = { path = "../base-file" }
+lock = { path = "../dependencies/kernel-sync" }
+syscall = { path = "../syscall" }
+task-trampoline = { path = "../task-trampoline" }
+timer = { path = "../timer" }

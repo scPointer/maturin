@@ -10,6 +10,9 @@ use fatfs::SeekFrom;
 pub use kstat::{Kstat, StMode, normal_file_mode};
 pub use open_flags::OpenFlags;
 
+/// 最大允许的文件描述符数量
+pub const FD_LIMIT_HARD: usize = 256;
+
 /// 文件类抽象
 pub trait File: Send + Sync + AsAny {
     /// 读文件内容到 buf，返回读到的字节数。

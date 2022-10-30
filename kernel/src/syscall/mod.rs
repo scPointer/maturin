@@ -16,7 +16,6 @@ mod fs;
 mod futex;
 mod loops;
 mod process;
-mod select;
 mod socket;
 mod syscall_no;
 mod times;
@@ -31,7 +30,6 @@ use poll::PollFd;
 use loops::*;
 pub use loops::clear_loop_checker;
 use process::*;
-use select::*;
 use socket::*;
 use syscall_no::SyscallNo;
 use timer::{TimeSpec, TimeVal};
@@ -101,7 +99,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::WRITEV => sys_writev(args[0], args[1] as *const IoVec, args[2]),
         SyscallNo::PREAD => sys_pread(args[0], args[1] as *mut u8, args[2], args[3]),
         SyscallNo::SENDFILE64 => sys_sendfile64(args[0], args[1], args[2] as *mut usize, args[3]),
-        SyscallNo::PSELECT6 => sys_pselect6(
+        SyscallNo::PSELECT6 => select::sys_pselect6(
             args[0],
             args[1] as *mut usize,
             args[2] as *mut usize,
