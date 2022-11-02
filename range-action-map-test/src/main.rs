@@ -1,3 +1,5 @@
+#![feature(btree_drain_filter)]
+
 mod range_action_map;
 use std::collections::btree_map::Range;
 mod resource;
@@ -7,14 +9,14 @@ use range_action_map::*;
 
 #[derive(Debug)]
 pub struct Seg {
-    pub start: CmpType,
-    pub end: CmpType,
+    pub start: usize,
+    pub end: usize,
     pub flags: PTEFlags,
     frames: Vec<Frame>,
 }
 
 impl Seg {
-    pub fn new(start: CmpType, end: CmpType, flags: PTEFlags) -> Self {
+    pub fn new(start: usize, end: usize, flags: PTEFlags) -> Self {
         let mut frames: Vec<Frame> = Vec::new();
         for _ in start..end {
             frames.push(Frame::alloc());
@@ -23,7 +25,7 @@ impl Seg {
             start,
             end,
             flags,
-            frames 
+            frames,
         }
     }
 }
@@ -32,8 +34,8 @@ impl Segment for Seg {
     fn remove(&mut self, args: ArgsType) {
         self.frames.clear();
     }
-    fn split(&mut self, pos: CmpType, args: ArgsType) -> Self {
-        let right_frames = self.frames.drain(pos-self.start..).collect();
+    fn split(&mut self, pos: usize, args: ArgsType) -> Self {
+        let right_frames = self.frames.drain(pos - self.start..).collect();
         let old_end = self.end;
         self.end = pos;
         Self {
@@ -48,31 +50,33 @@ impl Segment for Seg {
     }
 }
 
-pub fn test_find(ram: &mut RangeActionMap<Seg>, pos: CmpType) {
+pub fn test_find(ram: &mut RangeActionMap<Seg>, pos: usize) -> bool {
     println!("try find seg include {pos}");
     if let Some(seg) = ram.find(pos) {
         println!("find seg {} {}", seg.start, seg.end);
+        true
     } else {
         println!("seg not found");
+        false
     }
 }
 
-fn main() {
-}
+fn main() {}
 
 #[test]
 fn test_ram() {
     let mut ram = RangeActionMap::<Seg>::new(ArgsType::default());
-    ram.insert_raw(3, 7, Seg::new(3, 7, PTE_RU()));
-    test_find(&mut ram, 2);
-    test_find(&mut ram, 5);
-    test_find(&mut ram, 7);
-    
+    unsafe {
+        ram.insert_raw(3, 7, Seg::new(3, 7, PTE_RU()));
+    }
+    assert_eq!(test_find(&mut ram, 2), false);
+    assert_eq!(test_find(&mut ram, 5), true);
+    assert_eq!(test_find(&mut ram, 7), false);
 }
 
 #[test]
 fn test_seg() {
-    let mut seg = Seg::new(5,10, PTE_RU());
+    let mut seg = Seg::new(5, 10, PTE_RU());
     seg.shrink_to_left(8, ArgsType::default());
     assert_eq!(seg.start, 5);
     assert_eq!(seg.end, 8);
@@ -81,7 +85,7 @@ fn test_seg() {
     //println!("{:#?}", seg);
     assert_eq!(seg.start, 7);
     assert_eq!(seg.end, 8);
-    let mut seg = Seg::new(1,100, PTE_RU());
+    let mut seg = Seg::new(1, 100, PTE_RU());
     let mut rseg = seg.split_and_remove_middle(6, 13, ArgsType::default());
     assert_eq!(seg.start, 1);
     assert_eq!(seg.end, 6);

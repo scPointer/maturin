@@ -1,7 +1,7 @@
 //! 模拟一个段内保存的资源，如 pma
 
-use std::vec::Vec;
 use std::sync::Mutex;
+use std::vec::Vec;
 
 pub struct FrameAllocator {
     start: usize,
@@ -46,5 +46,5 @@ impl Drop for Frame {
 }
 
 lazy_static::lazy_static! {
-    static ref FRAME_ALLOCATOR: Mutex<FrameAllocator> = Mutex::new(FrameAllocator::new()); 
+    static ref FRAME_ALLOCATOR: Mutex<FrameAllocator> = Mutex::new(FrameAllocator::new());
 }
