@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, env::Args};
 //use alloc::collections::BTreeMap;
 
 #[allow(dead_code)]
@@ -8,16 +8,20 @@ pub use pteflags::*;
 mod segment;
 pub use segment::Segment;
 mod types;
+mod outer;
+pub use outer::*;
 pub use types::*;
 
 pub struct RangeActionMap<SegmentType: Segment> {
     segments: BTreeMap<CmpType, RangeArea<SegmentType>>,
+    args: ArgsType,
 }
 
 pub struct RangeArea<SegmentType: Segment> {
     start: CmpType,
     end: CmpType,
     pub segment: SegmentType,
+    
 }
 
 impl<SegmentType: Segment> RangeArea<SegmentType> {
@@ -29,9 +33,10 @@ impl<SegmentType: Segment> RangeArea<SegmentType> {
 
 impl<SegmentType: Segment> RangeActionMap<SegmentType> {
     /// 创建一个空的区间树
-    pub fn new() -> Self {
+    pub fn new(args: ArgsType) -> Self {
         Self {
             segments: BTreeMap::new(),
+            args,
         }
     }
     /// 插入一段区间，不检查

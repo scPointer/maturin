@@ -29,10 +29,10 @@ impl Seg {
 }
 
 impl Segment for Seg {
-    fn remove(&mut self) {
+    fn remove(&mut self, args: ArgsType) {
         self.frames.clear();
     }
-    fn split(&mut self, pos: CmpType) -> Self {
+    fn split(&mut self, pos: CmpType, args: ArgsType) -> Self {
         let right_frames = self.frames.drain(pos-self.start..).collect();
         let old_end = self.end;
         self.end = pos;
@@ -43,7 +43,7 @@ impl Segment for Seg {
             frames: right_frames,
         }
     }
-    fn modify(&mut self, new_flag: IdentType) {
+    fn modify(&mut self, new_flag: IdentType, args: ArgsType) {
         self.flags = new_flag
     }
 }
@@ -62,7 +62,7 @@ fn main() {
 
 #[test]
 fn test_ram() {
-    let mut ram = RangeActionMap::<Seg>::new();
+    let mut ram = RangeActionMap::<Seg>::new(ArgsType::default());
     ram.insert_raw(3, 7, Seg::new(3, 7, PTE_RU()));
     test_find(&mut ram, 2);
     test_find(&mut ram, 5);
@@ -73,35 +73,35 @@ fn test_ram() {
 #[test]
 fn test_seg() {
     let mut seg = Seg::new(5,10, PTE_RU());
-    seg.shrink_to_left(8);
+    seg.shrink_to_left(8, ArgsType::default());
     assert_eq!(seg.start, 5);
     assert_eq!(seg.end, 8);
     //println!("{:#?}", seg);
-    seg.shrink_to_right(7);
+    seg.shrink_to_right(7, ArgsType::default());
     //println!("{:#?}", seg);
     assert_eq!(seg.start, 7);
     assert_eq!(seg.end, 8);
     let mut seg = Seg::new(1,100, PTE_RU());
-    let mut rseg = seg.split_and_remove_middle(6, 13);
+    let mut rseg = seg.split_and_remove_middle(6, 13, ArgsType::default());
     assert_eq!(seg.start, 1);
     assert_eq!(seg.end, 6);
     assert_eq!(rseg.start, 13);
     assert_eq!(rseg.end, 100);
-    rseg.modify(PTE_RWU());
+    rseg.modify(PTE_RWU(), ArgsType::default());
     assert_eq!(rseg.start, 13);
     assert_eq!(rseg.end, 100);
     assert_eq!(rseg.flags, PTE_RWU());
-    let rrseg = rseg.modify_left(77, PTE_RXU());
+    let rrseg = rseg.modify_left(77, PTE_RXU(), ArgsType::default());
     assert_eq!(rseg.flags, PTE_RXU());
     assert_eq!(rseg.end, 77);
     assert_eq!(rrseg.flags, PTE_RWU());
-    let rrseg = rseg.modify_right(72, PTE_U());
+    let rrseg = rseg.modify_right(72, PTE_U(), ArgsType::default());
     assert_eq!(rseg.flags, PTE_RXU());
     assert_eq!(rseg.end, 72);
     assert_eq!(rrseg.flags, PTE_U());
     assert_eq!(rrseg.start, 72);
     assert_eq!(rrseg.end, 77);
-    let (mrseg, rrseg) = rseg.modify_middle(33, 55, PTE_NORMAL());
+    let (mrseg, rrseg) = rseg.modify_middle(33, 55, PTE_NORMAL(), ArgsType::default());
     assert_eq!(rseg.flags, PTE_RXU());
     assert_eq!(rseg.end, 33);
     assert_eq!(mrseg.flags, PTE_NORMAL());
