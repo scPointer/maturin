@@ -61,17 +61,17 @@ pub fn test_find(ram: &mut RangeActionMap<Seg>, pos: usize) -> bool {
     }
 }
 
-fn main() {}
+fn main() { }
 
 #[test]
 fn test_ram() {
     let mut ram = RangeActionMap::<Seg>::new(ArgsType::default());
-    unsafe {
-        ram.insert_raw(3, 7, Seg::new(3, 7, PTE_RU()));
-    }
-    assert_eq!(test_find(&mut ram, 2), false);
-    assert_eq!(test_find(&mut ram, 5), true);
-    assert_eq!(test_find(&mut ram, 7), false);
+    ram.mmap_fixed(0x3000, 0x7000, Seg::new(0x3000, 0x7000, PTE_RU()), |seg, _|{
+        println!("mapped to {} {}", seg.start, seg.end);
+    });
+    assert_eq!(test_find(&mut ram, 0x2111), false);
+    assert_eq!(test_find(&mut ram, 0x5678), true);
+    assert_eq!(test_find(&mut ram, 0x7000), false);
 }
 
 #[test]
