@@ -33,28 +33,105 @@ impl<SegmentType: Segment> RangeArea<SegmentType> {
     pub fn contains(&self, pos: usize) -> bool {
         self.start <= pos && pos < self.end
     }
-    /*
-    /// 已知区间 [start, end)，其中 self.start < start，询问当前区间与该区间关系
-    pub fn relation_to_right(&self, start: usize, end: usize) -> SegRelation {
-        if self.end <= start {
-            SegRelation::Disjoint
-        } else if self.end < end {
-            SegRelation::Intersect
+    /// 尝试空出[start, end)区间。即删除当前区间中和[start, end)相交的部分。
+    ///
+    /// **注意，这个函数在内部已经 unmap 了对应的区间中的映射，调用后不需要再手动 unmap**。
+    /// 这个函数默认参数中的 start 和 end 是按页对齐的
+    pub fn shrink_or_split_if_overlap(
+        &mut self,
+        start: usize,
+        end: usize,
+        args: ArgsType,
+    ) -> DiffSet<SegmentType> {
+        if end <= self.start || self.end <= start {
+            // 不相交
+            DiffSet::Unchanged
+        } else if start <= self.start && self.end <= end {
+            // 被包含
+            self.segment.remove(args);
+            DiffSet::Removed
+        } else if self.start < start && end < self.end {
+            // 需要分割
+            let old_end = self.end;
+            self.end = start;
+            DiffSet::Splitted(Self {
+                start: end,
+                end: old_end,
+                segment: self.segment.split_and_remove_middle(start, end, args),
+            })
+        } else if end < self.end {
+            // 需要删除前半段
+            self.segment.shrink_to_right(end, args);
+            self.start = end;
+            DiffSet::Shrinked
         } else {
-            SegRelation::Contain
+            // 删除后半段
+            assert_eq!(self.start < start, true); // 最后一种情况一定是后半段重叠
+            self.segment.shrink_to_left(start, args);
+            self.end = start;
+            DiffSet::Shrinked
         }
     }
-    /// 已知区间 [start, end)，其中 self.start >= start，询问当前区间与该区间关系
-    pub fn relation_to_left(&self, _start: usize, end: usize) -> SegRelation {
-        if self.start >= end {
-            SegRelation::Disjoint
-        } else if self.end > end {
-            SegRelation::Intersect
+    /// 尝试修改与 [start, end) 区间相交的部分的权限。
+    /// 如果这一修改导致区间分裂，则分别返回分出的每个区间。
+    pub fn split_and_modify_if_overlap(
+        &mut self,
+        start: usize,
+        end: usize,
+        new_flag: PTEFlags,
+        args: ArgsType,
+    ) -> CutSet<SegmentType> {
+        if end <= self.start || self.end <= start {
+            // 不相交
+            CutSet::Unchanged
+        } else if start <= self.start && self.end <= end {
+            // 被包含
+            self.segment.modify(new_flag, args);
+            CutSet::WholeModified
+        } else if self.start < start && end < self.end {
+            // 包含区间，需要分割三段
+            let pos_left = start; // 第一个裁剪点
+            let pos_right = end; // 第二个裁剪点
+            let (seg_middle, seg_right) = self
+                .segment
+                .modify_middle(pos_left, pos_right, new_flag, args);
+            let old_end = self.end;
+            self.end = start;
+            CutSet::ModifiedMiddle(
+                Self {
+                    start: start,
+                    end: end,
+                    segment: seg_middle,
+                },
+                Self {
+                    start: end,
+                    end: old_end,
+                    segment: seg_right,
+                },
+            )
+        } else if end < self.end {
+            // 前半段相交
+            let old_end = self.end;
+            self.end = start;
+            // 注意返回的是右半段
+            CutSet::ModifiedLeft(Self {
+                start: end,
+                end: old_end,
+                segment: self.segment.modify_left(end, new_flag, args),
+            })
         } else {
-            SegRelation::BeContained
+            // 后半段相交
+            assert_eq!(self.start < start, true); // 最后一种情况一定是后半段重叠
+            let old_end = self.end;
+            self.end = start;
+            CutSet::ModifiedRight(Self {
+                start: end,
+                end: old_end,
+                segment: self.segment.modify_right(end, new_flag, args),
+            })
         }
     }
-     */
+
     /// 当前区间与 [start, end) 是否相交
     pub fn is_overlap_with(&self, start: usize, end: usize) -> bool {
         !(self.end <= start || self.start >= end)
@@ -107,15 +184,90 @@ impl<SegmentType: Segment> RangeActionMap<SegmentType> {
             start
         })
     }
+
+    /// 尝试插入一段数据。如插入成功，返回插入后的起始地址
+    ///
+    /// 必须在 [start, end) 尝试插入。
+    pub fn mmap_fixed(
+        &mut self,
+        start: usize,
+        end: usize,
+        mut segment: SegmentType,
+        f: impl Fn(&mut SegmentType, usize) -> (),
+    ) -> Option<usize> {
+        if start < LOWER_LIMIT || end > UPPER_LIMIT {
+            return None;
+        }
+        // 需要 unmap 掉原本相交的区间
+        self.unmap(start, end);
+        f(&mut segment, start);
+        self.segments.insert(
+            start,
+            RangeArea {
+                start,
+                end,
+                segment,
+            },
+        );
+        Some(start)
+    }
     /// 删除映射，空出 [start, end) 这段区间。
     ///
     /// 这可能导致一些区间被缩短或拆分
     pub fn unmap(&mut self, start: usize, end: usize) {
+        // 注意，这里把相交的区间直接从 self.areas 里取出来了
+        // 所以如果仅相交而不需要删除，就需要放回 self.areas
         let areas_to_be_modified: Vec<RangeArea<SegmentType>> = self
             .segments
             .drain_filter(|_, area| area.is_overlap_with(start, end))
             .map(|(_, v)| v)
             .collect();
+        for mut area in areas_to_be_modified {
+            match area.shrink_or_split_if_overlap(start, end, self.args) {
+                DiffSet::Shrinked => {
+                    println!("try shrink to {:x}, {:x}", area.start, area.end);
+                    self.segments.insert(area.start, area);
+                }
+                DiffSet::Splitted(right) => {
+                    self.segments.insert(area.start, area);
+                    self.segments.insert(right.start, right);
+                }
+                _ => {} // 被删除或者未相交时，就不需要再管了
+            }
+        }
+    }
+    /// 调整所有和已知区间相交的区间，修改 [start, end) 段的权限。
+    /// 它可以直接当作 mprotect 使用
+    pub fn mprotect(&mut self, start: usize, end: usize, new_flags: PTEFlags) {
+        // 注意，这里把相交的区间直接从 self.areas 里取出来了
+        // 所以如果仅相交而不需要删除，就需要放回 self.areas
+        let areas_to_be_modified: Vec<RangeArea<SegmentType>> = self
+            .segments
+            .drain_filter(|_, area| area.is_overlap_with(start, end))
+            .map(|(_, v)| v)
+            .collect();
+        for mut area in areas_to_be_modified {
+            match area.split_and_modify_if_overlap( start, end, new_flags, self.args) {
+                CutSet::WholeModified => {
+                    //info!("mprotect: modified {:x}, {:x}", area.start, area.end);
+                    self.segments.insert(area.start, area);
+                }
+                CutSet::ModifiedLeft(right) | CutSet::ModifiedRight(right) => {
+                    // 在 split_and_modify_if_overlap 内部已经处理过了修改 flags 的部分
+                    // 所以如果有半边相交，可以直接把切出的区间塞回 self.areas
+                    //info!("mprotect: cut and modified one-side {:x}, {:x}", area.start, area.end);
+                    self.segments.insert(area.start, area);
+                    self.segments.insert(right.start, right);
+                }
+                CutSet::ModifiedMiddle(mid, right) => {
+                    //info!("mprotect: cut and modified middle {:x}, {:x}", area.start, area.end);
+                    self.segments.insert(area.start, area);
+                    self.segments.insert(mid.start, mid);
+                    self.segments.insert(right.start, right);
+                }
+                _ => {} // 未相交时，就不需要再管了
+            }
+        }
     }
     pub fn find_free_area(&self, hint: usize, len: usize) -> Option<usize> {
         // 上一段区间的末尾
