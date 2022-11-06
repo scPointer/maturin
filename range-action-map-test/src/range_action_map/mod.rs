@@ -127,18 +127,15 @@ impl<SegmentType: Segment> RangeActionMap<SegmentType> {
         for mut area in areas_to_be_modified {
             match area.split_and_modify_if_overlap(start, end, new_flags, self.args) {
                 CutSet::WholeModified => {
-                    //info!("mprotect: modified {:x}, {:x}", area.start, area.end);
                     self.segments.insert(area.start, area);
                 }
                 CutSet::ModifiedLeft(right) | CutSet::ModifiedRight(right) => {
                     // 在 split_and_modify_if_overlap 内部已经处理过了修改 flags 的部分
                     // 所以如果有半边相交，可以直接把切出的区间塞回 self.areas
-                    //info!("mprotect: cut and modified one-side {:x}, {:x}", area.start, area.end);
                     self.segments.insert(area.start, area);
                     self.segments.insert(right.start, right);
                 }
                 CutSet::ModifiedMiddle(mid, right) => {
-                    //info!("mprotect: cut and modified middle {:x}, {:x}", area.start, area.end);
                     self.segments.insert(area.start, area);
                     self.segments.insert(mid.start, mid);
                     self.segments.insert(right.start, right);
@@ -155,8 +152,12 @@ impl<SegmentType: Segment> RangeActionMap<SegmentType> {
             if last_seg_end + len <= *start {
                 return Some(last_seg_end);
             }
-            last_seg_end = seg.end;
+            last_seg_end = last_seg_end.max(seg.end);
         }
-        None
+        if last_seg_end + len <= UPPER_LIMIT {
+            Some(last_seg_end)
+        } else {
+            None
+        }
     }
 }
