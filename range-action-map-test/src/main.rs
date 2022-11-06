@@ -1,7 +1,11 @@
 mod resource;
 use resource::Frame;
+#[allow(dead_code)]
+#[allow(non_snake_case)]
+mod pteflags;
+pub use pteflags::*;
 
-use range_action_map::{RangeActionMap, Segment, IdentType, ArgsType, PTEFlags};
+use range_action_map::{RangeActionMap, Segment, IdentType, ArgsType};
 
 #[derive(Debug)]
 pub struct Seg {
@@ -42,7 +46,7 @@ impl Segment for Seg {
         }
     }
     fn modify(&mut self, new_flag: IdentType, _args: ArgsType) {
-        self.flags = new_flag
+        self.flags = new_flag.into();
     }
 }
 
@@ -126,21 +130,21 @@ fn test_seg() {
     assert_eq!(seg.end, 6);
     assert_eq!(rseg.start, 13);
     assert_eq!(rseg.end, 100);
-    rseg.modify(PTE_RWU(), ArgsType::default());
+    rseg.modify(PTE_RWU().bits(), ArgsType::default());
     assert_eq!(rseg.start, 13);
     assert_eq!(rseg.end, 100);
     assert_eq!(rseg.flags, PTE_RWU());
-    let rrseg = rseg.modify_left(77, PTE_RXU(), ArgsType::default());
+    let rrseg = rseg.modify_left(77, PTE_RXU().bits(), ArgsType::default());
     assert_eq!(rseg.flags, PTE_RXU());
     assert_eq!(rseg.end, 77);
     assert_eq!(rrseg.flags, PTE_RWU());
-    let rrseg = rseg.modify_right(72, PTE_U(), ArgsType::default());
+    let rrseg = rseg.modify_right(72, PTE_U().bits(), ArgsType::default());
     assert_eq!(rseg.flags, PTE_RXU());
     assert_eq!(rseg.end, 72);
     assert_eq!(rrseg.flags, PTE_U());
     assert_eq!(rrseg.start, 72);
     assert_eq!(rrseg.end, 77);
-    let (mrseg, rrseg) = rseg.modify_middle(33, 55, PTE_NORMAL(), ArgsType::default());
+    let (mrseg, rrseg) = rseg.modify_middle(33, 55, PTE_NORMAL().bits(), ArgsType::default());
     assert_eq!(rseg.flags, PTE_RXU());
     assert_eq!(rseg.end, 33);
     assert_eq!(mrseg.flags, PTE_NORMAL());
@@ -149,29 +153,3 @@ fn test_seg() {
     assert_eq!(rrseg.flags, PTE_RXU());
     assert_eq!(rrseg.start, 55);
 }
-
-#[allow(non_snake_case)]
-pub fn PTE_NORMAL() -> PTEFlags {
-    PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY
-}
-
-#[allow(non_snake_case)]
-pub fn PTE_U() -> PTEFlags {
-    PTE_NORMAL() | PTEFlags::USER
-}
-
-#[allow(non_snake_case)]
-pub fn PTE_RU() -> PTEFlags {
-    PTE_U() | PTEFlags::READ
-}
-
-#[allow(non_snake_case)]
-pub fn PTE_RWU() -> PTEFlags {
-    PTE_RU() | PTEFlags::WRITE
-}
-
-#[allow(non_snake_case)]
-pub fn PTE_RXU() -> PTEFlags {
-    PTE_RU() | PTEFlags::EXECUTE
-}
-

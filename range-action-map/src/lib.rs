@@ -13,10 +13,6 @@ mod external {
 }
 use external::*;
 
-#[allow(dead_code)]
-#[allow(non_snake_case)]
-mod pteflags;
-pub use pteflags::PTEFlags;
 mod segment;
 pub use segment::Segment;
 mod set;
@@ -24,9 +20,7 @@ pub use set::{CutSet, DiffSet};
 mod range_area;
 pub use range_area::RangeArea;
 mod defs;
-pub use defs::*;
-mod outer;
-pub use outer::*;
+pub use defs::{IdentType, ArgsType, LOWER_LIMIT, UPPER_LIMIT};
 
 pub struct RangeActionMap<SegmentType: Segment> {
     segments: BTreeMap<usize, RangeArea<SegmentType>>,
@@ -125,7 +119,7 @@ impl<SegmentType: Segment> RangeActionMap<SegmentType> {
     }
     /// 调整所有和已知区间相交的区间，修改 [start, end) 段的权限。
     /// 它可以直接当作 mprotect 使用
-    pub fn mprotect(&mut self, start: usize, end: usize, new_flags: PTEFlags) {
+    pub fn mprotect(&mut self, start: usize, end: usize, new_flags: IdentType) {
         // 注意，这里把相交的区间直接从 self.areas 里取出来了
         // 所以如果仅相交而不需要删除，就需要放回 self.areas
         let areas_to_be_modified: Vec<RangeArea<SegmentType>> = self

@@ -1,6 +1,6 @@
 //! 一段数据结构内维护的区间，相比用户给出的区间，还需要额外存区间端点
 
-use super::{ArgsType, CutSet, DiffSet, PTEFlags, Segment};
+use super::{ArgsType, CutSet, DiffSet, IdentType, Segment};
 pub struct RangeArea<SegmentType: Segment> {
     pub start: usize,
     pub end: usize,
@@ -58,7 +58,7 @@ impl<SegmentType: Segment> RangeArea<SegmentType> {
         &mut self,
         start: usize,
         end: usize,
-        new_flag: PTEFlags,
+        new_flag: IdentType,
         args: ArgsType,
     ) -> CutSet<SegmentType> {
         if end <= self.start || self.end <= start {

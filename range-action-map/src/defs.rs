@@ -1,7 +1,5 @@
-use super::PageTableRoot;
-
-pub type IdentType = super::PTEFlags;
-pub type ArgsType = (PageTableRoot,);
+pub type IdentType = usize;
+pub type ArgsType = usize;
 
 /// 4 KB
 pub const LOWER_LIMIT: usize = 0x1000;
