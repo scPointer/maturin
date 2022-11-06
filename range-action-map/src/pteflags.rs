@@ -11,23 +11,3 @@ bitflags::bitflags! {
         const DIRTY = 1 << 7;
     }
 }
-
-pub fn PTE_NORMAL() -> PTEFlags {
-    PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY
-}
-
-pub fn PTE_U() -> PTEFlags {
-    PTE_NORMAL() | PTEFlags::USER
-}
-
-pub fn PTE_RU() -> PTEFlags {
-    PTE_U() | PTEFlags::READ
-}
-
-pub fn PTE_RWU() -> PTEFlags {
-    PTE_RU() | PTEFlags::WRITE
-}
-
-pub fn PTE_RXU() -> PTEFlags {
-    PTE_RU() | PTEFlags::EXECUTE
-}

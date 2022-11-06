@@ -1,10 +1,7 @@
-#![feature(btree_drain_filter)]
-
-mod range_action_map;
 mod resource;
 use resource::Frame;
 
-use range_action_map::*;
+use range_action_map::{RangeActionMap, Segment, IdentType, ArgsType, PTEFlags};
 
 #[derive(Debug)]
 pub struct Seg {
@@ -30,10 +27,10 @@ impl Seg {
 }
 
 impl Segment for Seg {
-    fn remove(&mut self, args: ArgsType) {
+    fn remove(&mut self, _args: ArgsType) {
         self.frames.clear();
     }
-    fn split(&mut self, pos: usize, args: ArgsType) -> Self {
+    fn split(&mut self, pos: usize, _args: ArgsType) -> Self {
         let right_frames = self.frames.drain(pos - self.start..).collect();
         let old_end = self.end;
         self.end = pos;
@@ -44,7 +41,7 @@ impl Segment for Seg {
             frames: right_frames,
         }
     }
-    fn modify(&mut self, new_flag: IdentType, args: ArgsType) {
+    fn modify(&mut self, new_flag: IdentType, _args: ArgsType) {
         self.flags = new_flag
     }
 }
@@ -152,3 +149,29 @@ fn test_seg() {
     assert_eq!(rrseg.flags, PTE_RXU());
     assert_eq!(rrseg.start, 55);
 }
+
+#[allow(non_snake_case)]
+pub fn PTE_NORMAL() -> PTEFlags {
+    PTEFlags::VALID | PTEFlags::ACCESS | PTEFlags::DIRTY
+}
+
+#[allow(non_snake_case)]
+pub fn PTE_U() -> PTEFlags {
+    PTE_NORMAL() | PTEFlags::USER
+}
+
+#[allow(non_snake_case)]
+pub fn PTE_RU() -> PTEFlags {
+    PTE_U() | PTEFlags::READ
+}
+
+#[allow(non_snake_case)]
+pub fn PTE_RWU() -> PTEFlags {
+    PTE_RU() | PTEFlags::WRITE
+}
+
+#[allow(non_snake_case)]
+pub fn PTE_RXU() -> PTEFlags {
+    PTE_RU() | PTEFlags::EXECUTE
+}
+
