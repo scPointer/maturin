@@ -5,6 +5,7 @@ src/functional/clock_gettime.out
 src/functional/crypt.out
 src/functional/dirname.out
 src/functional/env.out
+src/functional/epoll.out
 src/functional/fdopen.out
 src/functional/fnmatch.out
 src/functional/fscanf.out
