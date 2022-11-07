@@ -1,10 +1,10 @@
 //! 虚拟文件系统的目录。不需要考虑把数据塞进页里
 //!
 
+use super::VirtFile;
 use alloc::{string::String, sync::Arc, vec::Vec};
 use base_file::{normal_file_mode, File, Kstat, OpenFlags, StMode};
 use lock::Mutex;
-use super::VirtFile;
 
 /// 目录项
 pub struct DirEntry {
@@ -42,12 +42,21 @@ impl VirtDir {
     }
     /// 检查文件是否存在
     pub fn check_file_exists(&self, file_name: &String) -> bool {
-        self.entry.lock().iter().find(|&e| e.name == *file_name).is_some()
+        self.entry
+            .lock()
+            .iter()
+            .find(|&e| e.name == *file_name)
+            .is_some()
     }
     /// 删除一个文件
     pub fn remove_file(&self, file_name: &String) -> Option<Arc<dyn File>> {
-        let entry:Vec<DirEntry> = self.entry.lock().drain_filter(|e| e.name == *file_name).collect();
-        if entry.len() == 0 { //没找到文件
+        let entry: Vec<DirEntry> = self
+            .entry
+            .lock()
+            .drain_filter(|e| e.name == *file_name)
+            .collect();
+        if entry.len() == 0 {
+            //没找到文件
             None
         } else {
             //entry[0].file.clear();
@@ -55,17 +64,33 @@ impl VirtDir {
         }
     }
     /// 检查文件是否存在，如存在则返回一个 Arc 引用
-    pub fn get_file(self: &Arc<Self>, file_name: &String, flags: OpenFlags) -> Option<Arc<dyn File>> {
+    pub fn get_file(
+        self: &Arc<Self>,
+        file_name: &String,
+        flags: OpenFlags,
+    ) -> Option<Arc<dyn File>> {
         //println!("vdir get file {file_name} {:#?}", flags);
-        if flags.contains(OpenFlags::DIR) || flags.contains(OpenFlags::DSYNC) || file_name.len() == 0 {
-            if file_name.len() == 0 { // 要求返回自己
+        if flags.contains(OpenFlags::DIR)
+            || flags.contains(OpenFlags::DSYNC)
+            || file_name.len() == 0
+        {
+            if file_name.len() == 0 {
+                // 要求返回自己
                 Some(self.clone())
             } else {
-                self.entry.lock().iter().find(|&e| e.name == *file_name).map(|e| e.file.clone())
+                self.entry
+                    .lock()
+                    .iter()
+                    .find(|&e| e.name == *file_name)
+                    .map(|e| e.file.clone())
             }
         } else {
             let mut self_entry = self.entry.lock();
-            match self_entry.iter().find(|&e| e.name == *file_name).map(|e| e.file.clone()) {
+            match self_entry
+                .iter()
+                .find(|&e| e.name == *file_name)
+                .map(|e| e.file.clone())
+            {
                 Some(f) => {
                     if flags.contains(OpenFlags::EXCL) {
                         //要求必须要创建文件
@@ -77,30 +102,31 @@ impl VirtDir {
                         };
                         Some(f)
                     }
-                },
+                }
                 None => {
                     // 找不到且要求创建，则默认创建 VirtFile
                     if flags.contains(OpenFlags::CREATE) {
-                        let file:Arc<dyn File> = Arc::new(VirtFile::new(flags));
+                        let file: Arc<dyn File> = Arc::new(VirtFile::new(flags));
                         let ret = file.clone();
                         self_entry.push(DirEntry::new(file_name.clone(), file));
                         Some(ret)
                     } else {
                         None
                     }
-                },
+                }
             }
         }
     }
     /// 创建目录。如果创建成功，则返回新建的目录
-    /// 
+    ///
     /// 使用上层的 **/vfs/mod.rs: try_mkdir()** ，而不要直接调用这个函数，因为新目录需要放进 VIRT_DIRS 里
     pub fn mkdir(&self, dir_name: &String) -> Option<Arc<VirtDir>> {
         //println!("vdir mkdir {dir_name}");
         if self.check_file_exists(dir_name) {
             None
         } else {
-            let dir:Arc<VirtDir> = Arc::new(VirtDir::new(self.name.clone() + "/" + dir_name.as_str()));
+            let dir: Arc<VirtDir> =
+                Arc::new(VirtDir::new(self.name.clone() + "/" + dir_name.as_str()));
             let ret = dir.clone();
             self.entry.lock().push(DirEntry::new(dir_name.clone(), dir));
             Some(ret)

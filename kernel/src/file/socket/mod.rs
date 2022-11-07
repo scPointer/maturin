@@ -30,7 +30,6 @@ pub struct SocketInner {
 
 impl Socket {
     pub fn new(domain: Domain, s_type: SocketType, protocol: usize) -> Self {
-        
         Self {
             domain: domain,
             stype: s_type,
@@ -112,7 +111,10 @@ impl File for Socket {
                 }
             }
         } else {
-            warn!("local endpoint is invalid {:?}", self.inner.read().local_endpoint);
+            warn!(
+                "local endpoint is invalid {:?}",
+                self.inner.read().local_endpoint
+            );
         }
 
         false
@@ -133,7 +135,10 @@ impl File for Socket {
                 _ => {}
             }
         }
-        info!("local endpoint is invalid now {:?}", self.inner.read().remote_endpoint);
+        info!(
+            "local endpoint is invalid now {:?}",
+            self.inner.read().remote_endpoint
+        );
         true
     }
     /// 获取文件状态信息
@@ -210,9 +215,7 @@ impl File for Socket {
                 *src_len = size_of::<IpAddr>() as u32;
                 if (ip == 0) || (ip == LOCAL_LOOPBACK_ADDR) {
                     //Fixme, 用于建立TCP连接
-                    let port = if flags == 100 {
-                        port + 100
-                    } else { port };
+                    let port = if flags == 100 { port + 100 } else { port };
                     read_from_port(port, buf)
                 } else {
                     warn!("Unknown IP: {:#x}", ip);

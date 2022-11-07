@@ -6,13 +6,14 @@ mod fd_manager;
 mod fs_stat;
 mod pipe;
 mod poll_events;
+pub mod socket;
 mod stdio;
 mod vfs;
-pub mod socket;
 
 pub use fatfs::SeekFrom;
 
 pub use device::{
+    add_sys_info,
     check_dir_exists,
     check_file_exists,
     fs_init,
@@ -24,13 +25,12 @@ pub use device::{
     mount_fat_fs,
     open_file,
     origin_fs_stat,
+    read_link,
+    rename_or_move,
     show_testcase_result,
     try_add_link,
     try_remove_link,
-    read_link,
     umount_fat_fs,
-    rename_or_move,
-    add_sys_info,
 };
 
 pub use backend::{BackEndFile, SyncPolicy};
@@ -41,11 +41,6 @@ pub use pipe::{Pipe, RingBuffer};
 pub use poll_events::PollEvents;
 pub use socket::Socket;
 pub use vfs::{
-    BufferFile,
-    get_virt_file_if_possible,
-    get_virt_dir_if_possible,
-    check_virt_dir_exists,
-    check_virt_file_exists,
-    try_make_virt_dir,
-    try_remove_virt_file,
+    check_virt_dir_exists, check_virt_file_exists, get_virt_dir_if_possible,
+    get_virt_file_if_possible, try_make_virt_dir, try_remove_virt_file, BufferFile,
 };

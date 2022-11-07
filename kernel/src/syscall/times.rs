@@ -5,10 +5,10 @@
 use super::{ErrorNo, RUSAGE_CHILDREN, RUSAGE_SELF, RUSAGE_THREAD};
 use crate::task::ITimerVal;
 use crate::task::{get_current_task, suspend_current_task};
-use crate::timer::{get_time_f64, get_time_us, get_time_sec, USEC_PER_INTERRUPT};
+use crate::timer::{get_time_f64, get_time_sec, get_time_us, USEC_PER_INTERRUPT};
 use crate::timer::{TimeSpec, TimeVal};
 
-use super::{SysResult, SysInfo, TMS};
+use super::{SysInfo, SysResult, TMS};
 
 /// 获取系统时间并存放在参数提供的数组里
 pub fn sys_get_time_of_day(time_val: *mut TimeVal) -> SysResult {

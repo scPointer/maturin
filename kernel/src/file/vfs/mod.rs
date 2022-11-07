@@ -43,7 +43,11 @@ lazy_static::lazy_static! {
 }
 
 /// 查询这个目录是否是 vfs 里的目录，如果是则从 vfs 中取对应文件
-pub fn get_virt_file_if_possible(dir: &String, file: &String, flags: OpenFlags) -> Option<Arc<dyn File>> {
+pub fn get_virt_file_if_possible(
+    dir: &String,
+    file: &String,
+    flags: OpenFlags,
+) -> Option<Arc<dyn File>> {
     match VFS_DIRS
         .lock()
         .get(dir.strip_prefix("./")?.strip_suffix("/")?)
@@ -80,8 +84,14 @@ pub fn try_make_virt_dir(dir: &VirtDir, new_dir_name: &String) -> bool {
 }
 
 /// 检查是否存在对应文件。Some表示路径存在，true/false表示文件是否存在
-pub fn check_virt_file_exists(dir: &String, file_name: &String) -> Option<bool> { // 这里套了 option 是为了方便用问号
-    Some(VFS_DIRS.lock().get(dir.strip_prefix("./")?.strip_suffix("/")?)?.check_file_exists(file_name))
+pub fn check_virt_file_exists(dir: &String, file_name: &String) -> Option<bool> {
+    // 这里套了 option 是为了方便用问号
+    Some(
+        VFS_DIRS
+            .lock()
+            .get(dir.strip_prefix("./")?.strip_suffix("/")?)?
+            .check_file_exists(file_name),
+    )
 }
 
 /// 删除对应文件或目录。Some表示路径存在，true/false表示文件是否存在
@@ -89,7 +99,8 @@ pub fn try_remove_virt_file(dir: &String, file_name: &String) -> Option<bool> {
     let mut vfs_dirs = VFS_DIRS.lock();
     let virt_dir = vfs_dirs.get(dir.strip_prefix("./")?.strip_suffix("/")?)?;
     if let Some(file) = virt_dir.remove_file(file_name) {
-        if let Some(dir_name) = file.get_dir() { // 说明是个 VirtDir 目录，需要从 VFS_DIRS 里删掉
+        if let Some(dir_name) = file.get_dir() {
+            // 说明是个 VirtDir 目录，需要从 VFS_DIRS 里删掉
             vfs_dirs.remove(dir_name);
         }
         Some(true)
@@ -99,6 +110,12 @@ pub fn try_remove_virt_file(dir: &String, file_name: &String) -> Option<bool> {
 }
 
 /// 检查是否存在对应目录
-pub fn check_virt_dir_exists(dir: &String) -> Option<bool> { // 这里套了 option 是为了方便用问号
-    Some(VFS_DIRS.lock().get(dir.strip_prefix("./")?.strip_suffix("/")?).is_some())
+pub fn check_virt_dir_exists(dir: &String) -> Option<bool> {
+    // 这里套了 option 是为了方便用问号
+    Some(
+        VFS_DIRS
+            .lock()
+            .get(dir.strip_prefix("./")?.strip_suffix("/")?)
+            .is_some(),
+    )
 }

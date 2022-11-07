@@ -31,7 +31,7 @@ pub struct SigAction {
     pub flags: SigActionFlags,
     /// 信号处理时的栈，也被视为 `signal trampoline`，由用户给出，但一般是pthread库使用。
     /// (如果指定)，这个值需要被写入用户程序上下文的 ra 中
-    /// 
+    ///
     /// 只有制定了 SA_RESTORER 参数才需要设置，请通过 get_restorer 调用
     restorer: usize,
     /// 信号的掩码

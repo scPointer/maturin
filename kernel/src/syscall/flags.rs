@@ -7,7 +7,7 @@
 use bitflags::*;
 use core::mem::size_of;
 
-use crate::file::{SyncPolicy, PollEvents};
+use crate::file::{PollEvents, SyncPolicy};
 use crate::memory::PTEFlags;
 use crate::signal::SignalNo;
 use crate::task::CloneFlags;
@@ -386,7 +386,9 @@ bitflags! {
 #[derive(Debug, Copy, Clone)]
 /// poll 和 ppoll 用到的结构
 pub struct PollFd {
-    pub fd: i32, /// 等待的 fd
-    pub events: PollEvents, /// 等待的事件
+    pub fd: i32,
+    /// 等待的 fd
+    pub events: PollEvents,
+    /// 等待的事件
     pub revents: PollEvents,
 }

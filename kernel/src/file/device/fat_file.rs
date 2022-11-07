@@ -4,12 +4,9 @@
 //#![deny(missing_docs)]
 
 use super::{get_link_count, FsFile};
-use crate::{
-    constants::FS_IMG_SIZE,
-    timer::TimeSpec,
-};
+use crate::{constants::FS_IMG_SIZE, timer::TimeSpec};
 use alloc::{string::String, sync::Arc, vec::Vec};
-use base_file::{File, Kstat, normal_file_mode, OpenFlags, StMode};
+use base_file::{normal_file_mode, File, Kstat, OpenFlags, StMode};
 use fatfs::{Read, Seek, SeekFrom, Write};
 use lock::Mutex;
 
@@ -192,36 +189,34 @@ impl File for FatFile {
         let mut file = self.file.lock();
         let pos_before_seek = file.seek(SeekFrom::Current(0)).unwrap();
         file.seek(seekfrom)
-            .map(|pos| {
-                match seekfrom {
-                    SeekFrom::Start(origin) => {
-                        let len = file.seek(SeekFrom::End(0)).unwrap();
-                        if len < origin && origin - len <= FS_IMG_SIZE as u64 {
-                            let mut buf: Vec<u8> = Vec::new();
-                            buf.resize(origin as usize - len as usize, 0);
-                            file.write(buf.as_slice()).unwrap();
-                        }
-                        file.seek(SeekFrom::Start(origin)).unwrap();
-                        if origin > 0 {
-                            return Some(origin as usize);
-                        }
-                        return Some(pos as usize);
-                    },
-                    SeekFrom::End(_) => {
-                        return Some(pos as usize);
-                    },
-                    SeekFrom::Current(origin) => {
-                        let _now = file.seek(SeekFrom::Current(0)).unwrap();
-                        let len = file.seek(SeekFrom::End(0)).unwrap();
-                        if len < (pos_before_seek as i64 + origin) as u64 {
-                            let mut buf: Vec<u8> = Vec::new();
-                            buf.resize((pos_before_seek as i64 + origin) as usize - len as usize, 0);
-                            file.write(buf.as_slice()).unwrap();
-                        }
-                        file.seek(SeekFrom::Start((pos_before_seek as i64 + origin) as u64)).unwrap();
-                        return Some(pos as usize);
-                    },
-                    
+            .map(|pos| match seekfrom {
+                SeekFrom::Start(origin) => {
+                    let len = file.seek(SeekFrom::End(0)).unwrap();
+                    if len < origin && origin - len <= FS_IMG_SIZE as u64 {
+                        let mut buf: Vec<u8> = Vec::new();
+                        buf.resize(origin as usize - len as usize, 0);
+                        file.write(buf.as_slice()).unwrap();
+                    }
+                    file.seek(SeekFrom::Start(origin)).unwrap();
+                    if origin > 0 {
+                        return Some(origin as usize);
+                    }
+                    return Some(pos as usize);
+                }
+                SeekFrom::End(_) => {
+                    return Some(pos as usize);
+                }
+                SeekFrom::Current(origin) => {
+                    let _now = file.seek(SeekFrom::Current(0)).unwrap();
+                    let len = file.seek(SeekFrom::End(0)).unwrap();
+                    if len < (pos_before_seek as i64 + origin) as u64 {
+                        let mut buf: Vec<u8> = Vec::new();
+                        buf.resize((pos_before_seek as i64 + origin) as usize - len as usize, 0);
+                        file.write(buf.as_slice()).unwrap();
+                    }
+                    file.seek(SeekFrom::Start((pos_before_seek as i64 + origin) as u64))
+                        .unwrap();
+                    return Some(pos as usize);
                 }
             })
             .unwrap_or_else(|_| {

@@ -25,16 +25,11 @@ use crate::{
     arch::get_cpu_id,
     constants::SIGNAL_RETURN_TRAP,
     memory::PTEFlags,
-    signal::{SignalNo, send_signal},
+    signal::{send_signal, SignalNo},
     syscall::syscall,
     task::{
-        handle_signals,
-        handle_user_page_fault,
-        suspend_current_task,
-        get_current_task,
-        timer_kernel_to_user,
-        timer_user_to_kernel,
-        signal_return,
+        get_current_task, handle_signals, handle_user_page_fault, signal_return,
+        suspend_current_task, timer_kernel_to_user, timer_user_to_kernel,
     },
     timer::set_next_trigger,
 };
@@ -88,13 +83,17 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
 #[no_mangle]
 /// 处理来自用户程序的异常/中断
 pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
-    
     //if get_current_task().unwrap().get_tid_num() == 2 {
     //let mut fs1: f64;
     //unsafe { core::arch::asm!("fmv.d.x {0}, fs1", out(reg) fs1) };
     //println!("in fs1 {}", fs1);
     //unsafe { core::arch::asm!("fsd fs1, 0(sp)") };
-    trace!("user sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits());
+    trace!(
+        "user sp = {:x}, entry = {:x}, sstatus = {:x}",
+        cx.x[2],
+        cx.sepc,
+        cx.sstatus.bits()
+    );
     //}
     let scause = scause::read(); // get trap cause
     let stval = stval::read(); // get extra value
@@ -115,11 +114,17 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         }
         Trap::Exception(Exception::StoreFault) => {
             info!("[kernel] StoreFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
-            send_signal(get_current_task().unwrap().get_tid_num(), SignalNo::SIGSEGV as usize);
+            send_signal(
+                get_current_task().unwrap().get_tid_num(),
+                SignalNo::SIGSEGV as usize,
+            );
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             info!("[cpu {}] IllegalInstruction in application, sepc = {:x}, stval = {:#x}, kernel killed it.", get_cpu_id(), cx.sepc, stval);
-            send_signal(get_current_task().unwrap().get_tid_num(), SignalNo::SIGSEGV as usize);
+            send_signal(
+                get_current_task().unwrap().get_tid_num(),
+                SignalNo::SIGSEGV as usize,
+            );
         }
         Trap::Exception(Exception::InstructionPageFault) => {
             info!("[cpu {}] InstructionPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
@@ -130,7 +135,10 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             }
             if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::EXECUTE) {
                 info!("{:#?}", e);
-                send_signal(get_current_task().unwrap().get_tid_num(), SignalNo::SIGSEGV as usize);
+                send_signal(
+                    get_current_task().unwrap().get_tid_num(),
+                    SignalNo::SIGSEGV as usize,
+                );
             }
             //PageFault(stval, PTEFlags::USER | PTEFlags::EXECUTE)
         }
@@ -147,7 +155,10 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::READ) {
                 info!("[cpu {}] LoadPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
                 info!("{:#?}", e);
-                send_signal(get_current_task().unwrap().get_tid_num(), SignalNo::SIGSEGV as usize);
+                send_signal(
+                    get_current_task().unwrap().get_tid_num(),
+                    SignalNo::SIGSEGV as usize,
+                );
             }
             //PageFault(stval, PTEFlags::USER | PTEFlags::READ)
         }
@@ -156,7 +167,10 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             if let Err(e) = handle_user_page_fault(stval, PTEFlags::USER | PTEFlags::WRITE) {
                 info!("[cpu {}] StorePageFault in application, bad addr = {:#x}, bad instruction = {:#x}.", get_cpu_id(), stval, cx.sepc);
                 info!("{:#?}", e);
-                send_signal(get_current_task().unwrap().get_tid_num(), SignalNo::SIGSEGV as usize);
+                send_signal(
+                    get_current_task().unwrap().get_tid_num(),
+                    SignalNo::SIGSEGV as usize,
+                );
             }
             //PageFault(stval, PTEFlags::USER | PTEFlags::WRITE)
         }
@@ -198,7 +212,12 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     let scause = scause::read(); // get trap cause
     let stval = stval::read(); // get extra value
 
-    trace!("kernel sp = {:x}, entry = {:x}, sstatus = {:x}", cx.x[2], cx.sepc, cx.sstatus.bits());
+    trace!(
+        "kernel sp = {:x}, entry = {:x}, sstatus = {:x}",
+        cx.x[2],
+        cx.sepc,
+        cx.sstatus.bits()
+    );
     /*
     let mut pc: usize;
     unsafe { core::arch::asm!("auipc {0}, 0", out(reg) pc) };
@@ -287,6 +306,10 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             );
         }
     }
-    panic!("kernel trap cause: {:?}, context: {:#x?}", scause.cause(), cx);
+    panic!(
+        "kernel trap cause: {:?}, context: {:#x?}",
+        scause.cause(),
+        cx
+    );
     //cx
 }

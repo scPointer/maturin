@@ -12,12 +12,13 @@ pub fn split_argv(s: &[u8]) -> Vec<String> {
     let mut argv: Vec<String> = Vec::new();
     let mut in_quotation = false; // 当前是否在引号中
     let mut start = 0; // 从何处开始
-    // 因为需要特判引号，所以这里用一种 c style 的方式处理
+                       // 因为需要特判引号，所以这里用一种 c style 的方式处理
     for pos in 0..s.len() {
         if s[pos] == '\"' as u8 {
             in_quotation = !in_quotation;
         } else if s[pos] == ' ' as u8 && !in_quotation {
-            if pos > start { // 避免塞入空串
+            if pos > start {
+                // 避免塞入空串
                 argv.push(core::str::from_utf8(&s[start..pos]).unwrap().into());
             }
             start = pos + 1;

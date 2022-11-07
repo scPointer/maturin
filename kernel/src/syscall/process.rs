@@ -1,14 +1,15 @@
 //! 与进程相关的系统调用
 
 use super::{
-    resolve_clone_flags_and_signal, ErrorNo, MMAPFlags, RLimit, SysResult, UtsName, WaitFlags,
-    MMAPPROT, MSyncFlags, RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK,
+    resolve_clone_flags_and_signal, ErrorNo, MMAPFlags, MSyncFlags, RLimit, SysResult, UtsName,
+    WaitFlags, MMAPPROT, RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK,
+    SIG_UNBLOCK,
 };
 use crate::{
     constants::{SIGSET_SIZE_IN_BYTE, USER_STACK_SIZE, USER_VIRT_ADDR_LIMIT, USE_MSYNC},
-    file::{SeekFrom, BackEndFile},
+    file::{BackEndFile, SeekFrom},
+    memory::{align_down, align_up, page_offset},
     signal::{send_signal, Bitset, SigAction, SignalNo},
-    memory::{page_offset, align_up, align_down},
     task::{
         exec_new_task, exit_current_task, get_current_task, push_task_to_scheduler, signal_return,
         suspend_current_task,
@@ -163,8 +164,10 @@ fn sys_exec(path: *const u8, args: *const usize) -> SysResult {
 ///
 /// 目前只支持 WNOHANG 选项
 pub fn sys_wait4(pid: isize, exit_code_ptr: *mut i32, option: WaitFlags) -> SysResult {
-    info!("sys_wait4 {}, {:x}, {:#?}",
-          pid, exit_code_ptr as usize, option);
+    info!(
+        "sys_wait4 {}, {:x}, {:#?}",
+        pid, exit_code_ptr as usize, option
+    );
     loop {
         let child_pid = waitpid(pid, exit_code_ptr);
         // 找不到子进程，直接返回-1
@@ -296,8 +299,7 @@ pub fn sys_mmap(
             let backend = BackEndFile::new(file, offset, prot.into());
             drop(tcb_inner);
             // mmap 内部需要拿 inner 锁
-            if let Some(start) =
-                task.mmap(start, start + len, prot.into(), Some(backend), anywhere)
+            if let Some(start) = task.mmap(start, start + len, prot.into(), Some(backend), anywhere)
             {
                 return Ok(start);
             }
@@ -323,7 +325,10 @@ pub fn sys_mprotect(start: usize, len: usize, prot: MMAPPROT) -> SysResult {
         "try mprotect start={:x} len={:x} prot=[{:#?}]",
         start, len, prot
     );
-    if get_current_task().unwrap().mprotect(start, start + len, prot.into()) {
+    if get_current_task()
+        .unwrap()
+        .mprotect(start, start + len, prot.into())
+    {
         Ok(0)
     } else {
         Err(ErrorNo::EINVAL)
@@ -331,15 +336,14 @@ pub fn sys_mprotect(start: usize, len: usize, prot: MMAPPROT) -> SysResult {
 }
 
 /// 映射一段内存
-pub fn sys_msync(
-    start: usize,
-    len: usize,
-    flags: MSyncFlags,
-) -> SysResult {
+pub fn sys_msync(start: usize, len: usize, flags: MSyncFlags) -> SysResult {
     if !USE_MSYNC {
         return Ok(0);
     }
-    info!("try msync start={:x} len={:x} flags=[{:#?}]", start, len, flags);
+    info!(
+        "try msync start={:x} len={:x} flags=[{:#?}]",
+        start, len, flags
+    );
     // 检查是否区间不是按页aligned的
     if page_offset(start) != 0 || page_offset(start + len) != 0 {
         return Err(ErrorNo::EINVAL);
@@ -401,7 +405,8 @@ pub fn sys_kill(pid: isize, signal_id: isize) -> SysResult {
         Ok(0)
     } else if pid == 0 {
         Err(ErrorNo::ESRCH)
-    } else { // 如果 signal_id == 0，则仅为了检查是否存在对应进程，此时应该返回参数错误。是的，用户库是会刻意触发这个错误的
+    } else {
+        // 如果 signal_id == 0，则仅为了检查是否存在对应进程，此时应该返回参数错误。是的，用户库是会刻意触发这个错误的
         Err(ErrorNo::EINVAL)
     }
 }

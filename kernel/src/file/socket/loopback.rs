@@ -75,9 +75,7 @@ pub fn can_write(port: u16) -> Option<usize> {
                 None
             }
         }
-        None => {
-            Some(SOCKET_BUFFER_SIZE_LIMIT)
-        }
+        None => Some(SOCKET_BUFFER_SIZE_LIMIT),
     }
 }
 

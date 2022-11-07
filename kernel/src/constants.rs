@@ -1,5 +1,5 @@
 //! OS运行时用到的常量
-//! 
+//!
 //! 内存地址分布说明：
 //! /* ------------------------------ 用户程序 ------------------------------*/
 //! /// 用户栈大小
@@ -10,35 +10,33 @@
 //! pub const USER_STACK_OFFSET: usize = 0x4000_0000 - USER_STACK_SIZE;
 //! /// 用户地址最大不能超过这个值
 //! pub const USER_VIRT_ADDR_LIMIT: usize = 0xFFFF_FFFF;
-//! 
+//!
 //! /* ------------------------------ MMIO ------------------------------*/
 //! /// 用于设备 MMIO 的内存段。这些地址会在页表中做恒等映射
 //! pub const MMIO_REGIONS: &[AddrArea] = &[AddrArea(0x10001000, 0x10002000)];
-//! 
+//!
 //! /* ------------------------------ 内核 ------------------------------*/
 //! /// 内核中虚拟地址相对于物理地址的偏移
 //! pub const PHYS_VIRT_OFFSET: usize = 0xFFFF_FFFF_0000_0000;
 //! /// 表示内存的地址段起始
 //! pub const PHYS_MEMORY_OFFSET: usize = 0x8000_0000;
 //! // 内核起始地址 0x8020_0000
-//! 
+//!
 //! // 内核的各段、堆栈分配等在 memory/vmm.rs:414 init_kernel_memory_set()，详细的大小设定在 constants.rs
-//! 
+//!
 //! /// 表示内存的地址段结束
 //! pub const PHYS_MEMORY_END: usize = 0x9f00_0000;
 //! // free memory 段 (这段代码在 memory/mod.rs)
 //! let start = align_up(virt_to_phys(kernel_end as usize));
 //! let end = PHYS_MEMORY_END;
 //! vec![start..end, 0xd000_0000..0xfe00_0000]
-//! 
+//!
 //! /// 文件系统镜像大小。
 //! pub const FS_IMG_SIZE: usize = 0x1000_0000; // 256MB
 //! /// 设备(sdcard)映射到内存的起始位置
 //! pub const DEVICE_START: usize = 0xa000_0000;
 //! /// 设备映射到内存的最后位置
 //! pub const DEVICE_END: usize = DEVICE_START + FS_IMG_SIZE;
-
-
 
 //#![deny(missing_docs)]
 
@@ -76,7 +74,7 @@ pub const KERNEL_STACK_SIZE: usize = 0x80_000; // 8 MB -> 512 KB
 /// 内核堆的大小
 pub const KERNEL_HEAP_SIZE: usize = 0xc0_0000; // 32 MB -> 12 MB
 /// 用户栈大小
-pub const USER_STACK_SIZE: usize = 0x20_0000; // 15 MB -> 2 MB // `lmbench_all lat_fs /var/tmp` 会默认访问到 0x3ffdfb08 
+pub const USER_STACK_SIZE: usize = 0x20_0000; // 15 MB -> 2 MB // `lmbench_all lat_fs /var/tmp` 会默认访问到 0x3ffdfb08
 /// 初始用户栈大小，用于存放 argc/argv/envs/auxv
 pub const USER_INIT_STACK_SIZE: usize = 0x4000; // 16 KB,
 /// 用户栈底位置。同时也是最开始的用户堆顶位置
@@ -150,11 +148,11 @@ pub const SIGSET_SIZE_IN_BIT: usize = SIGSET_SIZE_IN_BYTE * 8; // =64
 /// SIGINFO 要求把一些信息存在用户栈上，从用户栈开辟一块空间来保存它们
 pub const USER_STACK_RED_ZONE: usize = 0x200; // 512 B
 /// 一个在 Sv39 页表里不合法的地址。
-/// 
+///
 /// 如果 sigaction 中没有设置 SA_RESTORER，那么需要内核来代替libc库实现"信号执行完成后通过sigreturn返回"的效果
 /// 但是mmap一块地址把"手动调用ecall执行 sigreturn"写进去又显得不够优雅，因为用户地址空间会多出来一块它并不知道的trampoline
 /// 所以现在通过把 ra 写成一个特定地址的方式，让信号处理函数执行完之后，到这里触发 Page Fault，再由内核进行 sigreturn
-/// 
+///
 /// 另外，把触发signal的用户pc写成ra是行不通的，因为 signal 语义上要求信号处理结束时恢复之前的一切寄存器状态
 pub const SIGNAL_RETURN_TRAP: usize = 0xffff_0000_8080_0000;
 

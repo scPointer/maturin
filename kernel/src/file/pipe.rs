@@ -4,7 +4,7 @@
 //! Pipe 的读写可能会触发进程切换。
 //! 目前的实现中，Pipe会请求并获取页帧，不占用内核堆/栈
 
-use super::{BufferFile};
+use super::BufferFile;
 use crate::{constants::PIPE_SIZE_LIMIT, task::suspend_current_task};
 use alloc::sync::Arc;
 use base_file::{File, OpenFlags};
@@ -37,17 +37,24 @@ impl RingBuffer {
         self.len -= max_len;
         //println!("set posr {}", self.head);
         // 设置指针到数据前
-        unsafe { self.data.set_pos(self.head); }
+        unsafe {
+            self.data.set_pos(self.head);
+        }
         // 循环队列不用跨过起点
         if self.head + max_len <= self.size_limit {
             self.data.read_inner(&mut buf[..max_len]);
             self.head += max_len;
-        } else { // 需要跨过起点
-            self.data.read_inner(&mut buf[..self.size_limit-self.head]);
-            unsafe { self.data.set_pos(0); }
-            self.data.read_inner(&mut buf[self.size_limit-self.head..max_len]);
+        } else {
+            // 需要跨过起点
+            self.data
+                .read_inner(&mut buf[..self.size_limit - self.head]);
+            unsafe {
+                self.data.set_pos(0);
+            }
+            self.data
+                .read_inner(&mut buf[self.size_limit - self.head..max_len]);
             // self.head 后面加的是负数，但它又是 usize，最好不用 +=
-            self.head = self.head + max_len - self.size_limit; 
+            self.head = self.head + max_len - self.size_limit;
         }
         max_len
     }
@@ -56,17 +63,23 @@ impl RingBuffer {
         let max_len = buf.len().min(self.size_limit - self.len);
         self.len += max_len;
         // 设置指针到数据后
-        unsafe { self.data.set_pos(self.end); }
+        unsafe {
+            self.data.set_pos(self.end);
+        }
         // 循环队列不用跨过起点
         if self.end + max_len <= self.size_limit {
             self.data.write_inner(&buf[..max_len]);
             self.end += max_len;
-        } else { // 需要跨过起点
-            self.data.write_inner(&buf[..self.size_limit-self.end]);
-            unsafe { self.data.set_pos(0); }
-            self.data.write_inner(&buf[self.size_limit-self.end..max_len]);
+        } else {
+            // 需要跨过起点
+            self.data.write_inner(&buf[..self.size_limit - self.end]);
+            unsafe {
+                self.data.set_pos(0);
+            }
+            self.data
+                .write_inner(&buf[self.size_limit - self.end..max_len]);
             // self.end 后面加的是负数，但它又是 usize，最好不用 +=
-            self.end = self.end + max_len - self.size_limit; 
+            self.end = self.end + max_len - self.size_limit;
         }
         max_len
     }

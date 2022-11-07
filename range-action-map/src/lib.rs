@@ -3,14 +3,19 @@
 
 #[cfg(feature = "std")]
 mod external {
-    pub use std::{vec::Vec, collections::BTreeMap};
+    pub use std::collections::btree_map::{Iter, IterMut};
+    pub use std::{collections::BTreeMap, fmt::Debug, iter::Iterator, vec::Vec};
 }
 #[cfg(not(feature = "std"))]
 mod external {
     extern crate alloc;
+    pub use alloc::collections::btree_map::{Iter, IterMut};
     pub use alloc::collections::BTreeMap;
     pub use alloc::vec::Vec;
+    pub use core::fmt::Debug;
+    pub use core::iter::Iterator;
 }
+
 use external::*;
 
 mod segment;
@@ -20,10 +25,10 @@ pub use set::{CutSet, DiffSet};
 mod range_area;
 pub use range_area::RangeArea;
 mod defs;
-pub use defs::{IdentType, ArgsType, LOWER_LIMIT, UPPER_LIMIT};
+pub use defs::{ArgsType, IdentType, LOWER_LIMIT, UPPER_LIMIT};
 
 pub struct RangeActionMap<SegmentType: Segment> {
-    segments: BTreeMap<usize, RangeArea<SegmentType>>,
+    pub segments: BTreeMap<usize, RangeArea<SegmentType>>,
     args: ArgsType,
 }
 
@@ -47,13 +52,25 @@ impl<SegmentType: Segment> RangeActionMap<SegmentType> {
         );
     }
     /// 查询某个地址是否在一个区间内，如是则返回区间引用，否则返回 None
-    pub fn find<'a>(&'a mut self, pos: usize) -> Option<&'a SegmentType> {
+    pub fn find<'a>(&'a self, pos: usize) -> Option<&'a SegmentType> {
         if let Some((_, area)) = self.segments.range(..=pos).last() {
             if area.contains(pos) {
                 return Some(&area.segment);
             }
         }
         None
+    }
+    /// 通过迭代器访问每个区间的引用
+    pub fn iter<'a>(&'a self) -> RangeActionMapIter<'a, SegmentType> {
+        RangeActionMapIter {
+            map_iter: self.segments.iter(),
+        }
+    }
+    /// 通过迭代器访问每个区间的可变引用
+    pub fn iter_mut<'a>(&'a mut self) -> RangeActionMapIterMut<'a, SegmentType> {
+        RangeActionMapIterMut {
+            map_iter: self.segments.iter_mut(),
+        }
     }
     /// 映射一段长度为 len 的区间，且区间左端点位置不小于 hint。
     ///
@@ -64,12 +81,10 @@ impl<SegmentType: Segment> RangeActionMap<SegmentType> {
         &mut self,
         hint: usize,
         len: usize,
-        mut segment: SegmentType,
-        f: impl Fn(&mut SegmentType, usize) -> (),
+        f: impl FnOnce(usize) -> SegmentType,
     ) -> Option<usize> {
         self.find_free_area(hint, len).map(|start| {
-            f(&mut segment, start);
-            self.insert_raw(start, start + len, segment);
+            self.insert_raw(start, start + len, f(start));
             start
         })
     }
@@ -81,16 +96,14 @@ impl<SegmentType: Segment> RangeActionMap<SegmentType> {
         &mut self,
         start: usize,
         end: usize,
-        mut segment: SegmentType,
-        f: impl Fn(&mut SegmentType, usize) -> (),
+        f: impl FnOnce() -> SegmentType,
     ) -> Option<usize> {
         if start < LOWER_LIMIT || end > UPPER_LIMIT {
             return None;
         }
         // 需要 unmap 掉原本相交的区间
         self.unmap(start, end);
-        f(&mut segment, start);
-        self.insert_raw(start, end, segment);
+        self.insert_raw(start, end, f());
         Some(start)
     }
     /// 删除映射，空出 [start, end) 这段区间。
@@ -162,5 +175,35 @@ impl<SegmentType: Segment> RangeActionMap<SegmentType> {
         } else {
             None
         }
+    }
+}
+
+impl<SegmentType: Segment + Debug> Debug for RangeActionMap<SegmentType> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("RangeActionMap")
+            .field("segments", &self.segments.values())
+            .finish()
+    }
+}
+
+pub struct RangeActionMapIter<'a, SegmentType: Segment> {
+    map_iter: Iter<'a, usize, RangeArea<SegmentType>>,
+}
+
+impl<'a, SegmentType: Segment> Iterator for RangeActionMapIter<'a, SegmentType> {
+    type Item = &'a SegmentType;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.map_iter.next().map(|(_, area)| &area.segment)
+    }
+}
+
+pub struct RangeActionMapIterMut<'a, SegmentType: Segment> {
+    map_iter: IterMut<'a, usize, RangeArea<SegmentType>>,
+}
+
+impl<'a, SegmentType: Segment> Iterator for RangeActionMapIterMut<'a, SegmentType> {
+    type Item = &'a mut SegmentType;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.map_iter.next().map(|(_, area)| &mut area.segment)
     }
 }

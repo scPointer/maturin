@@ -5,9 +5,13 @@ use init_info::InitInfo;
 mod init_stack;
 use init_stack::InitStack;
 
-use alloc::{string::{String, ToString}, sync::Arc, vec::Vec};
+use alloc::{
+    string::{String, ToString},
+    sync::Arc,
+    vec::Vec,
+};
+use base_file::OpenFlags;
 use core::convert::From;
-use base_file::{OpenFlags};
 use lock::Mutex;
 use xmas_elf::{
     header,
@@ -28,7 +32,7 @@ use crate::constants::{
     USER_STACK_SIZE,
 };
 use crate::error::{OSError, OSResult};
-use crate::file::{open_file};
+use crate::file::open_file;
 use crate::memory::addr::{page_count, page_offset, VirtAddr};
 use crate::memory::{MemorySet, PTEFlags};
 use crate::memory::{PmArea, PmAreaLazy, VmArea};
@@ -287,13 +291,13 @@ impl<'a> ElfLoader<'a> {
                 map
             },
         };
-        
+
         info!("info {:#?}", info);
         let init_stack = info.serialize(stack_top);
         debug!("init user proc: stack len {}", init_stack.len());
         stack_pma.write(USER_STACK_SIZE - init_stack.len(), &init_stack)?;
         stack_top -= init_stack.len();
-        
+
         // push user stack to `vm`
         let stack_vma = VmArea::new(
             stack_bottom,

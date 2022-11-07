@@ -11,17 +11,13 @@ mod stat;
 mod test;
 
 use super::{
-    get_virt_file_if_possible,
-    check_virt_dir_exists,
-    get_virt_dir_if_possible,
-    check_virt_file_exists,
-    try_remove_virt_file,
-    try_make_virt_dir,
+    check_virt_dir_exists, check_virt_file_exists, get_virt_dir_if_possible,
+    get_virt_file_if_possible, try_make_virt_dir, try_remove_virt_file,
 };
 use crate::{
     constants::ROOT_DIR,
-    syscall::ErrorNo,
     drivers::{new_memory_mapped_fs, MemoryMappedFsIoType},
+    syscall::ErrorNo,
 };
 use alloc::{string::String, sync::Arc};
 use fatfs::{DefaultTimeProvider, Error, FileSystem, LossyOemCpConverter};
@@ -42,20 +38,15 @@ pub use fat_file::FatFile;
 pub use fd_dir::FdDir;
 pub use link::FileDisc;
 pub use link::{
-    read_link,
-    get_link_count,
-    mount_fat_fs,
-    try_add_link,
-    try_add_rev_link,
-    try_remove_link,
+    get_link_count, mount_fat_fs, read_link, try_add_link, try_add_rev_link, try_remove_link,
     umount_fat_fs,
 };
 pub use stat::get_fs_stat as origin_fs_stat;
 pub use test::{
+    add_sys_info,
     //load_testcases,
     load_next_testcase,
     show_testcase_result,
-    add_sys_info,
 };
 
 lazy_static::lazy_static! {
@@ -94,8 +85,18 @@ pub fn fs_init() {
     mkdir(ROOT_DIR, "lib");
     mkdir(ROOT_DIR, "tmp");
     //mkdir(ROOT_DIR, "dev");
-    try_add_link(("./bin/").into(), "sh".into(), "./bin/".into(), "busybox".into());
-    try_add_link(("./bin/").into(), "ls".into(), "./bin/".into(), "busybox".into());
+    try_add_link(
+        ("./bin/").into(),
+        "sh".into(),
+        "./bin/".into(),
+        "busybox".into(),
+    );
+    try_add_link(
+        ("./bin/").into(),
+        "ls".into(),
+        "./bin/".into(),
+        "busybox".into(),
+    );
 
     mkdir("dev/", "shm");
     let dso = &"tls_get_new-dtv_dso.so"; // 该库要去lib等目录找，所以需要链接. 仅用于libc-test
@@ -105,16 +106,32 @@ pub fn fs_init() {
     try_add_link(ROOT_DIR.into(), "libc.so", "./lib/".into(), libc_so);
     try_add_link(ROOT_DIR.into(), "libc.so", "./lib/".into(), libc_so2);
     mkdir(ROOT_DIR, "sbin");
-    try_add_link(ROOT_DIR.into(), "lmbench_all".into(), "./sbin/".into(), "lmbench_all".into()); // busybox会去这里找
-    try_add_link(ROOT_DIR.into(), "busybox".into(), "./sbin/".into(), "busybox".into());
-    try_add_link(ROOT_DIR.into(), "busybox".into(), "/sbin/".into(), "ls".into());
+    try_add_link(
+        ROOT_DIR.into(),
+        "lmbench_all".into(),
+        "./sbin/".into(),
+        "lmbench_all".into(),
+    ); // busybox会去这里找
+    try_add_link(
+        ROOT_DIR.into(),
+        "busybox".into(),
+        "./sbin/".into(),
+        "busybox".into(),
+    );
+    try_add_link(
+        ROOT_DIR.into(),
+        "busybox".into(),
+        "/sbin/".into(),
+        "ls".into(),
+    );
     // 一些系统信息文件。todo: 更正确的方式应该是放到 vfs 里而不是直接塞 fat32 这边
     mkdir(ROOT_DIR, "proc"); // 进程状态信息
     let _meminfo = open_file("./proc/", "meminfo", OpenFlags::CREATE).unwrap(); // 内存占用信息
     let _mounts = open_file("./proc/", "mounts", OpenFlags::CREATE).unwrap(); // 所有的文件系统信息
     mkdir("dev/", "misc");
     let _rtc = open_file("./dev/misc/", "rtc", OpenFlags::CREATE).unwrap(); // 硬件时钟信息
-    if let Some(_lat_sig) = open_file(ROOT_DIR, "lat_sig", OpenFlags::CREATE) {}; // lat_sig prot 测例要求的文件。测例只管读这个文件，但又不创建
+    if let Some(_lat_sig) = open_file(ROOT_DIR, "lat_sig", OpenFlags::CREATE) {};
+    // lat_sig prot 测例要求的文件。测例只管读这个文件，但又不创建
 
     // 动态程序支持
     /*
@@ -247,12 +264,14 @@ fn inner_open_dir(root: FsDir, dir_name: &str) -> Option<FsDir> {
 ///
 /// 如果包含 OpenFlags::DIR，则只有打开已存在的目录成功时返回 FdDir
 pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Arc<dyn File>> {
-
     let root = MEMORY_FS.root_dir();
 
     let (real_dir, file_name) = map_path_and_file(dir_name, file_path)?;
 
-    info!("open_file dir_name={:?}, file_path={:?} flags={:?}", dir_name, file_path, flags);
+    info!(
+        "open_file dir_name={:?}, file_path={:?} flags={:?}",
+        dir_name, file_path, flags
+    );
 
     // let mut new_file_path = file_path;
     // if file_path == "riscv64-linux-musl-native/lib/gcc/riscv64-linux-musl/11.2.1/include/stdio.h" {
@@ -265,7 +284,6 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
     // if file_path == "riscv64-linux-musl-native/lib/gcc/riscv64-linux-musl/11.2.1/include/bits/alltypes.h" {
     //     new_file_path = "/riscv64-linux-musl-native/include/bits/alltypes.h";
     // }
-
 
     // let (real_dir, file_name) = map_path_and_file(dir_name, new_file_path)?;
 
@@ -313,7 +331,7 @@ pub fn open_file(dir_name: &str, file_path: &str, flags: OpenFlags) -> Option<Ar
                     if flags.contains(OpenFlags::EXCL) && !real_dir.starts_with("./tmp/") {
                         return None;
                     }
-                    
+
                     let fat_file = FatFile::new(
                         readable,
                         writable,
@@ -435,9 +453,15 @@ pub fn mkdir(dir_name: &str, file_path: &str) -> bool {
 
 /// 移动文件，如果 new_dir == old_dir 则表现为重命名
 /// 只检查 FAT32，不考虑 vfs。不考虑符号链接，因为实现是在 fs 里实现的，而链接在内核里
-/// 
+///
 /// replace 的语义为，如果目标位置的文件已存在，是否替换它
-pub fn rename_or_move(old_dir: &str, old_file: &str, new_dir: &str, new_file: &str, replace: bool) -> Result<(), ErrorNo> {
+pub fn rename_or_move(
+    old_dir: &str,
+    old_file: &str,
+    new_dir: &str,
+    new_file: &str,
+    replace: bool,
+) -> Result<(), ErrorNo> {
     if let Some(old_dir) = inner_open_dir(MEMORY_FS.root_dir(), old_dir) {
         if let Some(new_dir) = inner_open_dir(MEMORY_FS.root_dir(), new_dir) {
             return match old_dir.rename(old_file, &new_dir, new_file) {
@@ -446,13 +470,15 @@ pub fn rename_or_move(old_dir: &str, old_file: &str, new_dir: &str, new_file: &s
                 Err(Error::AlreadyExists) => {
                     if replace {
                         new_dir.remove(new_file).unwrap();
-                        old_dir.rename(old_file, &new_dir, new_file).map_err(|_| ErrorNo::EINVAL)
+                        old_dir
+                            .rename(old_file, &new_dir, new_file)
+                            .map_err(|_| ErrorNo::EINVAL)
                     } else {
                         Err(ErrorNo::EEXIST)
                     }
-                },
+                }
                 Err(Error::NotFound) => Err(ErrorNo::ENOENT),
-                // 其他错误返回 rename 失败 
+                // 其他错误返回 rename 失败
                 _ => Err(ErrorNo::EINVAL),
             };
         }
@@ -464,17 +490,22 @@ pub fn rename_or_move(old_dir: &str, old_file: &str, new_dir: &str, new_file: &s
 /// 两个目录的结尾都需要有 '/'
 /// - create 为 true 表示如果 link_dir 下的文件(**包括这个目录本身**)不存在，则会创建它；
 /// - recursive 表示需要递归查找目录中每一个子目录的文件进行链接
-/// 
+///
 /// 返回创建是否成功
 #[allow(unused)]
-pub fn add_link_for_all_files_in_dir(origin_dir: String, link_dir: String, is_create: bool, recursive: bool) -> bool {
+pub fn add_link_for_all_files_in_dir(
+    origin_dir: String,
+    link_dir: String,
+    is_create: bool,
+    recursive: bool,
+) -> bool {
     // 打开原目录
     if let Some(origin_fsdir) = inner_open_dir(MEMORY_FS.root_dir(), origin_dir.as_str()) {
         // 打开需要链接到的目录
         if inner_open_dir(MEMORY_FS.root_dir(), link_dir.as_str()).is_none() {
             //如果不存在，则考察是否需要创建
             // mkdir 时，目录后不该有 '/'，所以要去掉最后一个字符
-            if is_create && mkdir(ROOT_DIR, &link_dir.as_str()[..link_dir.len()-1]) {
+            if is_create && mkdir(ROOT_DIR, &link_dir.as_str()[..link_dir.len() - 1]) {
                 inner_open_dir(MEMORY_FS.root_dir(), link_dir.as_str());
             } else {
                 return false;
@@ -496,14 +527,14 @@ pub fn add_link_for_all_files_in_dir(origin_dir: String, link_dir: String, is_cr
             if is_create && check_file_exists(link_dir.as_str(), name.as_str()) {
                 remove_file(link_dir.as_str(), name.as_str());
             }
-            try_add_link(origin_dir.clone(), name.as_str(), link_dir.clone(), name.as_str());
+            try_add_link(
+                origin_dir.clone(),
+                name.as_str(),
+                link_dir.clone(),
+                name.as_str(),
+            );
             if recursive && file.is_dir() {
-                add_link_for_all_files_in_dir(
-                    new_origin_dir,
-                    new_link_dir,
-                    is_create,
-                    recursive
-                );
+                add_link_for_all_files_in_dir(new_origin_dir, new_link_dir, is_create, recursive);
             }
         }
     }

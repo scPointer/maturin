@@ -21,7 +21,7 @@ impl FutexWaiter {
     pub fn new(timed_out: Option<usize>) -> Self {
         Self {
             timed_out_us: timed_out.unwrap_or(usize::MAX),
-            woken: false
+            woken: false,
         }
     }
 }
@@ -31,9 +31,11 @@ impl Waiter for FutexWaiter {
         self.woken = true;
     }
     fn is_woken(&self) -> bool {
-        if self.woken { // 主动唤醒
+        if self.woken {
+            // 主动唤醒
             true
-        } else { // 超时唤醒
+        } else {
+            // 超时唤醒
             get_time_us() >= self.timed_out_us
         }
     }

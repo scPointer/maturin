@@ -34,14 +34,17 @@ pub fn read_link(path: &str, file: &str) -> Option<String> {
         file.into()
     };
     let (mut path, mut file) = super::map_path_and_file(path, file.as_str())?;
-    if file == "" { // path 是个路径
-        if path == ROOT_DIR { // 如果是根路径
+    if file == "" {
+        // path 是个路径
+        if path == ROOT_DIR {
+            // 如果是根路径
             file = ROOT_DIR.into()
-        } else { // 否则，它是 ./for/example/this/is/a/path/ ，总之至少有两个 '/' 且以 '/' 结尾
+        } else {
+            // 否则，它是 ./for/example/this/is/a/path/ ，总之至少有两个 '/' 且以 '/' 结尾
             // 删除路径尾的 '/'
             path.pop().unwrap();
             let pos = path.rfind("/").unwrap();
-            (path, file) = (path[..=pos].into(), path[pos+1..].into());
+            (path, file) = (path[..=pos].into(), path[pos + 1..].into());
         }
     }
     //info!("read link: {path} {file}");
@@ -49,11 +52,16 @@ pub fn read_link(path: &str, file: &str) -> Option<String> {
     match map.get(&FileDisc::new(&path, &file)) {
         Some(disc) => Some(String::from(&disc.path[..]) + &disc.file[..]),
         None => {
-            static GCC_INCLUDE: &str = "./riscv64-linux-musl-native/lib/gcc/riscv64-linux-musl/11.2.1/include/";
+            static GCC_INCLUDE: &str =
+                "./riscv64-linux-musl-native/lib/gcc/riscv64-linux-musl/11.2.1/include/";
             static GCC_LINK_INCLUDE: &str = "/riscv64-linux-musl-native/include/";
             if path.starts_with(GCC_INCLUDE) {
                 //info!("read gcc link: {}", String::from(GCC_LINK_INCLUDE) + String::from(path.clone()).strip_prefix(GCC_INCLUDE).unwrap() + file.as_str());
-                Some(String::from(GCC_LINK_INCLUDE) + String::from(path).strip_prefix(GCC_INCLUDE).unwrap() + file.as_str())
+                Some(
+                    String::from(GCC_LINK_INCLUDE)
+                        + String::from(path).strip_prefix(GCC_INCLUDE).unwrap()
+                        + file.as_str(),
+                )
             } else {
                 None
             }
@@ -65,7 +73,10 @@ pub fn read_link(path: &str, file: &str) -> Option<String> {
 ///
 /// 这个函数不对外可见，外部需要调用 try_add_link
 fn add_link(real_path: String, real_file: String, user_path: String, user_file: String) {
-    info!("add link {} {} {} {}", real_path, real_file, user_path, user_file);
+    info!(
+        "add link {} {} {} {}",
+        real_path, real_file, user_path, user_file
+    );
     let mut map = LINK_PATH_MAP.lock();
     let mut count_map = LINK_COUNT_MAP.lock();
     let key = FileDisc::new(&user_path, &user_file);
@@ -110,7 +121,12 @@ pub fn try_add_link(old_path: String, old_file: &str, new_path: String, new_file
 
 /// 尝试添加一个硬链接。左边是作为链接的路径和文件，右边是实际路径和文件
 #[allow(unused)]
-pub fn try_add_rev_link(new_path: String, new_file: &str, old_path: String, old_file: &str) -> bool {
+pub fn try_add_rev_link(
+    new_path: String,
+    new_file: &str,
+    old_path: String,
+    old_file: &str,
+) -> bool {
     try_add_link(old_path, old_file, new_path, new_file)
 }
 

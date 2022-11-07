@@ -1,6 +1,7 @@
 //! 一段数据结构内维护的区间，相比用户给出的区间，还需要额外存区间端点
 
 use super::{ArgsType, CutSet, DiffSet, IdentType, Segment};
+#[derive(Debug)]
 pub struct RangeArea<SegmentType: Segment> {
     pub start: usize,
     pub end: usize,
@@ -46,7 +47,7 @@ impl<SegmentType: Segment> RangeArea<SegmentType> {
             DiffSet::Shrinked
         } else {
             // 删除后半段
-            assert_eq!(self.start < start, true); // 最后一种情况一定是后半段重叠
+            assert!(self.start < start); // 最后一种情况一定是后半段重叠
             self.segment.shrink_to_left(start, args);
             self.end = start;
             DiffSet::Shrinked
@@ -101,13 +102,13 @@ impl<SegmentType: Segment> RangeArea<SegmentType> {
             })
         } else {
             // 后半段相交
-            assert_eq!(self.start < start, true); // 最后一种情况一定是后半段重叠
+            assert!(self.start < start); // 最后一种情况一定是后半段重叠
             let old_end = self.end;
             self.end = start;
             CutSet::ModifiedRight(Self {
-                start: end,
+                start: start,
                 end: old_end,
-                segment: self.segment.modify_right(end, new_flag, args),
+                segment: self.segment.modify_right(start, new_flag, args),
             })
         }
     }

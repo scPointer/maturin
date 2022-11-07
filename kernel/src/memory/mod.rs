@@ -29,7 +29,7 @@ pub use page_table_impl_rv64_sv39::{
 };
 */
 
-pub use areas::{DiffSet, CutSet, PmArea, PmAreaFixed, PmAreaLazy, VmArea};
+pub use areas::{PmArea, PmAreaFixed, PmAreaLazy, VmArea};
 
 pub use vmm::{
     enable_kernel_page_table, handle_kernel_page_fault, new_memory_set_for_task, MemorySet,

@@ -7,7 +7,7 @@ use super::{CloneFlags, KernelStack, TaskContext, TimeStat};
 use crate::{
     arch::get_cpu_id,
     constants::{NO_PARENT, USER_STACK_OFFSET},
-    file::{check_file_exists, FdManager, BackEndFile},
+    file::{check_file_exists, BackEndFile, FdManager},
     loaders::parse_user_app,
     memory::{new_memory_set_for_task, phys_to_virt, MemorySet, PTEFlags, Tid, VirtAddr},
     signal::{global_register_signals, SignalHandlers, SignalReceivers, SignalUserContext},
@@ -274,7 +274,11 @@ impl TaskControlBlock {
         // 设置用户栈
         if let Some(user_stack_pos) = user_stack {
             trap_context.set_sp(user_stack_pos);
-            info!("sepc {:x} stack {:x}", trap_context.sepc, trap_context.get_sp());
+            info!(
+                "sepc {:x} stack {:x}",
+                trap_context.sepc,
+                trap_context.get_sp()
+            );
         }
         let stack_top = kernel_stack.push_first_context(trap_context);
         let dir = String::from(&inner.dir[..]);
@@ -341,7 +345,7 @@ impl TaskControlBlock {
         // 清空用户堆
         inner.user_heap_top = USER_STACK_OFFSET;
         // 清空 MemorySet 中用户段的地址
-        self.vm.lock().clear_user_and_save_kernel();
+        self.vm.lock().clear_user_pages_and_save_kernel();
         // 清空信号模块
         self.signal_handlers.lock().clear();
         self.signal_receivers.lock().clear();
@@ -383,8 +387,13 @@ impl TaskControlBlock {
                         ));
                 inner.task_cx = TaskContext::goto_restore(stack_top);
 
-                let trap_context = unsafe {*self.kernel_stack.get_first_context() };
-                debug!("sp = {:x}, entry = {:x}, sstatus = {:x}", trap_context.x[2], trap_context.sepc, trap_context.sstatus.bits());
+                let trap_context = unsafe { *self.kernel_stack.get_first_context() };
+                debug!(
+                    "sp = {:x}, entry = {:x}, sstatus = {:x}",
+                    trap_context.x[2],
+                    trap_context.sepc,
+                    trap_context.sstatus.bits()
+                );
             })
             .is_ok()
     }
@@ -401,7 +410,6 @@ impl TaskControlBlock {
         backend: Option<BackEndFile>,
         anywhere: bool,
     ) -> Option<usize> {
-        //info!("start {} , end {}", start, end);
         self.vm
             .lock()
             .push_with_backend(start, end, flags, backend, anywhere)
@@ -409,11 +417,11 @@ impl TaskControlBlock {
     }
     /// 取消一段内存地址映射
     pub fn munmap(&self, start: VirtAddr, end: VirtAddr) -> bool {
-        self.vm.lock().modify_overlap_areas(start, end).is_ok()
+        self.vm.lock().munmap(start, end)
     }
     /// 修改一段内存映射的权限
     pub fn mprotect(&self, start: VirtAddr, end: VirtAddr, new_flags: PTEFlags) -> bool {
-        self.vm.lock().modify_overlap_areas_with_new_flags(start, end, new_flags).is_ok()
+        self.vm.lock().mprotect(start, end, new_flags)
     }
     /// 将一段区域中的数据同步到和其对应的文件中，返回给定区间是否至少和一个mmap的区间相交
     pub fn msync(&self, start: VirtAddr, end: VirtAddr) -> bool {

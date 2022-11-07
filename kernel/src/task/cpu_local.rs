@@ -14,7 +14,7 @@ use crate::{
         global_logoff_signals, send_signal, SigActionDefault, SigActionFlags, SigInfo, SignalNo,
         SignalUserContext, SIG_IGN,
     },
-    syscall::{clear_loop_checker, check_thread_blocked},
+    syscall::{check_thread_blocked, clear_loop_checker},
 };
 use alloc::{sync::Arc, vec::Vec};
 use core::mem::size_of;
@@ -178,13 +178,18 @@ pub fn exit_current_task(exit_code: i32) {
             }
         }
     }
-    trace!("[cpu {}] tid {} exited with code {}", cpu_id, task.get_tid_num(), exit_code);
+    trace!(
+        "[cpu {}] tid {} exited with code {}",
+        cpu_id,
+        task.get_tid_num(),
+        exit_code
+    );
     let idle_task_cx_ptr = cpu_local.get_idle_task_cx_ptr();
     //println!("idle task context ptr {:x}", idle_task_cx_ptr as usize);
     //drop(task_inner);
     drop(task);
     drop(cpu_local);
-    
+
     // 切换回 run_tasks() 中
     unsafe {
         __move_to_context(idle_task_cx_ptr);
@@ -267,7 +272,7 @@ fn handle_zombie_task(_cpu_local: &mut CpuLocal, task: Arc<TaskControlBlock>) {
 
     // <- 之前是那么考虑的，但内存压力大的情况下好像可能不够用，还是提前gc吧
     if Arc::strong_count(&task.vm) == 1 {
-        task.vm.lock().clear_user();
+        task.vm.lock().clear_user_pages();
     }
 }
 
@@ -379,7 +384,6 @@ pub fn handle_signals() {
                 }
             }
         } else if signal == SignalNo::SIGSEGV || signal == SignalNo::SIGBUS {
-            
             //在处理信号的过程中又触发 SIGSEGV 或 SIGBUS，那么说明该直接结束了，否则会无限递归触发
             exit_current_task(-1);
         }

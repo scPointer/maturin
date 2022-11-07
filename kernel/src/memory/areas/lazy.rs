@@ -10,7 +10,7 @@ use lock::Mutex;
 
 use super::{PmArea, VmArea};
 use crate::error::{OSError, OSResult};
-use crate::file::{BackEndFile};
+use crate::file::BackEndFile;
 use crate::memory::{
     addr::{self, addr_to_page_id, align_down},
     Frame, PTEFlags, PhysAddr, VirtAddr, PAGE_SIZE, USER_VIRT_ADDR_LIMIT,
@@ -29,7 +29,10 @@ impl PmArea for PmAreaLazy {
 
     fn clone_as_fork(&self) -> OSResult<Arc<Mutex<dyn PmArea>>> {
         let new_backend = self.backend.as_ref().map(|b| b.clone_as_fork());
-        Ok(Arc::new(Mutex::new(Self::new(self.frames.len(), new_backend)?)))
+        Ok(Arc::new(Mutex::new(Self::new(
+            self.frames.len(),
+            new_backend,
+        )?)))
     }
 
     fn get_frame(&mut self, idx: usize, need_alloc: bool) -> OSResult<Option<PhysAddr>> {
@@ -37,7 +40,10 @@ impl PmArea for PmAreaLazy {
             if let Some(mut frame) = Frame::new() {
                 if let Some(backend) = &self.backend {
                     // 无法读取则直接置零
-                    if backend.read_from_offset(idx * PAGE_SIZE, frame.as_slice_mut()).is_none() {
+                    if backend
+                        .read_from_offset(idx * PAGE_SIZE, frame.as_slice_mut())
+                        .is_none()
+                    {
                         warn!("PmAreaLazy: cannot read from backend file");
                         frame.zero();
                     }
@@ -52,20 +58,28 @@ impl PmArea for PmAreaLazy {
         Ok(self.frames[idx].as_ref().map(|f| f.start_paddr()))
     }
 
-    fn sync_frame_with_file(&mut self, idx: usize) -> OSResult {
+    fn sync_frame_with_file(&mut self, idx: usize) {
         // 有后端文件就同步，即使没有也不报错
         if let Some(backend) = &self.backend {
             // 无法写回也无所谓，当前区域仍可使用
-            backend.write_to_offset(idx * PAGE_SIZE, self.frames[idx].as_ref().unwrap().as_slice()).unwrap_or(0);
+            backend
+                .write_to_offset(
+                    idx * PAGE_SIZE,
+                    self.frames[idx].as_ref().unwrap().as_slice(),
+                )
+                .unwrap_or(0);
         }
-        Ok(())
     }
 
     fn release_frame(&mut self, idx: usize) -> OSResult {
-        let frame = self.frames[idx].take().ok_or(OSError::PmAreaLazy_ReleaseNotAllocatedPage)?;
+        let frame = self.frames[idx]
+            .take()
+            .ok_or(OSError::PmAreaLazy_ReleaseNotAllocatedPage)?;
         if let Some(backend) = &self.backend {
             // 无法写回也无所谓，当前区域仍可使用
-            backend.write_to_offset(idx * PAGE_SIZE, frame.as_slice()).unwrap_or(0);
+            backend
+                .write_to_offset(idx * PAGE_SIZE, frame.as_slice())
+                .unwrap_or(0);
         }
         Ok(())
     }

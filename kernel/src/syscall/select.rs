@@ -2,9 +2,9 @@
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use core::mem::size_of;
 use base_file::File;
-use epoll::{EpollEvent, EpollEventType, EpollCtl, EpollFile, EpollErrorNo};
+use core::mem::size_of;
+use epoll::{EpollCtl, EpollErrorNo, EpollEvent, EpollEventType, EpollFile};
 use lock::MutexGuard;
 
 use crate::constants::FD_LIMIT_HARD;
@@ -14,7 +14,7 @@ use crate::signal::ShadowBitset;
 use crate::task::{get_current_task, suspend_current_task};
 use crate::timer::{get_time, get_time_ms, TimeSpec};
 
-use super::{ErrorNo, SysResult, PollFd};
+use super::{ErrorNo, PollFd, SysResult};
 
 /// 获取 fd 指向文件的集合，
 /// 每个文件存在 arc 里，每个 fd 值存在一个 usize 里，然后在用户地址原地清空建立一个 ShadowBitset。
@@ -166,18 +166,26 @@ pub fn sys_ppoll(
     ufds: *mut PollFd,
     nfds: usize,
     timeout: *const TimeSpec, // ppoll 不会更新 timeout 的值，而 poll 会
-    _sigmask: *const usize
+    _sigmask: *const usize,
 ) -> SysResult {
     //if nfds > 0 { return Ok(1); }
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
-    debug!("ppoll ufds at {:x} nfds {} timeout at {:x}", ufds as usize, nfds, timeout as usize);
-    if task_vm.manually_alloc_user_str(ufds as *const u8, nfds * size_of::<PollFd>()).is_err() {
+    debug!(
+        "ppoll ufds at {:x} nfds {} timeout at {:x}",
+        ufds as usize, nfds, timeout as usize
+    );
+    if task_vm
+        .manually_alloc_user_str(ufds as *const u8, nfds * size_of::<PollFd>())
+        .is_err()
+    {
         return Err(ErrorNo::EFAULT); // 无效地址
     }
     let mut fds: Vec<PollFd> = Vec::new();
     for i in 0..nfds {
-        unsafe { fds.push(*ufds.add(i)); }
+        unsafe {
+            fds.push(*ufds.add(i));
+        }
     }
     // 过期时间
     // 这里用**时钟周期数**来记录，足够精确的同时 usize 也能存下。实际用微秒或者纳秒应该也没问题。
@@ -208,7 +216,9 @@ pub fn sys_ppoll(
         if set > 0 {
             // 如果找到满足条件的 fd，则返回找到的 fd 数量
             for i in 0..fds.len() {
-                unsafe { *ufds.add(i) = fds[i]; }
+                unsafe {
+                    *ufds.add(i) = fds[i];
+                }
             }
             return Ok(set);
         }
@@ -216,7 +226,9 @@ pub fn sys_ppoll(
         if get_time() > expire_time {
             // 检查超时
             for i in 0..fds.len() {
-                unsafe { *ufds.add(i) = fds[i]; }
+                unsafe {
+                    *ufds.add(i) = fds[i];
+                }
             }
             return Ok(0);
         }
@@ -231,7 +243,9 @@ pub fn sys_epoll_create(_flags: usize) -> SysResult {
     let task = get_current_task().unwrap();
     let mut fd_manager = task.fd_manager.lock();
     let epoll_file = EpollFile::new();
-    fd_manager.push(Arc::new(epoll_file)).map_err(|_| ErrorNo::EMFILE)
+    fd_manager
+        .push(Arc::new(epoll_file))
+        .map_err(|_| ErrorNo::EMFILE)
 }
 
 pub fn sys_epoll_ctl(epfd: i32, op: i32, fd: i32, event: *const EpollEvent) -> SysResult {
@@ -250,18 +264,26 @@ pub fn sys_epoll_ctl(epfd: i32, op: i32, fd: i32, event: *const EpollEvent) -> S
             if fd_manager.get_file(fd as usize).is_err() {
                 return Err(ErrorNo::EBADF); // 错误的文件描述符
             }
-            epoll_file.epoll_ctl(operator, fd, event).map(|_| 0).map_err(|e| match e {
-                EpollErrorNo::EEXIST => ErrorNo::EEXIST,
-                EpollErrorNo::ENOENT => ErrorNo::ENOENT,
-            })
+            epoll_file
+                .epoll_ctl(operator, fd, event)
+                .map(|_| 0)
+                .map_err(|e| match e {
+                    EpollErrorNo::EEXIST => ErrorNo::EEXIST,
+                    EpollErrorNo::ENOENT => ErrorNo::ENOENT,
+                })
         } else {
             Err(ErrorNo::EBADF) // 错误的文件描述符
-        }
+        };
     }
     Err(ErrorNo::EBADF) // 错误的文件描述符
 }
 
-pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout: i32) -> SysResult {
+pub fn sys_epoll_wait(
+    epfd: i32,
+    event: *mut EpollEvent,
+    maxevents: i32,
+    timeout: i32,
+) -> SysResult {
     info!("epoll wait: epfd {epfd} event {event:?} maxevents {maxevents} timeout {timeout}");
     let task = get_current_task().unwrap();
     let mut task_vm = task.vm.lock();
@@ -273,10 +295,10 @@ pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout
         if let Some(epoll_file) = file.as_any().downcast_ref::<EpollFile>() {
             epoll_file.clone()
         } else {
-            return Err(ErrorNo::EBADF) // 错误的文件描述符
+            return Err(ErrorNo::EBADF); // 错误的文件描述符
         }
     } else {
-        return Err(ErrorNo::EBADF) // 错误的文件描述符
+        return Err(ErrorNo::EBADF); // 错误的文件描述符
     };
 
     //类似poll
@@ -295,13 +317,17 @@ pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout
         let mut set: usize = 0;
         for req_fd in &epolls {
             if let Ok(file) = fd_manager.get_file(req_fd.data as usize) {
-                let revents = poll(file, PollEvents::from_bits_truncate(req_fd.events.bits() as u16));
+                let revents = poll(
+                    file,
+                    PollEvents::from_bits_truncate(req_fd.events.bits() as u16),
+                );
                 if !revents.is_empty() {
                     info!("Epoll found fd {} revent {:?}", req_fd.data, revents);
-                    // 回写epollevent, 
+                    // 回写epollevent,
                     unsafe {
                         *event.add(set) = *req_fd;
-                        (*event.add(set)).events = EpollEventType::from_bits_truncate(revents.bits() as u32);
+                        (*event.add(set)).events =
+                            EpollEventType::from_bits_truncate(revents.bits() as u32);
                     }
                     set += 1;
                 }
@@ -331,4 +357,3 @@ pub fn sys_epoll_wait(epfd: i32, event: *mut EpollEvent, maxevents: i32, timeout
         suspend_current_task();
     }
 }
-

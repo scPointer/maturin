@@ -1,6 +1,6 @@
 //! 另一种空文件，用于 dev/zero
 
-use base_file::{File, Kstat, normal_file_mode, StMode};
+use base_file::{normal_file_mode, File, Kstat, StMode};
 
 pub struct ZeroFile;
 

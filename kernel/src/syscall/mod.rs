@@ -22,14 +22,14 @@ mod syscall_no;
 mod times;
 
 use base_file::Kstat;
-pub use flags::{PollFd, ErrorNo};
+use epoll::EpollEvent;
 use flags::*;
+pub use flags::{ErrorNo, PollFd};
 use fs::*;
 use futex::*;
-pub use futex::{check_thread_blocked, wake_thread, set_waiter_for_thread};
-use epoll::EpollEvent;
-use loops::*;
+pub use futex::{check_thread_blocked, set_waiter_for_thread, wake_thread};
 pub use loops::clear_loop_checker;
+use loops::*;
 use process::*;
 use select::*;
 use socket::*;
@@ -60,8 +60,18 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     let result = match syscall_id {
         SyscallNo::GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
         SyscallNo::EPOLL_CREATE => sys_epoll_create(args[0]),
-        SyscallNo::EPOLL_CTL => sys_epoll_ctl(args[0] as i32, args[1] as i32, args[2] as i32, args[3] as *const EpollEvent),
-        SyscallNo::EPOLL_WAIT => sys_epoll_wait(args[0] as i32, args[1] as *mut EpollEvent, args[2] as i32, args[3] as i32),
+        SyscallNo::EPOLL_CTL => sys_epoll_ctl(
+            args[0] as i32,
+            args[1] as i32,
+            args[2] as i32,
+            args[3] as *const EpollEvent,
+        ),
+        SyscallNo::EPOLL_WAIT => sys_epoll_wait(
+            args[0] as i32,
+            args[1] as *mut EpollEvent,
+            args[2] as i32,
+            args[3] as i32,
+        ),
         SyscallNo::DUP => sys_dup(args[0]),
         SyscallNo::DUP3 => sys_dup3(args[0], args[1]),
         SyscallNo::FCNTL64 => sys_fcntl64(args[0], args[1], args[2]),
@@ -121,7 +131,9 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[2] as *mut u8,
             args[3],
         ),
-        SyscallNo::FSTATAT => sys_fstatat(args[0] as i32, args[1] as *const u8, args[2] as *mut Kstat),
+        SyscallNo::FSTATAT => {
+            sys_fstatat(args[0] as i32, args[1] as *const u8, args[2] as *mut Kstat)
+        }
         SyscallNo::FSTAT => sys_fstat(args[0], args[1] as *mut Kstat),
         SyscallNo::UTIMENSAT => sys_utimensat(
             args[0] as i32,
@@ -196,8 +208,18 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::BIND => sys_bind(args[0], args[1] as *const u8, args[2]),
         SyscallNo::LISTEN => sys_listen(args[0], args[1]),
         SyscallNo::CONNECT => sys_connect(args[0], args[1] as *const u8, args[2]),
-        SyscallNo::ACCEPT => sys_accept4(args[0], args[1] as *mut u8, args[2] as *mut u32, args[3] as i32),
-        SyscallNo::ACCEPT4 => sys_accept4(args[0], args[1] as *mut u8, args[2] as *mut u32, args[3] as i32),
+        SyscallNo::ACCEPT => sys_accept4(
+            args[0],
+            args[1] as *mut u8,
+            args[2] as *mut u32,
+            args[3] as i32,
+        ),
+        SyscallNo::ACCEPT4 => sys_accept4(
+            args[0],
+            args[1] as *mut u8,
+            args[2] as *mut u32,
+            args[3] as i32,
+        ),
         SyscallNo::BRK => sys_brk(args[0]),
         SyscallNo::MUNMAP => sys_munmap(args[0], args[1]),
         SyscallNo::CLONE => sys_clone(args[0], args[1], args[2], args[3], args[4]),
@@ -214,7 +236,11 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[1],
             MMAPPROT::from_bits(args[2] as u32).unwrap(),
         ),
-        SyscallNo::MSYNC => sys_msync(args[0], args[1], MSyncFlags::from_bits(args[2] as u32).unwrap()),
+        SyscallNo::MSYNC => sys_msync(
+            args[0],
+            args[1],
+            MSyncFlags::from_bits(args[2] as u32).unwrap(),
+        ),
         SyscallNo::EXECVE => sys_execve(
             args[0] as *const u8,
             args[1] as *const usize,
@@ -236,7 +262,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[1] as *const u8,
             args[2] as i32,
             args[3] as *const u8,
-            RenameFlags::from_bits(args[4] as u32).unwrap()
+            RenameFlags::from_bits(args[4] as u32).unwrap(),
         ),
         SyscallNo::IOCTL => sys_ioctl(args[0], args[1], args[2] as *mut usize),
         //SyscallNo::MPROTECT => 0,
@@ -254,9 +280,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     };
     match result {
         Ok(a0) => {
-            if syscall_id != SyscallNo::GETRUSAGE
-                && syscall_id != SyscallNo::CLOCK_GET_TIME
-            {
+            if syscall_id != SyscallNo::GETRUSAGE && syscall_id != SyscallNo::CLOCK_GET_TIME {
                 debug!("{:?} ret -> {} = {:#x}", syscall_id, a0, a0);
             }
             a0 as isize

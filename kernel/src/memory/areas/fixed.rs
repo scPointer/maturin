@@ -29,7 +29,7 @@ impl PmArea for PmAreaFixed {
     fn clone_as_fork(&self) -> OSResult<Arc<Mutex<dyn PmArea>>> {
         Ok(Arc::new(Mutex::new(Self {
             start: self.start,
-            end: self.end
+            end: self.end,
         })))
     }
 
@@ -39,9 +39,7 @@ impl PmArea for PmAreaFixed {
         Ok(Some(paddr))
     }
 
-    fn sync_frame_with_file(&mut self, _idx: usize) -> OSResult {
-        Ok(())
-    }
+    fn sync_frame_with_file(&mut self, _idx: usize) {}
 
     fn release_frame(&mut self, _idx: usize) -> OSResult {
         Ok(())

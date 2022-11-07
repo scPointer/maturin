@@ -2,7 +2,6 @@
 
 //#![deny(missing_docs)]
 
-mod set;
 mod fixed;
 mod lazy;
 
@@ -18,9 +17,9 @@ use alloc::sync::Arc;
 use core::slice;
 use lock::Mutex;
 
-pub use set::{DiffSet, CutSet};
 pub use fixed::PmAreaFixed;
 pub use lazy::PmAreaLazy;
+use range_action_map::{ArgsType as PageTableRoot, IdentType as Flags, Segment};
 
 /// 一段访问权限相同的物理地址。注意物理地址本身不一定连续，只是拥有对应长度的空间
 ///
@@ -35,7 +34,7 @@ pub trait PmArea: core::fmt::Debug + Send + Sync {
     /// 如果有 need_alloc，则会在 idx 所在页未分配时尝试分配
     fn get_frame(&mut self, idx: usize, need_alloc: bool) -> OSResult<Option<PhysAddr>>;
     /// 同步页的信息到后端文件中
-    fn sync_frame_with_file(&mut self, idx: usize) -> OSResult;
+    fn sync_frame_with_file(&mut self, idx: usize);
     /// 释放 idx 地址对应的物理页
     fn release_frame(&mut self, idx: usize) -> OSResult;
     /// 读从 offset 开头的一段数据，成功时返回读取长度
@@ -113,161 +112,24 @@ impl VmArea {
         let p3 = align_up(end);
         !(p1 <= p2 || p0 >= p3)
     }
-
-    /// 尝试空出[start, end)区间。即删除当前区间中和[start, end)相交的部分。
-    ///
-    /// **注意，这个函数在内部已经 unmap 了对应的区间中的映射，调用后不需要再手动 unmap**。
-    /// 这个函数默认参数中的 start 和 end 是按页对齐的
-    pub fn shrink_or_split_if_overlap(
-        &mut self,
-        pt: &mut PageTable,
-        start: VirtAddr,
-        end: VirtAddr,
-    ) -> OSResult<DiffSet> {
-        if end <= self.start || self.end <= start { // 不相交
-            Ok(DiffSet::Unchanged)
-        } else if start <= self.start && self.end <= end { // 被包含
-            self.unmap_area(pt)?;
-            Ok(DiffSet::Removed)
-        } else if self.start < start && end < self.end { // 需要分割
-            let offset_start = start - self.start; // 相对起始位置
-            let offset_end = end - self.start; // 相对结束位置
-            self.unmap_area_partial(pt, start, end)?;
-            let right_pma = self.pma.lock().split(offset_start, offset_end)?;
-            Ok(DiffSet::Splitted(
-                VmArea::new(
-                    self.start,
-                    start,
-                    PTEFlags::from_bits(self.flags.bits()).unwrap(),
-                    self.pma.clone(),
-                    &self.name,
-                )?,
-                VmArea::new(
-                    end,
-                    self.end,
-                    PTEFlags::from_bits(self.flags.bits()).unwrap(),
-                    right_pma,
-                    &self.name,
-                )?,
-            ))
-        } else if end < self.end { // 需要删除前半段
-            let offset_start = end - self.start; // 相对结束位置，也即新的开始位置
-            self.unmap_area_partial(pt, self.start, end)?;
-            self.pma.lock().shrink_left(offset_start)?;
-            self.start = end;
-            Ok(DiffSet::Shrinked)
-        } else { // 删除后半段
-            assert_eq!(self.start < start, true); // 最后一种情况一定是后半段重叠
-            let offset_end = start - self.start; // 相对开始位置，也即新的结束位置
-            self.unmap_area_partial(pt, start, self.end)?;
-            self.pma.lock().shrink_right(offset_end)?;
-            self.end = start;
-            Ok(DiffSet::Shrinked)
-        }
-    }
-
-    /// 尝试修改与 [start, end) 区间相交的部分的权限。
-    /// 如果这一修改导致区间分裂，则分别返回分出的每个区间。
-    pub fn split_and_modify_if_overlap(
-        &mut self,
-        pt: &mut PageTable,
-        start: VirtAddr,
-        end: VirtAddr,
-        new_flags: PTEFlags,
-    ) -> OSResult<CutSet> {
-        if end <= self.start || self.end <= start { // 不相交
-            Ok(CutSet::Unchanged)
-        } else if start <= self.start && self.end <= end { // 被包含
-            self.flags = new_flags;
-            // 重新映射页表
-            self.modify_area_flags(pt)?;
-            Ok(CutSet::WholeModified)
-        }  else if self.start < start && end < self.end { // 包含区间，需要分割三段
-            let cut_point_left = start - self.start; // 第一个裁剪点
-            let cut_point_right = end - self.start; // 第二个裁剪点
-            let right_pma = self.pma.lock().split(cut_point_right, cut_point_right)?;
-            let right_vma = VmArea::new(
-                end,
-                self.end,
-                PTEFlags::from_bits(self.flags.bits()).unwrap(),
-                right_pma,
-                &self.name,
-            )?;
-            let mid_pma = self.pma.lock().split(cut_point_left, cut_point_left)?;
-            let mid_vma = VmArea::new(
-                start,
-                end,
-                new_flags, // 记得更新 flags
-                mid_pma,
-                &self.name,
-            )?;
-            mid_vma.modify_area_flags(pt)?; // 在页表中更新这一段
-            let left_vma = VmArea::new(
-                self.start,
-                start,
-                PTEFlags::from_bits(self.flags.bits()).unwrap(),
-                self.pma.clone(),
-                &self.name,
-            )?;
-            Ok(CutSet::ModifiedMiddle(left_vma, mid_vma, right_vma))
-        } else if end < self.end { // 前半段相交
-            let cut_point = end - self.start;
-            let right_pma = self.pma.lock().split(cut_point, cut_point)?;
-            let right_vma = VmArea::new(
-                end,
-                self.end,
-                PTEFlags::from_bits(self.flags.bits()).unwrap(),
-                right_pma,
-                &self.name,
-            )?;
-            let left_vma = VmArea::new(
-                self.start,
-                end,
-                new_flags, // 记得更新 flags
-                self.pma.clone(),
-                &self.name,
-            )?;
-            left_vma.modify_area_flags(pt)?; // 在页表中更新这一段
-            Ok(CutSet::ModifiedLeft(left_vma, right_vma))
-        } else { // 后半段相交
-            assert_eq!(self.start < start, true); // 最后一种情况一定是后半段重叠
-            let cut_point = start - self.start;
-            let right_pma = self.pma.lock().split(cut_point, cut_point)?;
-            let right_vma = VmArea::new(
-                start,
-                self.end,
-                new_flags, // 记得更新 flags
-                right_pma,
-                &self.name,
-            )?;
-            let left_vma = VmArea::new(
-                self.start,
-                start,
-                PTEFlags::from_bits(self.flags.bits()).unwrap(),
-                self.pma.clone(),
-                &self.name,
-            )?;
-            right_vma.modify_area_flags(pt)?; // 在页表中更新这一段
-            Ok(CutSet::ModifiedRight(left_vma, right_vma))
-        }
-    }
-
     /// 把区间中的数据同步到后端文件上(如果有的话)
-    pub fn msync(&self, start: VirtAddr, end: VirtAddr) -> OSResult {
+    pub fn msync(&self, start: VirtAddr, end: VirtAddr) {
         let mut pma = self.pma.lock();
         let start = start.max(self.start);
         let end = end.min(self.end);
         for vaddr in (start..end).step_by(PAGE_SIZE) {
-            pma.sync_frame_with_file((vaddr - self.start) / PAGE_SIZE)?;
+            pma.sync_frame_with_file((vaddr - self.start) / PAGE_SIZE);
         }
-        Ok(())
     }
 
     /// 修改这段区间的访问权限。一般由 mprotect 触发
-    pub fn modify_area_flags(&self, pt: &mut PageTable) -> OSResult {
+    fn modify_area_flags(&self, pt: &mut PageTable) -> OSResult {
         let mut pma = self.pma.lock();
         for vaddr in (self.start..self.end).step_by(PAGE_SIZE) {
-            if pma.get_frame((vaddr - self.start) / PAGE_SIZE, false)?.is_some() {
+            if pma
+                .get_frame((vaddr - self.start) / PAGE_SIZE, false)?
+                .is_some()
+            {
                 // 因为 pma 中拿到了页帧，所以这里一定是会成功的，可以 unwrap
                 // 不成功说明 OS 有问题
                 pt.set_flags(vaddr, self.flags).unwrap();
@@ -325,7 +187,7 @@ impl VmArea {
     /// 把虚拟地址段和对应的物理地址段的映射从页表中删除。
     ///
     /// 如果页表中的描述和 VmArea 的描述不符，则返回 error
-    pub fn unmap_area(&self, pt: &mut PageTable) -> OSResult {
+    fn unmap_area(&self, pt: &mut PageTable) -> OSResult {
         //println!("destory mapping: {:#x?}", self);
         self.unmap_area_partial(pt, self.start, self.end)
     }
@@ -448,5 +310,36 @@ impl VmArea {
         } else {
             Err(OSError::PageTable_PageNotMapped)
         }
+    }
+}
+
+/// 从接口参数 args: usize 转换成对页表的引用
+fn get_page_table<'a>(args: PageTableRoot) -> &'a mut PageTable {
+    unsafe { &mut *(args as *mut PageTable) }
+}
+impl Segment for VmArea {
+    fn modify(&mut self, new_flag: Flags, args: PageTableRoot) {
+        self.flags = PTEFlags::from_bits(new_flag as u8).unwrap();
+        self.modify_area_flags(get_page_table(args)).unwrap();
+    }
+    fn remove(&mut self, args: PageTableRoot) {
+        self.unmap_area(get_page_table(args)).unwrap();
+    }
+    fn split(&mut self, pos: usize, _args: PageTableRoot) -> Self {
+        let old_end = self.end;
+        self.end = pos;
+        let right_pma = self
+            .pma
+            .lock()
+            .split(pos - self.start, pos - self.start)
+            .unwrap();
+        VmArea::new(
+            pos,
+            old_end,
+            PTEFlags::from_bits(self.flags.bits()).unwrap(),
+            right_pma,
+            &self.name,
+        )
+        .unwrap()
     }
 }

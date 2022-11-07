@@ -140,6 +140,10 @@ impl PageTable {
         }
         Some(pte.addr())
     }
+    /// 获取这个页表结构的地址，注意不是根页面地址，而是这个存着 root_paddr 和 frames 的结构的地址
+    pub unsafe fn self_as_usize(&self) -> usize {
+        self as *const Self as usize
+    }
     /// 查找一个页表项，如为空则新建页面
     fn find_pte_create(&mut self, vaddr: VirtAddr) -> Option<&mut PageTableEntry> {
         let (line0, line1, line2) = pte_idx_of_virt_addr(vaddr);

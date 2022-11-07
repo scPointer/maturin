@@ -1,13 +1,14 @@
 mod resource;
+use std::fmt::Debug;
+
 use resource::Frame;
 #[allow(dead_code)]
 #[allow(non_snake_case)]
 mod pteflags;
 pub use pteflags::*;
 
-use range_action_map::{RangeActionMap, Segment, IdentType, ArgsType};
+use range_action_map::{ArgsType, IdentType, RangeActionMap, Segment};
 
-#[derive(Debug)]
 pub struct Seg {
     pub start: usize,
     pub end: usize,
@@ -15,12 +16,24 @@ pub struct Seg {
     frames: Vec<Frame>,
 }
 
+impl Debug for Seg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Seg")
+            .field("start", &self.start)
+            .field("end", &self.end)
+            .field("flags", &self.flags)
+            .finish()
+    }
+}
+
 impl Seg {
     pub fn new(start: usize, end: usize, flags: PTEFlags) -> Self {
         let mut frames: Vec<Frame> = Vec::new();
+
         for _ in start..end {
             frames.push(Frame::alloc());
         }
+
         Self {
             start,
             end,
@@ -62,16 +75,17 @@ pub fn test_find(ram: &mut RangeActionMap<Seg>, pos: usize) -> bool {
 }
 
 pub fn test_mmap_fixed(ram: &mut RangeActionMap<Seg>, start: usize, end: usize, flag: PTEFlags) {
-    ram.mmap_fixed(start, end, Seg::new(start, end, flag), |seg, _| {
-        println!("mapped to {} {}", seg.start, seg.end);
+    ram.mmap_fixed(start, end, || {
+        println!("mapped to {} {}", start, end);
+        Seg::new(start, end, flag)
     });
 }
 
 pub fn test_mmap_anywhere(ram: &mut RangeActionMap<Seg>, hint: usize, len: usize, flag: PTEFlags) {
-    ram.mmap_anywhere(hint, len, Seg::new(0, len, flag), |seg, start| {
-        seg.start = start;
-        seg.end = start + len;
-        println!("mapped to {} {}", seg.start, seg.end);
+    ram.mmap_anywhere(hint, len, |start| {
+        let end = start + len;
+        println!("mapped to {} {}", start, end);
+        Seg::new(start, end, flag)
     });
 }
 
@@ -111,6 +125,9 @@ fn test_ram() {
     assert_eq!(test_get_flag_at(&mut ram, 0x7000), PTE_NORMAL());
     assert_eq!(test_get_flag_at(&mut ram, 0x7fff), PTE_NORMAL());
     assert_eq!(test_find(&mut ram, 0x8000), false);
+    for seg in ram.iter() {
+        println!("{:#?}", seg);
+    }
 }
 
 #[test]

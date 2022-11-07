@@ -4,7 +4,7 @@
 //#![deny(missing_docs)]
 
 use alloc::string::String;
-use base_file::{File, Kstat, normal_file_mode, StMode};
+use base_file::{normal_file_mode, File, Kstat, StMode};
 
 /// 仅保存路径的文件描述符实现
 pub struct FdDir {

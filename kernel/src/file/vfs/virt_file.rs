@@ -1,11 +1,11 @@
 //! 内存中保存的虚文件，可以有 backend 指向它实际映射的内容
 
-use alloc::{vec::Vec};
-use base_file::{File, Kstat, normal_file_mode, OpenFlags, StMode};
-use lock::Mutex;
-use crate::file::{SeekFrom};
-use crate::memory::{Frame, addr_to_page_id, page_offset};
 use crate::constants::PAGE_SIZE;
+use crate::file::SeekFrom;
+use crate::memory::{addr_to_page_id, page_offset, Frame};
+use alloc::vec::Vec;
+use base_file::{normal_file_mode, File, Kstat, OpenFlags, StMode};
+use lock::Mutex;
 
 /// 临时文件
 pub struct VirtFile {
@@ -27,7 +27,7 @@ pub struct VirtFileInner {
 impl VirtFile {
     pub fn new(flags: OpenFlags) -> Self {
         Self {
-            inner: Mutex::new(VirtFileInner::new(flags))
+            inner: Mutex::new(VirtFileInner::new(flags)),
         }
     }
 }
@@ -45,7 +45,8 @@ impl VirtFileInner {
     pub fn read_inner(&mut self, buf: &mut [u8]) -> Option<usize> {
         // 读到的实际长度
         let read_len = buf.len().min(self.size - self.pos);
-        if read_len == 0 { // 如果已经没有内容可读了
+        if read_len == 0 {
+            // 如果已经没有内容可读了
             return Some(0);
         }
         // 现在读到文件内的第几页
@@ -62,14 +63,15 @@ impl VirtFileInner {
         // 先读第一页
         buf[..PAGE_SIZE - off].copy_from_slice(&self.frames[page_now].as_slice()[off..]);
         // 记录下现在读到 buf_pos 处
-        let  mut buf_pos = PAGE_SIZE - off;
+        let mut buf_pos = PAGE_SIZE - off;
         // 然后从下一页开始，依次读整页
-        for page in &self.frames[page_now+1..] {
+        for page in &self.frames[page_now + 1..] {
             // 需要读完这一整页
             if buf_pos + PAGE_SIZE <= read_len {
-                buf[buf_pos..buf_pos+PAGE_SIZE].copy_from_slice(page.as_slice());
+                buf[buf_pos..buf_pos + PAGE_SIZE].copy_from_slice(page.as_slice());
                 buf_pos += PAGE_SIZE;
-            } else { // 否则，是最后一页了。这里不用考虑文件长度，因为计算 read_len 的时候已保证了不会超长度
+            } else {
+                // 否则，是最后一页了。这里不用考虑文件长度，因为计算 read_len 的时候已保证了不会超长度
                 buf[buf_pos..read_len].copy_from_slice(&page.as_slice()[..read_len - buf_pos]);
                 //buf_pos += read_len - PAGE_SIZE;
                 break;
@@ -80,7 +82,8 @@ impl VirtFileInner {
     }
     /// 内部对写文件的实现
     pub fn write_inner(&mut self, buf: &[u8]) -> Option<usize> {
-        if buf.len() == 0 { // 特判没有实际写入的情况
+        if buf.len() == 0 {
+            // 特判没有实际写入的情况
             return Some(0);
         }
         if (self.size & (0x100_0000 - 1)) == 0 {
@@ -92,14 +95,14 @@ impl VirtFileInner {
         for _i in self.frames.len()..=page_needed {
             // 此处不处理申请时溢出的情况
             self.frames.push(Frame::new().unwrap());
-        };
+        }
         // 现在在文件内的第几页
         let page_now = addr_to_page_id(self.pos);
         // 页内的偏移量
         let off = page_offset(self.pos);
         // 如果一个页内可以解决，就简化处理
         if off + buf.len() <= PAGE_SIZE {
-            self.frames[page_now].as_slice_mut()[off..off+buf.len()].copy_from_slice(buf);
+            self.frames[page_now].as_slice_mut()[off..off + buf.len()].copy_from_slice(buf);
             // 更新文件指针和文件大小
             self.pos += buf.len();
             self.size = self.size.max(self.pos);
@@ -110,12 +113,14 @@ impl VirtFileInner {
         // 记录下现在写到 buf_pos 处
         let mut buf_pos = PAGE_SIZE - off;
         // 然后从下一页开始，依次读整页
-        for page in &mut self.frames[page_now+1..] {
+        for page in &mut self.frames[page_now + 1..] {
             // 需要读完这一整页
             if buf_pos + PAGE_SIZE <= buf.len() {
-                page.as_slice_mut().copy_from_slice(&buf[buf_pos..buf_pos+PAGE_SIZE]);
+                page.as_slice_mut()
+                    .copy_from_slice(&buf[buf_pos..buf_pos + PAGE_SIZE]);
                 buf_pos += PAGE_SIZE;
-            } else { //否则，是最后一页了。这里不用考虑文件长度，因为计算 read_len 的时候已保证了不会超长度
+            } else {
+                //否则，是最后一页了。这里不用考虑文件长度，因为计算 read_len 的时候已保证了不会超长度
                 page.as_slice_mut()[..buf.len() - buf_pos].copy_from_slice(&buf[buf_pos..]);
                 //buf_pos += buf.len() - PAGE_SIZE;
                 break;
@@ -153,7 +158,8 @@ impl VirtFileInner {
                 self.pos = pos as usize;
             }
             SeekFrom::Current(pos) => {
-                if self.pos as i64 + pos < 0 { // 不能移动到文件前
+                if self.pos as i64 + pos < 0 {
+                    // 不能移动到文件前
                     return None;
                 } else {
                     self.pos = (self.pos as i64 + pos) as usize;

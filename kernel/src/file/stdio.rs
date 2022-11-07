@@ -5,9 +5,9 @@
 
 //#![deny(missing_docs)]
 
-use base_file::{normal_file_mode, File, Kstat, StMode};
 use crate::arch::stdin::getchar;
 use crate::task::suspend_current_task;
+use base_file::{normal_file_mode, File, Kstat, StMode};
 
 /// 标准输入流
 pub struct Stdin;

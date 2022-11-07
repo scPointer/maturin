@@ -134,24 +134,24 @@ pub fn get_cpu_id() -> usize {
 #[allow(unused)]
 #[inline]
 pub fn clear_bss() {
-    unsafe { core::arch::asm!(
+    unsafe {
+        core::arch::asm!(
             "
             la t0, sbss
             la t1, ebss
             bgeu t0, t1, 2f
             ",
-
             "
             1:
             sd zero, (t0)
             addi t0, t0, 8
             bltu t0, t1, 1b
             ",
-
             "
             2:
             ",
-            ) };
+        )
+    };
 }
 
 #[inline]
