@@ -1,4 +1,6 @@
-//! 和 RISC-V 时间处理相关的方法
+//! 和 RISC-V 时间处理相关的方法，提供了相关的结构和系统调用实现
+//!
+//! **该模块依赖 `task-trampoline`，因此使用该模块前，请先按照 `task-trampoline` 的文档说明进行初始化。**
 
 #![no_std]
 
@@ -48,10 +50,12 @@ pub fn get_time_ms() -> usize {
     (time::read() * 1000) / CLOCK_FREQ
 }
 
+/// 获取秒格式的时间值。注意这不一定代表进程经过的时间值
 pub fn get_time_sec() -> usize {
     time::read() / CLOCK_FREQ
 }
 
+/// 获取微秒格式的时间值。注意这不一定代表进程经过的时间值
 pub fn get_time_us() -> usize {
     time::read() / MACHINE_TICKS_PER_USEC
 }
@@ -205,6 +209,8 @@ pub struct ITimerVal {
 
 /* Syscall */
 
+/// sys_get_time_of_day 系统调用实现
+///
 /// 获取系统时间并存放在参数提供的数组里
 pub fn sys_get_time_of_day(time_val: *mut TimeVal) -> Result<usize, ErrorNo> {
     //info!("sys_gettimeofday at {:x}", time_val as usize);
@@ -218,6 +224,9 @@ pub fn sys_get_time_of_day(time_val: *mut TimeVal) -> Result<usize, ErrorNo> {
     Ok(0)
 }
 
+/// sys_clock_gettime 系统调用实现
+///
+/// 用于获取当前系统时间
 pub fn sys_clock_gettime(_clockid: usize, time_spec: *mut TimeSpec) -> Result<usize, ErrorNo> {
     //info!("sys_clock_gettime clock id = {clockid} at {:x}", time_spec as usize);
     if manually_alloc_type(time_spec).is_err() {
@@ -230,6 +239,8 @@ pub fn sys_clock_gettime(_clockid: usize, time_spec: *mut TimeSpec) -> Result<us
     Ok(0)
 }
 
+/// sys_nanosleep 系统调用实现
+///
 /// 该进程休眠一段时间
 pub fn sys_nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> Result<usize, ErrorNo> {
     let end_time = unsafe { get_time_f64() + (*req).time_in_sec() };
@@ -247,6 +258,8 @@ pub fn sys_nanosleep(req: *const TimeSpec, rem: *mut TimeSpec) -> Result<usize, 
     Ok(0)
 }
 
+/// sys_settimer 系统调用实现
+///
 /// 将进程的运行时间信息传入用户提供的数组。详见 TMS 类型声明
 pub fn sys_times(tms_ptr: *mut TMS) -> Result<usize, ErrorNo> {
     let (utime, stime) = raw_time();
@@ -260,6 +273,7 @@ pub fn sys_times(tms_ptr: *mut TMS) -> Result<usize, ErrorNo> {
     Ok(get_time_us() / USEC_PER_INTERRUPT)
 }
 
+/// sys_getrusage 系统调用实现
 pub fn sys_getrusage(who: i32, utime: *mut TimeVal) -> Result<usize, ErrorNo> {
     let stime = unsafe { utime.add(1) };
     if manually_alloc_type(utime).is_err() || manually_alloc_type(stime).is_err() {
@@ -284,6 +298,7 @@ pub fn sys_getrusage(who: i32, utime: *mut TimeVal) -> Result<usize, ErrorNo> {
     }
 }
 
+/// sys_gettimer 系统调用实现
 pub fn sys_gettimer(_which: usize, curr_value: *mut ITimerVal) -> Result<usize, ErrorNo> {
     if manually_alloc_type(curr_value).is_err() {
         return Err(ErrorNo::EFAULT);
@@ -296,6 +311,7 @@ pub fn sys_gettimer(_which: usize, curr_value: *mut ITimerVal) -> Result<usize, 
     Ok(0)
 }
 
+/// sys_settimer 系统调用实现
 pub fn sys_settimer(
     which: usize,
     new_value: *const ITimerVal,

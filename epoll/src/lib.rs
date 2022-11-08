@@ -1,3 +1,9 @@
+//! 实现了 epoll 相关系统调用
+//!
+//! **该模块依赖 `task-trampoline`，因此使用该模块前，请先按照 `task-trampoline` 的文档说明进行初始化。**
+//!
+//! 该模块依赖 `base-file`。如果要在内核中使用该模块，内核维护文件描述符的结构也应基于 `base-file` 实现。
+
 #![no_std]
 
 extern crate alloc;
@@ -7,12 +13,13 @@ mod flags;
 
 use alloc::sync::Arc;
 pub use flags::{EpollEvent, EpollEventType, EpollCtl};
-pub use base_file::File;
 use syscall::ErrorNo;
 use task_trampoline::{get_file, manually_alloc_type, push_file};
 pub use epoll_file::EpollFile;
 
-/// 创建一个 epoll 文件
+/// 执行 epoll_create 系统调用
+///
+/// 创建一个 epoll 文件，并通过 `task_trampoline` 添加文件的接口，将 `EpollFile` 实例添加到内核中
 pub fn sys_epoll_create(_flags: usize) -> Result<usize, ErrorNo> {
     push_file(Arc::new(EpollFile::new())).map_err(|_| ErrorNo::EMFILE)
 }

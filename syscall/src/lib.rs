@@ -1,6 +1,8 @@
+//! 维护一些系统调用规范参数
+
 #![no_std]
 
-/// 错误编号
+/// 系统调用错误编号
 #[repr(C)]
 #[derive(Debug)]
 pub enum ErrorNo {

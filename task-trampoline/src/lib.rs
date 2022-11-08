@@ -1,4 +1,34 @@
-//! 提供一个跳板接口，用于让内核外的其它模块调用 Task 相关接口。
+//! 提供一个跳板接口，用作外部模块与内核模块之间的桥梁。
+//!
+//! 该模块解决两个主要问题：
+//! 1. 让内核外的其它模块调用内核中的接口
+//! 2. 充当各种内核实现的公共规范与兼容层
+//!
+//! 各式各样的内核有着形形色色的实现。在模块化的大背景下，一些共性的实现逻辑可以分离为单独的模块，独立于内核存在。
+//!
+//! 然而，这些模块可能还需要访问内核中的一些接口，如获取某个文件描述符。这就需要一个兼容层，用于统一形形色色的内核实现。
+//!
+//! `task_trampoline` 就充当了这一兼容层，内核中的实现可能多种多样，但一定要实现 `TaskTrampoline` 中定义的共有接口。
+//!
+//! 这样，就能在多种多样的模块之间达成一个统一的规范。
+//!
+//! ## 如果你是其他模块的使用者，被告知需要初始化 `TaskTrampoline`
+//!
+//! 请在内核中定义一个自己的 `MyTaskTrampoline`，并实现我们提供的 `TaskTrampoline` trait，然后在内核启动时执行我们提供的 `init_task_trampoline` 方法。
+//!
+//! 例如：
+//! ```rust
+//! struct MyTaskTrampoline;
+//!
+//! impl task_trampoline::TaskTrampoline for MyTaskTrampoline {
+//!     // ...
+//! }
+//!
+//! fn main() {
+//!     task_trampoline::init_task_trampoline(&MyTaskTrampoline);
+//!     // ...
+//! }
+//! ```
 
 #![no_std]
 

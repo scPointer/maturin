@@ -1,3 +1,7 @@
+//! 实现了 sys_ppoll 的系统调用
+//!
+//! **该模块依赖 `task-trampoline`，因此使用该模块前，请先按照 `task-trampoline` 的文档说明进行初始化。**
+
 #![no_std]
 
 extern crate alloc;
@@ -10,7 +14,7 @@ use bitflags::bitflags;
 use task_trampoline::{get_file, manually_alloc_type, manually_alloc_user_str, suspend_current_task};
 
 bitflags! {
-    /// poll 和 ppoll 用到的选项，表示对应在文件上等待或者发生过的事件
+    /// sys_ppoll 使用，表示对应在文件上等待或者发生过的事件
     pub struct PollEvents: u16 {
         /// 可读
         const IN = 0x0001;
@@ -27,7 +31,7 @@ bitflags! {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-/// poll 和 ppoll 用到的结构
+/// sys_ppoll 系统调用参数用到的结构
 pub struct PollFd {
     /// 等待的 fd
     pub fd: i32,
@@ -90,6 +94,7 @@ fn ppoll(mut fds: Vec<PollFd>, expire_time: usize) -> (usize, Vec<PollFd>) {
     }
 }
 
+/// 实现 ppoll 的系统调用
 pub fn sys_ppoll(
     ufds: *mut PollFd,
     nfds: usize,

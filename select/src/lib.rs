@@ -1,4 +1,6 @@
 //! 处理 pselect 相关的系统调用
+//!
+//! **该模块依赖 `task-trampoline`，因此使用该模块前，请先按照 `task-trampoline` 的文档说明进行初始化。**
 
 #![no_std]
 
@@ -51,6 +53,7 @@ fn init_fd_sets(
     Ok((files, fds, shadow_bitset))
 }
 
+/// 实现 pselect 的系统调用
 pub fn sys_pselect6(
     nfds: usize,
     readfds: *mut usize,
