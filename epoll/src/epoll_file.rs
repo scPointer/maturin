@@ -145,4 +145,18 @@ impl File for EpollFile {
     fn write(&self, _buf: &[u8]) -> Option<usize> {
         None
     }
+    /// Is the epoll file descriptor itself poll/epoll/selectable?
+    /// Yes.  If an epoll file descriptor has events waiting, then it will indicate as being readable.
+    fn ready_to_read(&self) -> bool {
+        let epoll_events = self.get_epoll_events();
+        for req_fd in &epoll_events {
+            if let Some(file) = get_file(req_fd.data as usize) {
+                let revents = poll(file, req_fd.events);
+                if !revents.is_empty() {
+                    return true;
+                }
+            }
+        }
+        false
+    }
 }
