@@ -24,6 +24,15 @@ fatfs = { path = "../rust-fatfs", version = "0.4", default-features = false, fea
 fscommon = { path = "../fscommon", version = "0.1.1" }
 sbi-rt = { path = "../dependencies/sbi-rt" }
 numeric-enum-macro = { path = "../dependencies/numeric-enum-macro" }
+syscall = { path = "../syscall" }
 epoll = { path = "../epoll" }
-base_file = { path = "../base_file" }
+base-file = { path = "../base-file" }
+bitset = { path = "../bitset" }
+task-trampoline = { path = "../task-trampoline" }
+poll = { path = "../poll" }
+select = { path = "../select" }
+timer = { path = "../timer" }
 range-action-map = { path = "../range-action-map", default-features = false }
+
+[features]
+sifive = ["timer/sifive"]

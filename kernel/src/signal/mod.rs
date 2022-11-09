@@ -4,6 +4,8 @@
 //!
 //! 目前的模型中，不采用 ipi 实时发送信号，而是由被目标线程在 trap 时处理。因此需要开启**时钟中断**来保证信号能实际送到
 
+use bitset::Bitset;
+
 mod signal_no;
 pub use signal_no::SignalNo;
 mod sig_action;
@@ -12,12 +14,6 @@ mod sig_info;
 pub use sig_info::SigInfo;
 mod ucontext;
 pub use ucontext::SignalUserContext;
-mod bitset;
-pub use bitset::Bitset;
-mod long_bitset;
-pub use long_bitset::LongBitset;
-mod shadow_bitset;
-pub use shadow_bitset::ShadowBitset;
 mod tid2signals;
 use crate::constants::SIGSET_SIZE_IN_BIT;
 pub use tid2signals::{get_signals_from_tid, global_logoff_signals, global_register_signals};

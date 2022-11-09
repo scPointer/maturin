@@ -5,7 +5,9 @@ use lock::Mutex;
 use alloc::sync::Arc;
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
-use crate::{EpollEvent, EpollCtl, EpollErrorNo};
+use syscall::ErrorNo;
+use task_trampoline::{get_file, suspend_current_task};
+use crate::{EpollEvent, EpollCtl, EpollEventType};
 
 /// 用作 epoll 的文件
 pub struct EpollFile {
@@ -19,6 +21,25 @@ struct EpollFileInner {
     /// 已经相应事件的文件(fd)
     _ready_list: BTreeSet<i32>,
 }
+
+/// epoll 用到的选项，输入一个要求监控的事件集(events)，返回一个实际发生的事件集(request events)
+fn poll(file: Arc<dyn File>, events: EpollEventType) -> EpollEventType {
+    let mut ret = EpollEventType::empty();
+    if file.in_exceptional_conditions() {
+        ret |= EpollEventType::EPOLLERR;
+    }
+    if file.is_hang_up() {
+        ret |= EpollEventType::EPOLLHUP;
+    }
+    if events.contains(EpollEventType::EPOLLIN) && file.ready_to_read() {
+        ret |= EpollEventType::EPOLLIN;
+    }
+    if events.contains(EpollEventType::EPOLLOUT) && file.ready_to_write() {
+        ret |= EpollEventType::EPOLLOUT;
+    }
+    ret
+}
+
 
 impl EpollFile {
     /// 新建一个 epoll 文件
@@ -38,12 +59,12 @@ impl EpollFile {
         }
     }
     /// 进行控制操作，如成功则返回 Ok(())，否则返回对应的错误编号
-    pub fn epoll_ctl(&self, op: EpollCtl, fd: i32, event: EpollEvent) -> Result<(), EpollErrorNo> {
+    pub fn epoll_ctl(&self, op: EpollCtl, fd: i32, event: EpollEvent) -> Result<(), ErrorNo> {
         let list = &mut self.inner.lock().interest_list;
         match op {
             EpollCtl::ADD => {
                 if list.contains_key(&fd) {
-                    return Err(EpollErrorNo::EEXIST);
+                    return Err(ErrorNo::EEXIST);
                 } else {
                     list.insert(fd, event);
                 }
@@ -53,12 +74,12 @@ impl EpollFile {
                     // 根据 BTreeMap 的语义，这里的 insert 相当于把原来的值替换掉
                     list.insert(fd, event);
                 } else {
-                    return Err(EpollErrorNo::ENOENT);
+                    return Err(ErrorNo::ENOENT);
                 }
             },
             EpollCtl::DEL => {
                 if list.remove(&fd).is_none() {
-                    return Err(EpollErrorNo::ENOENT);
+                    return Err(ErrorNo::ENOENT);
                 }
             }
         }
@@ -78,6 +99,41 @@ impl EpollFile {
         }
         return events;
     }
+
+    /// 实现 epoll_wait 系统调用，返回的第一个参数 0 表示超时，正数表示响应的事件个数，第二个参数表示响应后的 `epoll_events`
+    pub fn epoll_wait(&self, expire_time: usize) -> Vec<EpollEvent> {
+        let epoll_events = self.get_epoll_events();
+        let mut ret_events: Vec<EpollEvent> = Vec::new();
+        loop {
+            // 已触发的 fd
+            for req_fd in &epoll_events {
+                if let Some(file) = get_file(req_fd.data as usize) {
+                    let revents = poll(file, req_fd.events);
+                    if !revents.is_empty() {
+                        ret_events.push(EpollEvent {
+                            events: revents,
+                            data: req_fd.data,
+                        });
+                    }
+                } else {
+                    ret_events.push(EpollEvent {
+                        events: EpollEventType::EPOLLERR,
+                        data: req_fd.data,
+                    });
+                }
+            }
+            if !ret_events.is_empty() {
+                // 正常返回响应了事件的fd个数
+                return ret_events;
+            }
+            // 否则暂时 block 住
+            if timer::get_time_ms() > expire_time {
+                // 超时返回0
+                return ret_events;
+            }
+            suspend_current_task();
+        }
+    }
 }
 
 impl File for EpollFile {
@@ -88,5 +144,19 @@ impl File for EpollFile {
     /// epoll 文件不可直接写
     fn write(&self, _buf: &[u8]) -> Option<usize> {
         None
+    }
+    /// Is the epoll file descriptor itself poll/epoll/selectable?
+    /// Yes.  If an epoll file descriptor has events waiting, then it will indicate as being readable.
+    fn ready_to_read(&self) -> bool {
+        let epoll_events = self.get_epoll_events();
+        for req_fd in &epoll_events {
+            if let Some(file) = get_file(req_fd.data as usize) {
+                let revents = poll(file, req_fd.events);
+                if !revents.is_empty() {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }

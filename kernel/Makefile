@@ -5,6 +5,7 @@ SMP ?= 1
 MACHINE ?= virt
 SBI ?= default
 ONLINE ?= 1
+SIFIVE ?= y
 
 OBJDUMP ?= rust-objdump
 OBJCOPY ?= rust-objcopy
@@ -34,6 +35,10 @@ endif
 
 ifneq ($(ONLINE), 1)
 build_args += --offline
+endif
+
+ifeq ($(SIFIVE), y)
+build_args += --features sifive
 endif
 
 qemu_args := -nographic -smp $(SMP) -m 1G

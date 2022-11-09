@@ -7,7 +7,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use base_file::{File, OpenFlags};
 
-use crate::constants::{FD_LIMIT_HARD, FD_LIMIT_ORIGIN};
+use crate::constants::FD_LIMIT_ORIGIN;
 use crate::error::{OSError, OSResult};
 use crate::memory::FdAllocator;
 
@@ -163,7 +163,7 @@ impl FdManager {
     /// 修改当前 fd 的上限
     pub fn modify_limit(&mut self, new_limit: usize) {
         // 上限不能超过最初始的设定，因为分配器的实现是固定的
-        let new_limit = new_limit.min(FD_LIMIT_HARD).max(0);
+        let new_limit = new_limit.min(base_file::FD_LIMIT_HARD).max(0);
         if new_limit < self.limit {
             self.fd_allocator.shrink_range(new_limit, self.limit);
         } else if new_limit > self.limit {

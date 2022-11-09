@@ -17,7 +17,6 @@ use super::{
 use crate::{
     constants::ROOT_DIR,
     drivers::{new_memory_mapped_fs, MemoryMappedFsIoType},
-    syscall::ErrorNo,
 };
 use alloc::{string::String, sync::Arc};
 use fatfs::{DefaultTimeProvider, Error, FileSystem, LossyOemCpConverter};
@@ -33,6 +32,7 @@ type FsFile = fatfs::File<'static, FsIO, FsTP, FsOCC>;
 type FATFileSystem = FileSystem<FsIO, FsTP, FsOCC>;
 
 use base_file::{File, OpenFlags};
+use syscall::ErrorNo;
 pub use fat_dir::FatDir;
 pub use fat_file::FatFile;
 pub use fd_dir::FdDir;

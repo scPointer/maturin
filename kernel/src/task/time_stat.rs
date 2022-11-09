@@ -10,7 +10,7 @@
 //! > 这样统计的时间仍然是对的
 
 use crate::signal::{send_signal, SignalNo};
-use crate::timer::{get_time_us, TimeVal};
+use timer::{get_time_us, TimeVal};
 
 /// 进程的时间统计，基于 lmbench 需要，主要用于 sys_getrusage
 pub struct TimeStat {
@@ -63,12 +63,6 @@ impl From<usize> for TimerType {
             Err(_) => Self::NONE,
         }
     }
-}
-
-/// sys_gettimer / sys_settimer 指定的类型，用户输入输出计时器
-pub struct ITimerVal {
-    it_interval: TimeVal,
-    it_value: TimeVal,
 }
 
 impl TimeStat {
@@ -136,16 +130,15 @@ impl TimeStat {
         (self.utime_us, self.stime_us)
     }
 
-    /// 以 TimeVal 形式输出计时器信息
-    pub fn get_timer(&self, itimer: &mut ITimerVal) {
-        itimer.it_interval = self.timer_interval_us.into();
-        itimer.it_value = self.timer_remained_us.into();
+    /// 以 TimeVal 字段格式输出计时器信息
+    pub fn output_raw_timer(&self) -> (usize, usize) {
+        (self.timer_interval_us, self.timer_remained_us)
     }
-    /// 以 TimeVal 形式读入计时器信息，返回是否设置成功(类型参数对就算设置成功)
-    pub fn set_timer(&mut self, itimer: &ITimerVal, timer_type: usize) -> bool {
+    /// 以 TimeVal 字段格式形式读入计时器信息，返回是否设置成功(类型参数对就算设置成功)
+    pub fn set_raw_timer(&mut self, timer_interval_us: usize, timer_remained_us: usize, timer_type: usize) -> bool {
         self.timer_type = timer_type.into();
-        self.timer_interval_us = itimer.it_interval.into();
-        self.timer_remained_us = itimer.it_value.into();
+        self.timer_interval_us = timer_interval_us.into();
+        self.timer_remained_us = timer_remained_us.into();
         self.timer_type != TimerType::NONE
     }
     /// 从计时器中尝试减少一段时间，如果时间归零，则发送信号

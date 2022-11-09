@@ -5,7 +5,9 @@ use bitflags::*;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-/// 指定一个 epoll 事件
+/// 系统调用参数用到的类型 `epoll_event`
+///
+/// 用于指定一个 epoll 事件
 pub struct EpollEvent {
     /// 事件类型，见下
     pub events: EpollEventType,
@@ -14,7 +16,7 @@ pub struct EpollEvent {
 }
 
 bitflags! {
-    /// Epoll 事件的类型
+    /// Epoll 事件的类别
     pub struct EpollEventType: u32 {
         const EPOLLIN = 0x001;
         const EPOLLOUT = 0x004;
@@ -38,7 +40,7 @@ bitflags! {
 numeric_enum_macro::numeric_enum! {
     #[repr(i32)]
     #[derive(Debug, Eq, PartialEq)]
-    /// sys_fcntl64 使用的选项
+    /// epoll_ctl 使用的选项
     pub enum EpollCtl {
         /// 添加一个文件对应的事件
         ADD = 1,

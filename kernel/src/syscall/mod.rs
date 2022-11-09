@@ -16,32 +16,27 @@ mod fs;
 mod futex;
 mod loops;
 mod process;
-mod select;
 mod socket;
 mod syscall_no;
-mod times;
 
 use base_file::Kstat;
-use epoll::EpollEvent;
 use flags::*;
-pub use flags::{ErrorNo, PollFd};
 use fs::*;
 use futex::*;
-pub use futex::{check_thread_blocked, set_waiter_for_thread, wake_thread};
-pub use loops::clear_loop_checker;
+pub use futex::{check_thread_blocked, wake_thread, set_waiter_for_thread};
+use epoll::EpollEvent;
+use poll::PollFd;
 use loops::*;
+pub use loops::clear_loop_checker;
 use process::*;
-use select::*;
 use socket::*;
 use syscall_no::SyscallNo;
-use times::*;
+use timer::{ITimerVal, TimeSpec, TimeVal, TMS};
 
 use crate::file::FsStat;
 use crate::signal::SigAction;
-use crate::task::ITimerVal;
-use crate::timer::{TimeSpec, TimeVal};
 
-type SysResult = Result<usize, ErrorNo>;
+type SysResult = Result<usize, syscall::ErrorNo>;
 
 /// 处理系统调用
 pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
@@ -59,19 +54,9 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
 
     let result = match syscall_id {
         SyscallNo::GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
-        SyscallNo::EPOLL_CREATE => sys_epoll_create(args[0]),
-        SyscallNo::EPOLL_CTL => sys_epoll_ctl(
-            args[0] as i32,
-            args[1] as i32,
-            args[2] as i32,
-            args[3] as *const EpollEvent,
-        ),
-        SyscallNo::EPOLL_WAIT => sys_epoll_wait(
-            args[0] as i32,
-            args[1] as *mut EpollEvent,
-            args[2] as i32,
-            args[3] as i32,
-        ),
+        SyscallNo::EPOLL_CREATE => epoll::sys_epoll_create(args[0]),
+        SyscallNo::EPOLL_CTL => epoll::sys_epoll_ctl(args[0] as i32, args[1] as i32, args[2] as i32, args[3] as *const EpollEvent),
+        SyscallNo::EPOLL_WAIT => epoll::sys_epoll_wait(args[0] as i32, args[1] as *mut EpollEvent, args[2] as i32, args[3] as i32),
         SyscallNo::DUP => sys_dup(args[0]),
         SyscallNo::DUP3 => sys_dup3(args[0], args[1]),
         SyscallNo::FCNTL64 => sys_fcntl64(args[0], args[1], args[2]),
@@ -111,7 +96,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::WRITEV => sys_writev(args[0], args[1] as *const IoVec, args[2]),
         SyscallNo::PREAD => sys_pread(args[0], args[1] as *mut u8, args[2], args[3]),
         SyscallNo::SENDFILE64 => sys_sendfile64(args[0], args[1], args[2] as *mut usize, args[3]),
-        SyscallNo::PSELECT6 => sys_pselect6(
+        SyscallNo::PSELECT6 => select::sys_pselect6(
             args[0],
             args[1] as *mut usize,
             args[2] as *mut usize,
@@ -119,7 +104,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[4] as *const TimeSpec,
             args[5] as *const usize,
         ),
-        SyscallNo::PPOLL => sys_ppoll(
+        SyscallNo::PPOLL => poll::sys_ppoll(
             args[0] as *mut PollFd,
             args[1],
             args[2] as *const TimeSpec,
@@ -152,14 +137,14 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[4],
             args[5] as u32,
         ),
-        SyscallNo::NANOSLEEP => sys_nanosleep(args[0] as *const TimeSpec, args[1] as *mut TimeSpec),
-        SyscallNo::GETITIMER => sys_gettimer(args[0], args[1] as *mut ITimerVal),
-        SyscallNo::SETITIMER => sys_settimer(
+        SyscallNo::NANOSLEEP => timer::sys_nanosleep(args[0] as *const TimeSpec, args[1] as *mut TimeSpec),
+        SyscallNo::GETITIMER => timer::sys_gettimer(args[0], args[1] as *mut ITimerVal),
+        SyscallNo::SETITIMER => timer::sys_settimer(
             args[0],
             args[1] as *const ITimerVal,
             args[2] as *mut ITimerVal,
         ),
-        SyscallNo::CLOCK_GET_TIME => sys_clock_gettime(args[0], args[1] as *mut TimeSpec),
+        SyscallNo::CLOCK_GET_TIME => timer::sys_clock_gettime(args[0], args[1] as *mut TimeSpec),
         SyscallNo::YIELD => sys_yield(),
         SyscallNo::KILL => sys_kill(args[0] as isize, args[1] as isize),
         SyscallNo::TKILL => sys_tkill(args[0] as isize, args[1] as isize),
@@ -175,11 +160,11 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[3],
         ),
         SyscallNo::SIGRETURN => sys_sigreturn(),
-        SyscallNo::TIMES => sys_times(args[0] as *mut TMS),
+        SyscallNo::TIMES => timer::sys_times(args[0] as *mut TMS),
         SyscallNo::UNAME => sys_uname(args[0] as *mut UtsName),
-        SyscallNo::GETRUSAGE => sys_getrusage(args[0] as i32, args[1] as *mut TimeVal),
+        SyscallNo::GETRUSAGE => timer::sys_getrusage(args[0] as i32, args[1] as *mut TimeVal),
         SyscallNo::UMASK => sys_umask(args[0] as i32),
-        SyscallNo::GET_TIME_OF_DAY => sys_get_time_of_day(args[0] as *mut TimeVal),
+        SyscallNo::GET_TIME_OF_DAY => timer::sys_get_time_of_day(args[0] as *mut TimeVal),
         SyscallNo::GETPID => sys_getpid(),
         SyscallNo::GETPPID => sys_getppid(),
         SyscallNo::GETUID => sys_getuid(),

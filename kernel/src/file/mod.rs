@@ -5,10 +5,9 @@ mod device;
 mod fd_manager;
 mod fs_stat;
 mod pipe;
-mod poll_events;
-pub mod socket;
 mod stdio;
 mod vfs;
+pub mod socket;
 
 pub use fatfs::SeekFrom;
 
@@ -38,7 +37,6 @@ pub use device::{FatFile, FileDisc};
 pub use fd_manager::FdManager;
 pub use fs_stat::FsStat;
 pub use pipe::{Pipe, RingBuffer};
-pub use poll_events::PollEvents;
 pub use socket::Socket;
 pub use vfs::{
     check_virt_dir_exists, check_virt_file_exists, get_virt_dir_if_possible,

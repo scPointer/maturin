@@ -7,7 +7,7 @@
 use bitflags::*;
 use core::mem::size_of;
 
-use crate::file::{PollEvents, SyncPolicy};
+use crate::file::SyncPolicy;
 use crate::memory::PTEFlags;
 use crate::signal::SignalNo;
 use crate::task::CloneFlags;
@@ -104,19 +104,6 @@ bitflags! {
 #define MAP_SYNC       0x80000
 #define MAP_FIXED_NOREPLACE 0x100000
 */
-
-/// sys_times 中指定的结构体类型
-#[repr(C)]
-pub struct TMS {
-    /// 进程用户态执行时间
-    pub tms_utime: usize,
-    /// 进程内核态执行时间
-    pub tms_stime: usize,
-    /// 子进程用户态执行时间和
-    pub tms_cutime: usize,
-    /// 子进程内核态执行时间和
-    pub tms_cstime: usize,
-}
 
 bitflags! {
     pub struct UtimensatFlags: u32 {
@@ -218,45 +205,6 @@ pub struct IoVec {
     pub len: usize,
 }
 
-/// 错误编号
-#[repr(C)]
-#[derive(Debug)]
-pub enum ErrorNo {
-    /// 非法操作
-    EPERM = -1,
-    /// 找不到文件或目录
-    ENOENT = -2,
-    /// 找不到对应进程
-    ESRCH = -3,
-    /// 错误的文件描述符
-    EBADF = -9,
-    /// 资源暂时不可用。也可因为 futex_wait 时对应用户地址处的值与给定值不符
-    EAGAIN = -11,
-    /// 内存耗尽，或者没有对应的内存映射
-    ENOMEM = -12,
-    /// 无效地址
-    EFAULT = -14,
-    /// 设备或者资源被占用
-    EBUSY = -16,
-    /// 文件已存在
-    EEXIST = -17,
-    /// 不是一个目录(但要求需要是一个目录)
-    ENOTDIR = -20,
-    /// 是一个目录(但要求不能是)
-    EISDIR = -21,
-    /// 非法参数
-    EINVAL = -22,
-    /// fd（文件描述符）已满
-    EMFILE = -24,
-    /// 对文件进行了无效的 seek
-    ESPIPE = -29,
-    /// 超过范围。例如用户提供的buffer不够长
-    ERANGE = -34,
-    EPFNOSUPPORT = -96,
-    EAFNOSUPPORT = -97,
-    ECONNREFUSED = -111,
-}
-
 // sys_lseek 时对应的条件
 /// 从文件开头
 pub const SEEK_SET: isize = 0;
@@ -318,14 +266,6 @@ numeric_enum_macro::numeric_enum! {
     }
 }
 
-// sys_getrusage 用到的选项
-/// 获取当前进程的资源统计
-pub const RUSAGE_SELF: i32 = 0;
-/// 获取当前进程的所有 **已结束并等待资源回收的** 子进程资源统计
-pub const RUSAGE_CHILDREN: i32 = -1;
-/// 获取当前线程的资源统计
-pub const RUSAGE_THREAD: i32 = 1;
-
 /// sys_sysinfo 用到的类型，详见 `https://man7.org/linux/man-pages/man2/sysinfo.2.html`
 #[repr(C)]
 #[derive(Debug)]
@@ -380,15 +320,4 @@ bitflags! {
         /// 要求同步，即立即检查
         const SYNC = 1 << 2;
     }
-}
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-/// poll 和 ppoll 用到的结构
-pub struct PollFd {
-    pub fd: i32,
-    /// 等待的 fd
-    pub events: PollEvents,
-    /// 等待的事件
-    pub revents: PollEvents,
 }

@@ -1,12 +1,13 @@
 //! 关于 socket 的 syscall
 
-use super::{ErrorNo, SysResult};
-use crate::file::socket::*;
+use super::SysResult;
 use crate::task::suspend_current_task;
+use crate::file::socket::*;
 use crate::{file::Socket, task::get_current_task};
 use alloc::sync::Arc;
 use base_file::OpenFlags;
 use core::mem::size_of;
+use syscall::ErrorNo;
 
 /// 创建一个 socket
 pub fn sys_socket(domain: usize, s_type: usize, protocol: usize) -> SysResult {

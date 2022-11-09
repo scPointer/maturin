@@ -4,11 +4,12 @@
 //#![deny(missing_docs)]
 
 use super::{get_link_count, FsFile};
-use crate::{constants::FS_IMG_SIZE, timer::TimeSpec};
+use crate::constants::FS_IMG_SIZE;
 use alloc::{string::String, sync::Arc, vec::Vec};
 use base_file::{normal_file_mode, File, Kstat, OpenFlags, StMode};
 use fatfs::{Read, Seek, SeekFrom, Write};
 use lock::Mutex;
+use timer::TimeSpec;
 
 /// 把 FsFile 包装一层以适应 Trait File
 pub struct FatFile {

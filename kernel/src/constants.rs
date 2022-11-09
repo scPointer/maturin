@@ -41,20 +41,16 @@
 //#![deny(missing_docs)]
 
 #![allow(dead_code)]
-/// 是否是 sifive 平台
-pub const PLATFORM_SIFIVE: bool = true;
 /// 编号最小的可用的 cpu_id
 /// - virt 下，每个核都可用，所以是从0开始
 /// - sifive 下，0号是小核，目前还用不到，所以从1开始
-pub const FIRST_CPU_ID: usize = if PLATFORM_SIFIVE { 1 } else { 0 };
+pub const FIRST_CPU_ID: usize = if cfg!(feature = "sifive") { 1 } else { 0 };
 /// 指定一个特定的 cpu，用于执行启动过程中只能进行一次的初始化过程
 //pub const BOOTSTRAP_CPU_ID: usize = FIRST_CPU_ID;
 /// 最大的cpu_id再+1，可以认为是总的核数(无论是否使用)。目前在 virt 下是 4，在 sifive 下是 5
 pub const CPU_ID_LIMIT: usize = FIRST_CPU_ID + 4;
 /// 最后一个 CPU 的编号
 pub const LAST_CPU_ID: usize = CPU_ID_LIMIT - 1;
-/// 时钟频率，和平台有关
-pub const CLOCK_FREQ: usize = if PLATFORM_SIFIVE { 100_0000 } else { 1250_0000 };
 /// 是否单核运行。单核运行时，则其他核只启动，不运行用户程序
 pub const IS_SINGLE_CORE: bool = true;
 /// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序
@@ -96,8 +92,6 @@ pub const ORIGIN_USER_PROC_NAME: &str = "start";
 pub const TID_LIMIT: usize = 4096;
 /// 预设的文件描述符数量限制
 pub const FD_LIMIT_ORIGIN: usize = 256;
-/// 最大允许的文件描述符数量
-pub const FD_LIMIT_HARD: usize = 256;
 /// sys_pipe创建的管道的大小，单位为字节
 pub const PIPE_SIZE_LIMIT: usize = 0x40_000; // 64 KB
 /// socket 使用的 buffer 大小

@@ -30,7 +30,6 @@ pub mod signal;
 pub mod syscall;
 pub mod task;
 pub mod testcases;
-pub mod timer;
 pub mod trap;
 pub mod utils;
 
@@ -53,15 +52,75 @@ mod fsio {
 
 core::arch::global_asm!(include_str!("fs.S"));
 
+use alloc::sync::Arc;
+use base_file::File;
 // use core::sync::atomic::AtomicUsize;
 // static BOOTED_CPU_NUM: AtomicUsize = AtomicUsize::new(0);
 use log::*;
+
+struct TaskTrampoline;
+
+impl task_trampoline::TaskTrampoline for TaskTrampoline {
+    fn suspend_current_task(&self) {
+        task::suspend_current_task()
+    }
+
+    fn get_file(&self, fd: usize) -> Option<Arc<dyn base_file::File>> {
+        let task = task::get_current_task().unwrap();
+        let fd_manager = task.fd_manager.lock();
+        if let Ok(file) = fd_manager.get_file(fd) {
+            Some(file)
+        } else {
+            None
+        }
+    }
+
+    fn push_file(&self, file: Arc<dyn File>) -> Result<usize, u64> {
+        let task = task::get_current_task().unwrap();
+        let mut fd_manager = task.fd_manager.lock();
+        // TODO: 考虑是否要将错误类型返回给用户
+        fd_manager.push(file).map_err(|_| 1)
+    }
+
+    fn manually_alloc_user_str(&self, buf: *const u8, len: usize) -> Result<(), u64> {
+        let task = task::get_current_task().unwrap();
+        let mut task_vm = task.vm.lock();
+        // TODO: 考虑是否要将错误类型返回给用户
+        task_vm.manually_alloc_user_str(buf, len).map_err(|_| 1)
+    }
+
+    fn manually_alloc_range(&self, start_vaddr: usize, end_vaddr: usize) -> Result<(), u64> {
+        let task = task::get_current_task().unwrap();
+        let mut task_vm = task.vm.lock();
+        // TODO: 考虑是否要将错误类型返回给用户
+        task_vm.manually_alloc_range(start_vaddr, end_vaddr).map_err(|_| 1)
+    }
+
+    fn raw_time(&self) -> (usize, usize) {
+        let task = task::get_current_task().unwrap();
+        let time = task.time.lock();
+        time.output_raw()
+    }
+
+    fn raw_timer(&self) -> (usize, usize) {
+        let task = task::get_current_task().unwrap();
+        let time = task.time.lock();
+        time.output_raw_timer()
+    }
+
+    fn set_timer(&self, timer_interval_us: usize, timer_remained_us: usize, timer_type: usize) -> bool {
+        let task = task::get_current_task().unwrap();
+        let mut time = task.time.lock();
+        time.set_raw_timer(timer_interval_us, timer_remained_us, timer_type)
+    }
+}
 
 #[no_mangle]
 /// 主核启动OS
 pub extern "C" fn start_kernel(_arg0: usize, _arg1: usize) -> ! {
     arch::clear_bss(); // 清空 bss 段
     console::init_logger(crate::constants::LOG_LEVEL).unwrap();
+    task_trampoline::init_task_trampoline(&TaskTrampoline);
     memory::allocator_init(); // 初始化堆分配器和页帧分配器
     memory::enable_kernel_page_table(); // 构造并切换到内核态页表与 MemorySet
     trap::init(); // 设置异常/中断的入口，即 stvec

@@ -1,3 +1,5 @@
+//! 提供了一个表示文件的通用 trait。
+
 #![no_std]
 
 extern crate alloc;
@@ -10,7 +12,12 @@ use fatfs::SeekFrom;
 pub use kstat::{Kstat, StMode, normal_file_mode};
 pub use open_flags::OpenFlags;
 
+/// 最大允许的文件描述符数量
+pub const FD_LIMIT_HARD: usize = 256;
+
 /// 文件类抽象
+///
+/// 在内核中编写具体类型的文件时，应实现这个 trait
 pub trait File: Send + Sync + AsAny {
     /// 读文件内容到 buf，返回读到的字节数。
     /// 如文件不可读，返回 None。(相对应地，如果可读但没有读到内容，返回 Some(0))
@@ -118,7 +125,9 @@ pub trait File: Send + Sync + AsAny {
     }
 }
 
+/// `File` 需要满足 `AsAny` 的要求，即可以转化为 `Any` 类型，从而能够进行向下类型转换。
 pub trait AsAny {
+    /// 把当前对象转化为 `Any` 类型，供后续 downcast 使用
     fn as_any(&self) -> &dyn Any;
 }
 impl<T: Any> AsAny for T {

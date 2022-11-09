@@ -6,7 +6,7 @@
 //#![deny(missing_docs)]
 
 use super::{
-    Dirent64, Dirent64Type, ErrorNo, Fcntl64Cmd, IoVec, RenameFlags, SysResult, UtimensatFlags,
+    Dirent64, Dirent64Type, Fcntl64Cmd, IoVec, SysResult, UtimensatFlags, RenameFlags,
     SEEK_CUR, SEEK_END, SEEK_SET,
 };
 use crate::{
@@ -17,11 +17,12 @@ use crate::{
     },
     file::{FatFile, FsStat, Pipe, SeekFrom},
     task::{get_current_task, TaskControlBlock},
-    timer::TimeSpec,
     utils::raw_ptr_to_ref_str,
 };
 use alloc::{string::String, sync::Arc};
 use base_file::{Kstat, OpenFlags};
+use syscall::ErrorNo;
+use timer::TimeSpec;
 
 /// 获取当前工作路径
 pub fn sys_getcwd(buf: *mut u8, len: usize) -> SysResult {
@@ -649,7 +650,7 @@ pub fn sys_getdents64(fd: usize, buf: *mut u8, len: usize) -> SysResult {
 ///
 /// 如果 fir_fd < 0，它和 path 共同决定要找的文件；
 /// 如果 fir_fd >=0，它就是文件对应的 fd
-/// 因为它要求文件访问的部分更多，因此放在 fs.rs 而非 times.rs
+/// 因为它要求文件访问的部分更多，因此放在 fs.rs 而非 timer 模块中
 pub fn sys_utimensat(
     dir_fd: i32,
     path: *const u8,

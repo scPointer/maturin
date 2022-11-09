@@ -1,7 +1,7 @@
 //! 用户地址空间传来的指针，默认是不安全的
 
 use super::MemorySet;
-use crate::syscall::ErrorNo;
+use syscall::ErrorNo;
 use lock::MutexGuard;
 
 /// 指向用户空间的指针。

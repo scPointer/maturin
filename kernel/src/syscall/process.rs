@@ -1,22 +1,25 @@
 //! 与进程相关的系统调用
 
 use super::{
-    resolve_clone_flags_and_signal, ErrorNo, MMAPFlags, MSyncFlags, RLimit, SysResult, UtsName,
-    WaitFlags, MMAPPROT, RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK,
-    SIG_UNBLOCK,
+    resolve_clone_flags_and_signal, MMAPFlags, RLimit, SysResult, UtsName, WaitFlags,
+    MMAPPROT, MSyncFlags, RLIMIT_AS, RLIMIT_NOFILE, RLIMIT_STACK, SIG_BLOCK, SIG_SETMASK, SIG_UNBLOCK,
 };
 use crate::{
     constants::{SIGSET_SIZE_IN_BYTE, USER_STACK_SIZE, USER_VIRT_ADDR_LIMIT, USE_MSYNC},
-    file::{BackEndFile, SeekFrom},
-    memory::{align_down, align_up, page_offset},
-    signal::{send_signal, Bitset, SigAction, SignalNo},
+    file::{SeekFrom, BackEndFile},
+    signal::{send_signal, SigAction, SignalNo},
+    memory::{page_offset, align_up, align_down},
     task::{
         exec_new_task, exit_current_task, get_current_task, push_task_to_scheduler, signal_return,
         suspend_current_task,
     },
     utils::{raw_ptr_to_string, str_ptr_array_to_vec_string},
+    syscall::flags::SysInfo,
 };
 use core::mem::size_of;
+use bitset::Bitset;
+use syscall::ErrorNo;
+use timer::get_time_sec;
 
 /// 进程退出，并提供 exit_code 供 wait 等 syscall 拿取
 pub fn sys_exit(exit_code: i32) -> ! {
@@ -363,6 +366,20 @@ pub fn sys_msync(start: usize, len: usize, flags: MSyncFlags) -> SysResult {
 pub fn sys_uname(uts: *mut UtsName) -> SysResult {
     unsafe {
         (*uts) = UtsName::default();
+    }
+    Ok(0)
+}
+
+/// 获取系统的启动时间和内存信息。
+/// 目前只支持启动时间
+pub fn sys_sysinfo(info: *mut SysInfo) -> SysResult {
+    let task = get_current_task().unwrap();
+    let mut task_vm = task.vm.lock();
+    if task_vm.manually_alloc_type(info).is_err() {
+        return Err(ErrorNo::EFAULT);
+    }
+    unsafe {
+        (*info).uptime = get_time_sec() as isize;
     }
     Ok(0)
 }

@@ -31,7 +31,6 @@ use crate::{
         get_current_task, handle_signals, handle_user_page_fault, signal_return,
         suspend_current_task, timer_kernel_to_user, timer_user_to_kernel,
     },
-    timer::set_next_trigger,
 };
 use core::arch::global_asm;
 use riscv::register::{
@@ -39,8 +38,10 @@ use riscv::register::{
     scause::{self, Exception, Interrupt, Trap},
     sie, sstatus, stval, stvec,
 };
+use timer::get_next_trigger;
 
 pub use context::TrapContext;
+use crate::arch::set_timer;
 
 global_asm!(include_str!("trap.S"));
 
@@ -184,7 +185,7 @@ pub fn user_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             );
 
             // 之后需要判断如果是在内核态，则不切换任务
-            set_next_trigger();
+            set_timer(get_next_trigger());
             suspend_current_task();
         }
         _ => {
@@ -294,7 +295,7 @@ pub fn kernel_trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
                 cx.sepc
             );
             // 之后需要判断如果是在内核态，则不切换任务
-            set_next_trigger();
+            set_timer(get_next_trigger());
             //suspend_current_and_run_next();
         }
         _ => {

@@ -1,9 +1,10 @@
 //! 信号处理函数
 //!
 
-use super::{Bitset, SignalNo};
+use super::SignalNo;
 use crate::constants::SIGNAL_RETURN_TRAP;
 use bitflags::*;
+use bitset::Bitset;
 
 /// SigAction::handler 的特殊取值，表示默认处理函数
 pub const SIG_DFL: usize = 0;
