@@ -93,7 +93,9 @@ impl task_trampoline::TaskTrampoline for TaskTrampoline {
         let task = task::get_current_task().unwrap();
         let mut task_vm = task.vm.lock();
         // TODO: 考虑是否要将错误类型返回给用户
-        task_vm.manually_alloc_range(start_vaddr, end_vaddr).map_err(|_| 1)
+        task_vm
+            .manually_alloc_range(start_vaddr, end_vaddr)
+            .map_err(|_| 1)
     }
 
     fn raw_time(&self) -> (usize, usize) {
@@ -108,7 +110,12 @@ impl task_trampoline::TaskTrampoline for TaskTrampoline {
         time.output_raw_timer()
     }
 
-    fn set_timer(&self, timer_interval_us: usize, timer_remained_us: usize, timer_type: usize) -> bool {
+    fn set_timer(
+        &self,
+        timer_interval_us: usize,
+        timer_remained_us: usize,
+        timer_type: usize,
+    ) -> bool {
         let task = task::get_current_task().unwrap();
         let mut time = task.time.lock();
         time.set_raw_timer(timer_interval_us, timer_remained_us, timer_type)

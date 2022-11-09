@@ -32,7 +32,8 @@ impl Waiter for FutexWaiter {
         if self.woken {
             // 主动唤醒
             true
-        } else { // 超时唤醒
+        } else {
+            // 超时唤醒
             timer::get_time_us() >= self.timed_out_us
         }
     }

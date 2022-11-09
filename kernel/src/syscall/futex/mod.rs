@@ -12,14 +12,13 @@ pub use waiter::{FutexWaiter, Waiter};
 mod waiting_board;
 pub use waiting_board::{check_thread_blocked, set_waiter_for_thread, wake_thread};
 
-use flags::{Flags, FutexFlag};
-use lock::Mutex;
-use alloc::boxed::Box;
-use syscall::ErrorNo;
-use timer::{TimeSpec, TimeVal};
 use super::{sys_gettid, SysResult};
 use crate::task::{get_current_task, suspend_current_task};
-
+use alloc::boxed::Box;
+use flags::{Flags, FutexFlag};
+use lock::Mutex;
+use syscall::ErrorNo;
+use timer::{TimeSpec, TimeVal};
 
 static FCOUNT: Mutex<usize> = Mutex::new(0);
 

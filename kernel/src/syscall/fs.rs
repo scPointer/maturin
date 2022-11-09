@@ -6,8 +6,8 @@
 //#![deny(missing_docs)]
 
 use super::{
-    Dirent64, Dirent64Type, Fcntl64Cmd, IoVec, SysResult, UtimensatFlags, RenameFlags,
-    SEEK_CUR, SEEK_END, SEEK_SET,
+    Dirent64, Dirent64Type, Fcntl64Cmd, IoVec, RenameFlags, SysResult, UtimensatFlags, SEEK_CUR,
+    SEEK_END, SEEK_SET,
 };
 use crate::{
     constants::{AT_FDCWD, SENDFILE_BUFFER_SIZE},

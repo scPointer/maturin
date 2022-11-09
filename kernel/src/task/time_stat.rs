@@ -135,7 +135,12 @@ impl TimeStat {
         (self.timer_interval_us, self.timer_remained_us)
     }
     /// 以 TimeVal 字段格式形式读入计时器信息，返回是否设置成功(类型参数对就算设置成功)
-    pub fn set_raw_timer(&mut self, timer_interval_us: usize, timer_remained_us: usize, timer_type: usize) -> bool {
+    pub fn set_raw_timer(
+        &mut self,
+        timer_interval_us: usize,
+        timer_remained_us: usize,
+        timer_type: usize,
+    ) -> bool {
         self.timer_type = timer_type.into();
         self.timer_interval_us = timer_interval_us.into();
         self.timer_remained_us = timer_remained_us.into();

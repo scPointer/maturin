@@ -5,9 +5,9 @@ mod device;
 mod fd_manager;
 mod fs_stat;
 mod pipe;
+pub mod socket;
 mod stdio;
 mod vfs;
-pub mod socket;
 
 pub use fatfs::SeekFrom;
 

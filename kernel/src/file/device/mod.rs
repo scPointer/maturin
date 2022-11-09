@@ -32,7 +32,6 @@ type FsFile = fatfs::File<'static, FsIO, FsTP, FsOCC>;
 type FATFileSystem = FileSystem<FsIO, FsTP, FsOCC>;
 
 use base_file::{File, OpenFlags};
-use syscall::ErrorNo;
 pub use fat_dir::FatDir;
 pub use fat_file::FatFile;
 pub use fd_dir::FdDir;
@@ -42,6 +41,7 @@ pub use link::{
     umount_fat_fs,
 };
 pub use stat::get_fs_stat as origin_fs_stat;
+use syscall::ErrorNo;
 pub use test::{
     add_sys_info,
     //load_testcases,

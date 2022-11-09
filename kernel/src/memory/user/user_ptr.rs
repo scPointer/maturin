@@ -1,8 +1,8 @@
 //! 用户地址空间传来的指针，默认是不安全的
 
 use super::MemorySet;
-use syscall::ErrorNo;
 use lock::MutexGuard;
+use syscall::ErrorNo;
 
 /// 指向用户空间的指针。
 ///

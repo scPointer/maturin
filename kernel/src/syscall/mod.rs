@@ -20,14 +20,14 @@ mod socket;
 mod syscall_no;
 
 use base_file::Kstat;
+use epoll::EpollEvent;
 use flags::*;
 use fs::*;
 use futex::*;
-pub use futex::{check_thread_blocked, wake_thread, set_waiter_for_thread};
-use epoll::EpollEvent;
-use poll::PollFd;
-use loops::*;
+pub use futex::{check_thread_blocked, set_waiter_for_thread, wake_thread};
 pub use loops::clear_loop_checker;
+use loops::*;
+use poll::PollFd;
 use process::*;
 use socket::*;
 use syscall_no::SyscallNo;
@@ -55,8 +55,18 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
     let result = match syscall_id {
         SyscallNo::GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
         SyscallNo::EPOLL_CREATE => epoll::sys_epoll_create(args[0]),
-        SyscallNo::EPOLL_CTL => epoll::sys_epoll_ctl(args[0] as i32, args[1] as i32, args[2] as i32, args[3] as *const EpollEvent),
-        SyscallNo::EPOLL_WAIT => epoll::sys_epoll_wait(args[0] as i32, args[1] as *mut EpollEvent, args[2] as i32, args[3] as i32),
+        SyscallNo::EPOLL_CTL => epoll::sys_epoll_ctl(
+            args[0] as i32,
+            args[1] as i32,
+            args[2] as i32,
+            args[3] as *const EpollEvent,
+        ),
+        SyscallNo::EPOLL_WAIT => epoll::sys_epoll_wait(
+            args[0] as i32,
+            args[1] as *mut EpollEvent,
+            args[2] as i32,
+            args[3] as i32,
+        ),
         SyscallNo::DUP => sys_dup(args[0]),
         SyscallNo::DUP3 => sys_dup3(args[0], args[1]),
         SyscallNo::FCNTL64 => sys_fcntl64(args[0], args[1], args[2]),
@@ -137,7 +147,9 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
             args[4],
             args[5] as u32,
         ),
-        SyscallNo::NANOSLEEP => timer::sys_nanosleep(args[0] as *const TimeSpec, args[1] as *mut TimeSpec),
+        SyscallNo::NANOSLEEP => {
+            timer::sys_nanosleep(args[0] as *const TimeSpec, args[1] as *mut TimeSpec)
+        }
         SyscallNo::GETITIMER => timer::sys_gettimer(args[0], args[1] as *mut ITimerVal),
         SyscallNo::SETITIMER => timer::sys_settimer(
             args[0],

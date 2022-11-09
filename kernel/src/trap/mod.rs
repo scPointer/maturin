@@ -40,8 +40,8 @@ use riscv::register::{
 };
 use timer::get_next_trigger;
 
-pub use context::TrapContext;
 use crate::arch::set_timer;
+pub use context::TrapContext;
 
 global_asm!(include_str!("trap.S"));
 
