@@ -1,3 +1,4 @@
+//！ 一个区间树结构，用于提供 mmap / munmap / mprotect 时对区间的操作
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(btree_drain_filter)]
 
@@ -27,13 +28,40 @@ pub use range_area::RangeArea;
 mod defs;
 pub use defs::{ArgsType, IdentType, LOWER_LIMIT, UPPER_LIMIT};
 
+/// 一个数据结构，维护互不相交的左闭右开区间。
+/// 其中每个区间有一个 usize 大小的可修改的属性，在用于内存管理时，它一般是 PTEFlags
+/// (尽管这个结构只需要u8，但我们希望这个属性至少可以放下一个 raw_pointer 以便扩展其他用途)。
+/// 
+/// RangeActionMap 主要提供以下操作：
+/// - `unmap(start, end)`：拆分/缩短/删除部分现有区间，空出`[start, end)` 这一段。
+/// - `mprotect(start, end)`：修改所有区间与 `[start,end)` 相交的部分的属性。没有被 `[start, end)` 覆盖的区间会被拆分。
+/// - `mmap_fixed(start, end)`：`unmap(start, end)`，并插入一个(用户给定的)新区间在`[start, end)`。
+/// - `mmap_anywhere(hint, len)`：不修改任何区间，寻找一个长为 len 且左端点不小于 `hint` 的空位，并插入一个(用户给定的)新区间，返回插入位置的左端点。
+/// 
+/// 还提供以下接口：
+/// - `find(pos: usize)`：查询一个点是否在某个区间在，如果在，返回它的引用。
+/// - `.iter()` `.iter_mut()`：迭代器支持。
+/// - `impl Debug`：可以用 Debug 属性输出所有区间信息(需要用户提供的底层 `SegmentType` 实现 `Debug`)。
+/// 
+/// `RangeActionMap` 需要一个实现 `trait Segment` 的类型，至少实现删除、拆分、修改三个操作：
+/// - `remove()`：删除这段区间
+/// - `split(pos)`：从`pos`位置把当前区间拆成两段区间(pos 参数为全局的绝对位置而非区间内位置)
+/// - `modify(new_flags)`：修改区间的属性
+/// 
+/// **此外，`RangeActionMap`创建时要求传入一个 `ArgsType`，它实际上是一个 usize。这个值会在每次操作时传递给底层区间**
+/// 
 pub struct RangeActionMap<SegmentType: Segment> {
     pub segments: BTreeMap<usize, RangeArea<SegmentType>>,
     args: ArgsType,
 }
 
 impl<SegmentType: Segment> RangeActionMap<SegmentType> {
-    /// 创建一个空的区间树
+    /// 创建一个空的区间树。
+    /// 
+    /// 传入的 `args` 会在每次操作时传递给底层的区间。
+    /// (如果用于内存管理，推荐传入页表位置)
+    /// 
+    /// 此外，也可在 `./defs.rs` 修改 `ArgsType` 的定义，以传递不同的参数
     pub fn new(args: ArgsType) -> Self {
         Self {
             segments: BTreeMap::new(),
@@ -72,11 +100,37 @@ impl<SegmentType: Segment> RangeActionMap<SegmentType> {
             map_iter: self.segments.iter_mut(),
         }
     }
-    /// 映射一段长度为 len 的区间，且区间左端点位置不小于 hint。
-    ///
-    /// 如找到这样的区间，则会执行 `f(&mut segment, start)` 以便在其中操作页表，
+    /// 插入一段长度为 len 的区间，且区间左端点位置不小于 hint。
+    /// 
+    /// - 如找到这样的区间，则会执行 `f(start: usize)` 获取区间实例，
     /// 然后返回 Some(start) 表示区间左端点；
-    /// 否则，返回 None
+    /// - 否则，**不会执行 `f` **，并返回 None
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # use range_action_map::{RangeActionMap, Segment, IdentType, ArgsType};
+    /// /// 定义一个区间结构，内部只保存左右端点
+    /// struct Seg(usize, usize);
+    /// /// 实现 Segment
+    /// impl Segment for Seg {
+    ///     fn remove(&mut self, args: ArgsType) {}
+    ///     fn modify(&mut self, new_flag: IdentType, args: ArgsType) {}
+    ///     fn split(&mut self, pos: usize, args: ArgsType) -> Self {
+    ///         let right_end = self.1;
+    ///         self.1 = pos;
+    ///         Self(pos, right_end)
+    ///     }
+    /// }
+    /// let mut map: RangeActionMap<Seg> = RangeActionMap::new(0);
+    /// /// 申请一个长为 10 的区间，要求左端点不小于 123，获得[123,133)
+    /// assert_eq!(Some(123), map.mmap_anywhere(123, 10, |start| Seg(start, start+10)));
+    /// /// 申请一个长为 10 的区间，要求左端点不小于 140，获得[140,150)
+    /// assert_eq!(Some(140), map.mmap_anywhere(140, 10, |start| Seg(start, start+10)));
+    /// /// 申请一个长为 10 的区间，要求左端点不小于 120，获得[150, 160)。
+    /// /// 这是因为[123,133)和[140,150)已有区间，第一个满足要求的空区间只能从 150 开始
+    /// assert_eq!(Some(150), map.mmap_anywhere(120, 10, |start| Seg(start, start+10)));
+    /// ```
     pub fn mmap_anywhere(
         &mut self,
         hint: usize,
@@ -89,9 +143,13 @@ impl<SegmentType: Segment> RangeActionMap<SegmentType> {
         })
     }
 
-    /// 尝试插入一段数据。如插入成功，返回插入后的起始地址
+    /// 尝试插入一个区间。如插入成功，返回插入后的起始地址
     ///
-    /// 必须在 [start, end) 尝试插入。
+    /// - 如区间在 `[LOWER_LIMIT, UPPER_LIMIT]` 范围内，则会：
+    /// - - unmap(start, end)，
+    /// - - 然后执行 `f(start: usize)` ，
+    /// - - 然后返回 Some(start) 表示区间左端点；
+    /// - 否则，**不会执行 `f` **，并返回 None
     pub fn mmap_fixed(
         &mut self,
         start: usize,
