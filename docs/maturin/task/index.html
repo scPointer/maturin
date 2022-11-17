@@ -21,7 +21,6 @@
 </div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="time_stat/index.html" title="maturin::task::time_stat mod">time_stat</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="item-right docblock-short"><p>统计进程的用户态和内核态时间</p>
 </div></div></div><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
 <div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.CloneFlags.html" title="maturin::task::CloneFlags struct">CloneFlags</a></div><div class="item-right docblock-short"><p>用于 sys_clone 的选项</p>
-</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.ITimerVal.html" title="maturin::task::ITimerVal struct">ITimerVal</a></div><div class="item-right docblock-short"><p>sys_gettimer / sys_settimer 指定的类型，用户输入输出计时器</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.KernelStack.html" title="maturin::task::KernelStack struct">KernelStack</a></div><div class="item-right docblock-short"><p>内核栈，会通过帧分配器申请一段内存
 在内核态时，这段内存是在 physical memory 上的，因此可以直接访问
 这省去了修改 MemorySet 和页表的步骤，比较快，但也意味着没有 shadow page，需要由其他机制实现(Todo: trap.S 中判断)

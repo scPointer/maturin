@@ -122,15 +122,13 @@
 <span id="117">117</span>
 <span id="118">118</span>
 <span id="119">119</span>
-<span id="120">120</span>
-<span id="121">121</span>
-<span id="122">122</span>
-<span id="123">123</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 信号模块，用于 sigaction / sigreturn / kill 等 syscall</span>
 <span class="doccomment">//! 信号模块和 task 管理的进程/线程相关，但又相对独立；</span>
 <span class="doccomment">//! 且如果单纯作为线程的一部分，容易因为信号发送的任意性导致死锁，因此单独列出来。</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! 目前的模型中，不采用 ipi 实时发送信号，而是由被目标线程在 trap 时处理。因此需要开启**时钟中断**来保证信号能实际送到</span>
+
+<span class="kw">use</span> <span class="ident">bitset::Bitset</span>;
 
 <span class="kw">mod</span> <span class="ident">signal_no</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">signal_no::SignalNo</span>;
@@ -140,12 +138,6 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">sig_info::SigInfo</span>;
 <span class="kw">mod</span> <span class="ident">ucontext</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ucontext::SignalUserContext</span>;
-<span class="kw">mod</span> <span class="ident">bitset</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">bitset::Bitset</span>;
-<span class="kw">mod</span> <span class="ident">long_bitset</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">long_bitset::LongBitset</span>;
-<span class="kw">mod</span> <span class="ident">shadow_bitset</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">shadow_bitset::ShadowBitset</span>;
 <span class="kw">mod</span> <span class="ident">tid2signals</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::SIGSET_SIZE_IN_BIT</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">tid2signals</span>::{<span class="ident">get_signals_from_tid</span>, <span class="ident">global_logoff_signals</span>, <span class="ident">global_register_signals</span>};
@@ -182,13 +174,13 @@
     }
     <span class="doccomment">/// 获取某个信号对应的 SigAction，如果存在，则返回其引用</span>
     <span class="doccomment">/// 因为 signum 的范围是 \[1,64\]，所以要 -1</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_action_ref</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">signum</span>: <span class="ident">usize</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SigAction</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_action_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">signum</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SigAction</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">actions</span>[<span class="ident">signum</span> <span class="op">-</span> <span class="number">1</span>].<span class="ident">is_some</span>()
             <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">actions</span>[<span class="ident">signum</span> <span class="op">-</span> <span class="number">1</span>].<span class="ident">unwrap</span>().<span class="ident">handler</span> <span class="op">==</span> <span class="ident">SIG_DFL</span>
         {
-            <span class="kw-2">&amp;</span><span class="prelude-val">None</span>
+            <span class="prelude-val">None</span>
         } <span class="kw">else</span> {
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">actions</span>[<span class="ident">signum</span> <span class="op">-</span> <span class="number">1</span>]
+            <span class="self">self</span>.<span class="ident">actions</span>[<span class="ident">signum</span> <span class="op">-</span> <span class="number">1</span>].<span class="ident">as_ref</span>()
         }
         <span class="comment">//if signum != 33 {&amp;self.actions[signum - 1]} else {&amp;None}</span>
     }

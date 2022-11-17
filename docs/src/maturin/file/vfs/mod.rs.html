@@ -107,6 +107,23 @@
 <span id="102">102</span>
 <span id="103">103</span>
 <span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 虚拟文件系统管理</span>
 <span class="doccomment">//! 用于对一些特殊目录和文件的访问，如 /dev/zero 或 /tmp</span>
 
@@ -121,8 +138,8 @@
 <span class="comment">// 其实这里不要求有序性，可以不用 BTree。</span>
 <span class="comment">// 但 std::collections::HashMap 不是那么容易在 no_std 下找到，需要引入依赖库</span>
 <span class="comment">// 所以方便起见就不用 HashMap 了</span>
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">File</span>, <span class="ident">Kstat</span>, <span class="ident">OpenFlags</span>};
 <span class="kw">use</span> <span class="ident">alloc::collections::BTreeMap</span>;
+<span class="kw">use</span> <span class="ident">base_file</span>::{<span class="ident">File</span>, <span class="ident">OpenFlags</span>};
 <span class="kw">use</span> <span class="ident">null::NullFile</span>;
 <span class="kw">use</span> <span class="ident">virt_dir::VirtDir</span>;
 <span class="kw">use</span> <span class="ident">virt_file</span>::{<span class="ident">VirtFile</span>, <span class="ident">VirtFileInner</span>};
@@ -152,7 +169,11 @@
 }
 
 <span class="doccomment">/// 查询这个目录是否是 vfs 里的目录，如果是则从 vfs 中取对应文件</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_virt_file_if_possible</span>(<span class="ident">dir</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>, <span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>, <span class="ident">flags</span>: <span class="ident">OpenFlags</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">File</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_virt_file_if_possible</span>(
+    <span class="ident">dir</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>,
+    <span class="ident">file</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>,
+    <span class="ident">flags</span>: <span class="ident">OpenFlags</span>,
+) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">File</span><span class="op">&gt;</span><span class="op">&gt;</span> {
     <span class="kw">match</span> <span class="ident">VFS_DIRS</span>
         .<span class="ident">lock</span>()
         .<span class="ident">get</span>(<span class="ident">dir</span>.<span class="ident">strip_prefix</span>(<span class="string">&quot;./&quot;</span>)<span class="question-mark">?</span>.<span class="ident">strip_suffix</span>(<span class="string">&quot;/&quot;</span>)<span class="question-mark">?</span>)
@@ -189,8 +210,14 @@
 }
 
 <span class="doccomment">/// 检查是否存在对应文件。Some表示路径存在，true/false表示文件是否存在</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check_virt_file_exists</span>(<span class="ident">dir</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>, <span class="ident">file_name</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> { <span class="comment">// 这里套了 option 是为了方便用问号</span>
-    <span class="prelude-val">Some</span>(<span class="ident">VFS_DIRS</span>.<span class="ident">lock</span>().<span class="ident">get</span>(<span class="ident">dir</span>.<span class="ident">strip_prefix</span>(<span class="string">&quot;./&quot;</span>)<span class="question-mark">?</span>.<span class="ident">strip_suffix</span>(<span class="string">&quot;/&quot;</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>.<span class="ident">check_file_exists</span>(<span class="ident">file_name</span>))
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check_virt_file_exists</span>(<span class="ident">dir</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>, <span class="ident">file_name</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
+    <span class="comment">// 这里套了 option 是为了方便用问号</span>
+    <span class="prelude-val">Some</span>(
+        <span class="ident">VFS_DIRS</span>
+            .<span class="ident">lock</span>()
+            .<span class="ident">get</span>(<span class="ident">dir</span>.<span class="ident">strip_prefix</span>(<span class="string">&quot;./&quot;</span>)<span class="question-mark">?</span>.<span class="ident">strip_suffix</span>(<span class="string">&quot;/&quot;</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>
+            .<span class="ident">check_file_exists</span>(<span class="ident">file_name</span>),
+    )
 }
 
 <span class="doccomment">/// 删除对应文件或目录。Some表示路径存在，true/false表示文件是否存在</span>
@@ -198,7 +225,8 @@
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vfs_dirs</span> <span class="op">=</span> <span class="ident">VFS_DIRS</span>.<span class="ident">lock</span>();
     <span class="kw">let</span> <span class="ident">virt_dir</span> <span class="op">=</span> <span class="ident">vfs_dirs</span>.<span class="ident">get</span>(<span class="ident">dir</span>.<span class="ident">strip_prefix</span>(<span class="string">&quot;./&quot;</span>)<span class="question-mark">?</span>.<span class="ident">strip_suffix</span>(<span class="string">&quot;/&quot;</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">file</span>) <span class="op">=</span> <span class="ident">virt_dir</span>.<span class="ident">remove_file</span>(<span class="ident">file_name</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">dir_name</span>) <span class="op">=</span> <span class="ident">file</span>.<span class="ident">get_dir</span>() { <span class="comment">// 说明是个 VirtDir 目录，需要从 VFS_DIRS 里删掉</span>
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">dir_name</span>) <span class="op">=</span> <span class="ident">file</span>.<span class="ident">get_dir</span>() {
+            <span class="comment">// 说明是个 VirtDir 目录，需要从 VFS_DIRS 里删掉</span>
             <span class="ident">vfs_dirs</span>.<span class="ident">remove</span>(<span class="ident">dir_name</span>);
         }
         <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)
@@ -208,8 +236,14 @@
 }
 
 <span class="doccomment">/// 检查是否存在对应目录</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check_virt_dir_exists</span>(<span class="ident">dir</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> { <span class="comment">// 这里套了 option 是为了方便用问号</span>
-    <span class="prelude-val">Some</span>(<span class="ident">VFS_DIRS</span>.<span class="ident">lock</span>().<span class="ident">get</span>(<span class="ident">dir</span>.<span class="ident">strip_prefix</span>(<span class="string">&quot;./&quot;</span>)<span class="question-mark">?</span>.<span class="ident">strip_suffix</span>(<span class="string">&quot;/&quot;</span>)<span class="question-mark">?</span>).<span class="ident">is_some</span>())
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check_virt_dir_exists</span>(<span class="ident">dir</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
+    <span class="comment">// 这里套了 option 是为了方便用问号</span>
+    <span class="prelude-val">Some</span>(
+        <span class="ident">VFS_DIRS</span>
+            .<span class="ident">lock</span>()
+            .<span class="ident">get</span>(<span class="ident">dir</span>.<span class="ident">strip_prefix</span>(<span class="string">&quot;./&quot;</span>)<span class="question-mark">?</span>.<span class="ident">strip_suffix</span>(<span class="string">&quot;/&quot;</span>)<span class="question-mark">?</span>)
+            .<span class="ident">is_some</span>(),
+    )
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="maturin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (1f7fb6413 2022-04-10)" ></div>

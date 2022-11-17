@@ -284,29 +284,18 @@
 <span id="279">279</span>
 <span id="280">280</span>
 <span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
 </pre><pre class="rust"><code><span class="doccomment">//! FAT中的文件抽象。</span>
 <span class="doccomment">//!</span>
 
 <span class="comment">//#![deny(missing_docs)]</span>
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">get_link_count</span>, <span class="ident">File</span>, <span class="ident">FsFile</span>, <span class="ident">OpenFlags</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">file</span>::{<span class="ident">normal_file_mode</span>, <span class="ident">Kstat</span>, <span class="ident">StMode</span>},
-    <span class="ident">timer::TimeSpec</span>,
-};
+<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">get_link_count</span>, <span class="ident">FsFile</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::FS_IMG_SIZE</span>;
 <span class="kw">use</span> <span class="ident">alloc</span>::{<span class="ident">string::String</span>, <span class="ident">sync::Arc</span>, <span class="ident">vec::Vec</span>};
+<span class="kw">use</span> <span class="ident">base_file</span>::{<span class="ident">normal_file_mode</span>, <span class="ident">File</span>, <span class="ident">Kstat</span>, <span class="ident">OpenFlags</span>, <span class="ident">StMode</span>};
 <span class="kw">use</span> <span class="ident">fatfs</span>::{<span class="ident">Read</span>, <span class="ident">Seek</span>, <span class="ident">SeekFrom</span>, <span class="ident">Write</span>};
 <span class="kw">use</span> <span class="ident">lock::Mutex</span>;
+<span class="kw">use</span> <span class="ident">timer::TimeSpec</span>;
 
 <span class="doccomment">/// 把 FsFile 包装一层以适应 Trait File</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FatFile</span> {
@@ -487,36 +476,34 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">file</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">file</span>.<span class="ident">lock</span>();
         <span class="kw">let</span> <span class="ident">pos_before_seek</span> <span class="op">=</span> <span class="ident">file</span>.<span class="ident">seek</span>(<span class="ident">SeekFrom::Current</span>(<span class="number">0</span>)).<span class="ident">unwrap</span>();
         <span class="ident">file</span>.<span class="ident">seek</span>(<span class="ident">seekfrom</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">pos</span><span class="op">|</span> {
-                <span class="kw">match</span> <span class="ident">seekfrom</span> {
-                    <span class="ident">SeekFrom::Start</span>(<span class="ident">origin</span>) =&gt; {
-                        <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">file</span>.<span class="ident">seek</span>(<span class="ident">SeekFrom::End</span>(<span class="number">0</span>)).<span class="ident">unwrap</span>();
-                        <span class="kw">if</span> <span class="ident">len</span> <span class="op">&lt;</span> <span class="ident">origin</span> {
-                            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-                            <span class="ident">buf</span>.<span class="ident">resize</span>(<span class="ident">origin</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">len</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="number">0</span>);
-                            <span class="ident">file</span>.<span class="ident">write</span>(<span class="ident">buf</span>.<span class="ident">as_slice</span>()).<span class="ident">unwrap</span>();
-                        }
-                        <span class="ident">file</span>.<span class="ident">seek</span>(<span class="ident">SeekFrom::Start</span>(<span class="ident">origin</span>)).<span class="ident">unwrap</span>();
-                        <span class="kw">if</span> <span class="ident">origin</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                            <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">origin</span> <span class="kw">as</span> <span class="ident">usize</span>);
-                        }
-                        <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">pos</span> <span class="kw">as</span> <span class="ident">usize</span>);
-                    },
-                    <span class="ident">SeekFrom::End</span>(<span class="kw">_</span>) =&gt; {
-                        <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">pos</span> <span class="kw">as</span> <span class="ident">usize</span>);
-                    },
-                    <span class="ident">SeekFrom::Current</span>(<span class="ident">origin</span>) =&gt; {
-                        <span class="kw">let</span> <span class="ident">_now</span> <span class="op">=</span> <span class="ident">file</span>.<span class="ident">seek</span>(<span class="ident">SeekFrom::Current</span>(<span class="number">0</span>)).<span class="ident">unwrap</span>();
-                        <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">file</span>.<span class="ident">seek</span>(<span class="ident">SeekFrom::End</span>(<span class="number">0</span>)).<span class="ident">unwrap</span>();
-                        <span class="kw">if</span> <span class="ident">len</span> <span class="op">&lt;</span> (<span class="ident">pos_before_seek</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">+</span> <span class="ident">origin</span>) <span class="kw">as</span> <span class="ident">u64</span> {
-                            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-                            <span class="ident">buf</span>.<span class="ident">resize</span>((<span class="ident">pos_before_seek</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">+</span> <span class="ident">origin</span>) <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">len</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="number">0</span>);
-                            <span class="ident">file</span>.<span class="ident">write</span>(<span class="ident">buf</span>.<span class="ident">as_slice</span>()).<span class="ident">unwrap</span>();
-                        }
-                        <span class="ident">file</span>.<span class="ident">seek</span>(<span class="ident">SeekFrom::Start</span>((<span class="ident">pos_before_seek</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">+</span> <span class="ident">origin</span>) <span class="kw">as</span> <span class="ident">u64</span>)).<span class="ident">unwrap</span>();
-                        <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">pos</span> <span class="kw">as</span> <span class="ident">usize</span>);
-                    },
-                    
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">pos</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">seekfrom</span> {
+                <span class="ident">SeekFrom::Start</span>(<span class="ident">origin</span>) =&gt; {
+                    <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">file</span>.<span class="ident">seek</span>(<span class="ident">SeekFrom::End</span>(<span class="number">0</span>)).<span class="ident">unwrap</span>();
+                    <span class="kw">if</span> <span class="ident">len</span> <span class="op">&lt;</span> <span class="ident">origin</span> <span class="op">&amp;&amp;</span> <span class="ident">origin</span> <span class="op">-</span> <span class="ident">len</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">FS_IMG_SIZE</span> <span class="kw">as</span> <span class="ident">u64</span> {
+                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+                        <span class="ident">buf</span>.<span class="ident">resize</span>(<span class="ident">origin</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">len</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="number">0</span>);
+                        <span class="ident">file</span>.<span class="ident">write</span>(<span class="ident">buf</span>.<span class="ident">as_slice</span>()).<span class="ident">unwrap</span>();
+                    }
+                    <span class="ident">file</span>.<span class="ident">seek</span>(<span class="ident">SeekFrom::Start</span>(<span class="ident">origin</span>)).<span class="ident">unwrap</span>();
+                    <span class="kw">if</span> <span class="ident">origin</span> <span class="op">&gt;</span> <span class="number">0</span> {
+                        <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">origin</span> <span class="kw">as</span> <span class="ident">usize</span>);
+                    }
+                    <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">pos</span> <span class="kw">as</span> <span class="ident">usize</span>);
+                }
+                <span class="ident">SeekFrom::End</span>(<span class="kw">_</span>) =&gt; {
+                    <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">pos</span> <span class="kw">as</span> <span class="ident">usize</span>);
+                }
+                <span class="ident">SeekFrom::Current</span>(<span class="ident">origin</span>) =&gt; {
+                    <span class="kw">let</span> <span class="ident">_now</span> <span class="op">=</span> <span class="ident">file</span>.<span class="ident">seek</span>(<span class="ident">SeekFrom::Current</span>(<span class="number">0</span>)).<span class="ident">unwrap</span>();
+                    <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">file</span>.<span class="ident">seek</span>(<span class="ident">SeekFrom::End</span>(<span class="number">0</span>)).<span class="ident">unwrap</span>();
+                    <span class="kw">if</span> <span class="ident">len</span> <span class="op">&lt;</span> (<span class="ident">pos_before_seek</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">+</span> <span class="ident">origin</span>) <span class="kw">as</span> <span class="ident">u64</span> {
+                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+                        <span class="ident">buf</span>.<span class="ident">resize</span>((<span class="ident">pos_before_seek</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">+</span> <span class="ident">origin</span>) <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">len</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="number">0</span>);
+                        <span class="ident">file</span>.<span class="ident">write</span>(<span class="ident">buf</span>.<span class="ident">as_slice</span>()).<span class="ident">unwrap</span>();
+                    }
+                    <span class="ident">file</span>.<span class="ident">seek</span>(<span class="ident">SeekFrom::Start</span>((<span class="ident">pos_before_seek</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">+</span> <span class="ident">origin</span>) <span class="kw">as</span> <span class="ident">u64</span>))
+                        .<span class="ident">unwrap</span>();
+                    <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">pos</span> <span class="kw">as</span> <span class="ident">usize</span>);
                 }
             })
             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
@@ -528,13 +515,6 @@
                 }
                 <span class="prelude-val">None</span>
             })
-    }
-    <span class="doccomment">/// 设置时间，返回是否设置成功。</span>
-    <span class="kw">fn</span> <span class="ident">set_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">atime</span>: <span class="kw-2">&amp;</span><span class="ident">TimeSpec</span>, <span class="ident">mtime</span>: <span class="kw-2">&amp;</span><span class="ident">TimeSpec</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">lock</span>();
-        <span class="ident">inner</span>.<span class="ident">atime</span>.<span class="ident">set_as_utime</span>(<span class="ident">atime</span>);
-        <span class="ident">inner</span>.<span class="ident">mtime</span>.<span class="ident">set_as_utime</span>(<span class="ident">mtime</span>);
-        <span class="bool-val">true</span>
     }
     <span class="doccomment">/// 设置文件状态信息，返回设置是否成功。</span>
     <span class="kw">fn</span> <span class="ident">set_status</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">flags</span>: <span class="ident">OpenFlags</span>) -&gt; <span class="ident">bool</span> {

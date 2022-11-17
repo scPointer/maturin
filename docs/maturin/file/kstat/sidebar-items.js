@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["normal_file_mode","文件类型，输入 IFCHR / IFDIR / IFREG 等具体类型， 输出这些类型加上普遍的文件属性后得到的 mode 参数"]],"struct":[["Kstat","文件信息类"],["StMode","指定 st_mode 的选项"]]});

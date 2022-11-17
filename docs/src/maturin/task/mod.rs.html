@@ -70,7 +70,7 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">scheduler::Scheduler</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">scheduler</span>::{<span class="ident">fetch_task_from_scheduler</span>, <span class="ident">push_task_to_scheduler</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">task</span>::{<span class="ident">TaskControlBlock</span>, <span class="ident">TaskControlBlockInner</span>, <span class="ident">TaskStatus</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">time_stat</span>::{<span class="ident">ITimerVal</span>, <span class="ident">TimeStat</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">time_stat::TimeStat</span>;
 
 <span class="macro">lazy_static::lazy_static!</span> {
     <span class="doccomment">/// 第一个用户程序</span>

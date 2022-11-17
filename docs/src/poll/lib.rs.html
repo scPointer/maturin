@@ -1,0 +1,280 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/unidy/repos/maturin/poll/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../poll/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../../poll/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../poll/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+</pre><pre class="rust"><code><span class="doccomment">//! 实现了 sys_ppoll 的系统调用</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! **该模块依赖 `task-trampoline`，因此使用该模块前，请先按照 `task-trampoline` 的文档说明进行初始化。**</span>
+
+<span class="attribute">#![<span class="ident">no_std</span>]</span>
+
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">alloc</span>;
+
+<span class="kw">use</span> <span class="ident">alloc::sync::Arc</span>;
+<span class="kw">use</span> <span class="ident">alloc::vec::Vec</span>;
+<span class="kw">use</span> <span class="ident">core::mem::size_of</span>;
+<span class="kw">use</span> <span class="ident">base_file::File</span>;
+<span class="kw">use</span> <span class="ident">bitflags::bitflags</span>;
+<span class="kw">use</span> <span class="ident">task_trampoline</span>::{<span class="ident">get_file</span>, <span class="ident">manually_alloc_type</span>, <span class="ident">manually_alloc_user_str</span>, <span class="ident">suspend_current_task</span>};
+
+<span class="macro">bitflags!</span> {
+    <span class="doccomment">/// sys_ppoll 使用，表示对应在文件上等待或者发生过的事件</span>
+    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PollEvents</span>: <span class="ident">u16</span> {
+        <span class="doccomment">/// 可读</span>
+        <span class="kw">const</span> <span class="ident">IN</span> <span class="op">=</span> <span class="number">0x0001</span>;
+        <span class="doccomment">/// 可写</span>
+        <span class="kw">const</span> <span class="ident">OUT</span> <span class="op">=</span> <span class="number">0x0004</span>;
+        <span class="doccomment">/// 报错</span>
+        <span class="kw">const</span> <span class="ident">ERR</span> <span class="op">=</span> <span class="number">0x0008</span>;
+        <span class="doccomment">/// 已终止，如 pipe 的另一端已关闭连接的情况</span>
+        <span class="kw">const</span> <span class="ident">HUP</span> <span class="op">=</span> <span class="number">0x0010</span>;
+        <span class="doccomment">/// 无效的 fd</span>
+        <span class="kw">const</span> <span class="ident">INVAL</span> <span class="op">=</span> <span class="number">0x0020</span>;
+    }
+}
+
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
+<span class="doccomment">/// sys_ppoll 系统调用参数用到的结构</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PollFd</span> {
+    <span class="doccomment">/// 等待的 fd</span>
+    <span class="kw">pub</span> <span class="ident">fd</span>: <span class="ident">i32</span>,
+    <span class="doccomment">/// 等待的事件</span>
+    <span class="kw">pub</span> <span class="ident">events</span>: <span class="ident">PollEvents</span>,
+    <span class="doccomment">/// 返回的事件</span>
+    <span class="kw">pub</span> <span class="ident">revents</span>: <span class="ident">PollEvents</span>,
+}
+
+<span class="doccomment">/// poll / ppoll 用到的选项，输入一个要求监控的事件集(events)，返回一个实际发生的事件集(request events)</span>
+<span class="kw">fn</span> <span class="ident">poll</span>(<span class="ident">file</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">File</span><span class="op">&gt;</span>, <span class="ident">events</span>: <span class="ident">PollEvents</span>) -&gt; <span class="ident">PollEvents</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ret</span> <span class="op">=</span> <span class="ident">PollEvents::empty</span>();
+    <span class="kw">if</span> <span class="ident">file</span>.<span class="ident">in_exceptional_conditions</span>() {
+        <span class="ident">ret</span> <span class="op">|</span><span class="op">=</span> <span class="ident">PollEvents::ERR</span>;
+    }
+    <span class="kw">if</span> <span class="ident">file</span>.<span class="ident">is_hang_up</span>() {
+        <span class="ident">ret</span> <span class="op">|</span><span class="op">=</span> <span class="ident">PollEvents::HUP</span>;
+    }
+    <span class="kw">if</span> <span class="ident">events</span>.<span class="ident">contains</span>(<span class="ident">PollEvents::IN</span>) <span class="op">&amp;&amp;</span> <span class="ident">file</span>.<span class="ident">ready_to_read</span>() {
+        <span class="ident">ret</span> <span class="op">|</span><span class="op">=</span> <span class="ident">PollEvents::IN</span>;
+    }
+    <span class="kw">if</span> <span class="ident">events</span>.<span class="ident">contains</span>(<span class="ident">PollEvents::OUT</span>) <span class="op">&amp;&amp;</span> <span class="ident">file</span>.<span class="ident">ready_to_write</span>() {
+        <span class="ident">ret</span> <span class="op">|</span><span class="op">=</span> <span class="ident">PollEvents::OUT</span>;
+    }
+    <span class="ident">ret</span>
+}
+
+<span class="doccomment">/// ppoll 系统调用的具体实现</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// # Arguments</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// * `fds`: 一个 `PollFd` 的列表。</span>
+<span class="doccomment">/// * `expire_time`: 超时的时间戳，会与 `get_time()` 接口返回的时间戳比较。</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// returns: (usize, Vec&lt;PollFd&gt;) 第一个参数遵守 ppoll 系统调用的返回值约定，第二个参数为返回的 `PollFd` 列表</span>
+<span class="kw">fn</span> <span class="ident">ppoll</span>(<span class="kw-2">mut</span> <span class="ident">fds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PollFd</span><span class="op">&gt;</span>, <span class="ident">expire_time</span>: <span class="ident">usize</span>) -&gt; (<span class="ident">usize</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PollFd</span><span class="op">&gt;</span>) {
+    <span class="kw">loop</span> {
+        <span class="comment">// 已触发的 fd</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">set</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">for</span> <span class="ident">req_fd</span> <span class="kw">in</span> <span class="kw-2">&amp;mut</span> <span class="ident">fds</span> {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">file</span>) <span class="op">=</span> <span class="ident">get_file</span>(<span class="ident">req_fd</span>.<span class="ident">fd</span> <span class="kw">as</span> <span class="ident">usize</span>) {
+                <span class="ident">req_fd</span>.<span class="ident">revents</span> <span class="op">=</span> <span class="ident">poll</span>(<span class="ident">file</span>, <span class="ident">req_fd</span>.<span class="ident">events</span>);
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">req_fd</span>.<span class="ident">revents</span>.<span class="ident">is_empty</span>() {
+                    <span class="ident">set</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                }
+            } <span class="kw">else</span> {
+                <span class="ident">req_fd</span>.<span class="ident">revents</span> <span class="op">=</span> <span class="ident">PollEvents::ERR</span>;
+                <span class="ident">set</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+            }
+        }
+        <span class="kw">if</span> <span class="ident">set</span> <span class="op">&gt;</span> <span class="number">0</span> {
+            <span class="comment">// 如果找到满足条件的 fd，则返回找到的 fd 数量</span>
+            <span class="kw">return</span> (<span class="ident">set</span>, <span class="ident">fds</span>);
+        }
+        <span class="comment">// 否则暂时 block 住</span>
+        <span class="kw">if</span> <span class="ident">timer::get_time</span>() <span class="op">&gt;</span> <span class="ident">expire_time</span> {
+            <span class="kw">return</span> (<span class="number">0</span>, <span class="ident">fds</span>);
+        }
+        <span class="ident">suspend_current_task</span>();
+    }
+}
+
+<span class="doccomment">/// 实现 ppoll 的系统调用</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_ppoll</span>(
+    <span class="ident">ufds</span>: <span class="kw-2">*mut</span> <span class="ident">PollFd</span>,
+    <span class="ident">nfds</span>: <span class="ident">usize</span>,
+    <span class="ident">timeout</span>: <span class="kw-2">*const</span> <span class="ident">timer::TimeSpec</span>, <span class="comment">// ppoll 不会更新 timeout 的值，而 poll 会</span>
+    <span class="ident">_sigmask</span>: <span class="kw-2">*const</span> <span class="ident">usize</span>
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">syscall::ErrorNo</span><span class="op">&gt;</span> {
+    <span class="comment">// TODO: MemorySet 模块化之后，是否可以不再依赖 task-trampoline 的 manually_alloc_user_str 接口</span>
+    <span class="comment">// let task = get_current_task().unwrap();</span>
+    <span class="comment">// let mut task_vm = task.vm.lock();</span>
+    <span class="comment">// if task_vm.manually_alloc_user_str(ufds as *const u8, nfds * size_of::&lt;PollFd&gt;()).is_err() {</span>
+    <span class="comment">//     return Err(syscall::ErrorNo::EFAULT); // 无效地址</span>
+    <span class="comment">// }</span>
+    <span class="kw">if</span> <span class="ident">manually_alloc_user_str</span>(<span class="ident">ufds</span> <span class="kw">as</span> <span class="kw-2">*const</span> <span class="ident">u8</span>, <span class="ident">nfds</span> <span class="op">*</span> <span class="ident">size_of</span>::<span class="op">&lt;</span><span class="ident">PollFd</span><span class="op">&gt;</span>()).<span class="ident">is_err</span>() {
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">syscall::ErrorNo::EFAULT</span>); <span class="comment">// 无效地址</span>
+    }
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PollFd</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">nfds</span> {
+        <span class="kw">unsafe</span> { <span class="ident">fds</span>.<span class="ident">push</span>(<span class="kw-2">*</span><span class="ident">ufds</span>.<span class="ident">add</span>(<span class="ident">i</span>)); }
+    }
+    <span class="comment">// 过期时间</span>
+    <span class="comment">// 这里用**时钟周期数**来记录，足够精确的同时 usize 也能存下。实际用微秒或者纳秒应该也没问题。</span>
+    <span class="kw">let</span> <span class="ident">expire_time</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">timeout</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
+        <span class="comment">// if task_vm.manually_alloc_type(timeout).is_err() {</span>
+        <span class="comment">//     return Err(syscall::ErrorNo::EFAULT); // 无效地址</span>
+        <span class="comment">// }</span>
+        <span class="kw">if</span> <span class="ident">manually_alloc_type</span>(<span class="ident">timeout</span>).<span class="ident">is_err</span>() {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">syscall::ErrorNo::EFAULT</span>); <span class="comment">// 无效地址</span>
+        }
+        <span class="ident">timer::get_time</span>() <span class="op">+</span> <span class="kw">unsafe</span> { (<span class="kw-2">*</span><span class="ident">timeout</span>).<span class="ident">get_ticks</span>() }
+    } <span class="kw">else</span> {
+        <span class="ident">usize::MAX</span> <span class="comment">// 没有过期时间</span>
+    };
+    <span class="comment">// drop(task_vm); // select 的时间可能很长，之后不用 vm 了就及时释放</span>
+    <span class="kw">let</span> (<span class="ident">result</span>, <span class="ident">ret_fds</span>) <span class="op">=</span> <span class="ident">ppoll</span>(<span class="ident">fds</span>, <span class="ident">expire_time</span>);
+    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">ret_fds</span>.<span class="ident">len</span>() {
+        <span class="kw">unsafe</span> { <span class="kw-2">*</span><span class="ident">ufds</span>.<span class="ident">add</span>(<span class="ident">i</span>) <span class="op">=</span> <span class="ident">ret_fds</span>[<span class="ident">i</span>]; }
+    }
+    <span class="prelude-val">Ok</span>(<span class="ident">result</span>)
+}
+</code></pre></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="poll" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (1f7fb6413 2022-04-10)" ></div>
+</body></html>

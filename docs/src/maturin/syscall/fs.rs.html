@@ -881,6 +881,40 @@
 <span id="876">876</span>
 <span id="877">877</span>
 <span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 与读写、文件相关的系统调用</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! 注意获取 current_task 的时候都使用了 unwrap()，这意味着默认只有用户程序才会调用 syscall 模块进行操作。</span>
@@ -889,21 +923,23 @@
 <span class="comment">//#![deny(missing_docs)]</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">Dirent64</span>, <span class="ident">Dirent64Type</span>, <span class="ident">ErrorNo</span>, <span class="ident">Fcntl64Cmd</span>, <span class="ident">IoVec</span>, <span class="ident">SysResult</span>, <span class="ident">UtimensatFlags</span>, <span class="ident">RenameFlags</span>, 
-    <span class="ident">SEEK_CUR</span>, <span class="ident">SEEK_END</span>, <span class="ident">SEEK_SET</span>,
+    <span class="ident">Dirent64</span>, <span class="ident">Dirent64Type</span>, <span class="ident">Fcntl64Cmd</span>, <span class="ident">IoVec</span>, <span class="ident">RenameFlags</span>, <span class="ident">SysResult</span>, <span class="ident">UtimensatFlags</span>, <span class="ident">SEEK_CUR</span>,
+    <span class="ident">SEEK_END</span>, <span class="ident">SEEK_SET</span>,
 };
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">constants</span>::{<span class="ident">AT_FDCWD</span>, <span class="ident">SENDFILE_BUFFER_SIZE</span>},
     <span class="ident">file</span>::{
         <span class="ident">check_dir_exists</span>, <span class="ident">check_file_exists</span>, <span class="ident">get_dir_entry_iter</span>, <span class="ident">mkdir</span>, <span class="ident">mount_fat_fs</span>, <span class="ident">open_file</span>,
-        <span class="ident">origin_fs_stat</span>, <span class="ident">try_add_link</span>, <span class="ident">try_remove_link</span>, <span class="ident">read_link</span>, <span class="ident">umount_fat_fs</span>, <span class="ident">rename_or_move</span>,
+        <span class="ident">origin_fs_stat</span>, <span class="ident">read_link</span>, <span class="ident">rename_or_move</span>, <span class="ident">try_add_link</span>, <span class="ident">try_remove_link</span>, <span class="ident">umount_fat_fs</span>,
     },
-    <span class="ident">file</span>::{<span class="ident">FsStat</span>, <span class="ident">Kstat</span>, <span class="ident">OpenFlags</span>, <span class="ident">Pipe</span>, <span class="ident">SeekFrom</span>},
+    <span class="ident">file</span>::{<span class="ident">FatFile</span>, <span class="ident">FsStat</span>, <span class="ident">Pipe</span>, <span class="ident">SeekFrom</span>},
     <span class="ident">task</span>::{<span class="ident">get_current_task</span>, <span class="ident">TaskControlBlock</span>},
-    <span class="ident">timer::TimeSpec</span>,
     <span class="ident">utils::raw_ptr_to_ref_str</span>,
 };
 <span class="kw">use</span> <span class="ident">alloc</span>::{<span class="ident">string::String</span>, <span class="ident">sync::Arc</span>};
+<span class="kw">use</span> <span class="ident">base_file</span>::{<span class="ident">Kstat</span>, <span class="ident">OpenFlags</span>};
+<span class="kw">use</span> <span class="ident">syscall::ErrorNo</span>;
+<span class="kw">use</span> <span class="ident">timer::TimeSpec</span>;
 
 <span class="doccomment">/// 获取当前工作路径</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_getcwd</span>(<span class="ident">buf</span>: <span class="kw-2">*mut</span> <span class="ident">u8</span>, <span class="ident">len</span>: <span class="ident">usize</span>) -&gt; <span class="ident">SysResult</span> {
@@ -986,7 +1022,7 @@
         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ErrorNo::EFAULT</span>); <span class="comment">// 地址不合法</span>
     }
     <span class="kw">let</span> <span class="ident">slice</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">core::slice::from_raw_parts</span>(<span class="ident">buf</span>, <span class="ident">len</span>) };
-    
+
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">file</span>) <span class="op">=</span> <span class="ident">task</span>.<span class="ident">fd_manager</span>.<span class="ident">lock</span>().<span class="ident">get_file</span>(<span class="ident">fd</span>) {
         <span class="comment">// 写文件也可能触发进程切换</span>
         <span class="comment">//drop(tcb_inner);</span>
@@ -1023,7 +1059,8 @@
     <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">iov_cnt</span> {
         <span class="kw">let</span> <span class="ident">io_vec</span>: <span class="kw-2">&amp;</span><span class="ident">IoVec</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">iov</span>.<span class="ident">add</span>(<span class="ident">i</span>) };
         <span class="macro">info!</span>(<span class="string">&quot;To write base: {:#x}&quot;</span>, <span class="ident">io_vec</span>.<span class="ident">base</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        <span class="kw">if</span> <span class="ident">io_vec</span>.<span class="ident">base</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">==</span> <span class="number">0</span> { <span class="comment">// busybox 可能会给stdout两个io_vec，第二个是空地址</span>
+        <span class="kw">if</span> <span class="ident">io_vec</span>.<span class="ident">base</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">==</span> <span class="number">0</span> {
+            <span class="comment">// busybox 可能会给stdout两个io_vec，第二个是空地址</span>
             <span class="kw">continue</span>;
         }
         <span class="kw">match</span> <span class="ident">sys_write</span>(<span class="ident">fd</span>, <span class="ident">io_vec</span>.<span class="ident">base</span>, <span class="ident">io_vec</span>.<span class="ident">len</span>) {
@@ -1073,19 +1110,20 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// 由于现在底层的 fat32 没有符号链接，所以仅针对 lmbench_all 做特判</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_readlinkat</span>(<span class="ident">dir_fd</span>: <span class="ident">i32</span>, <span class="ident">path</span>: <span class="kw-2">*const</span> <span class="ident">u8</span>, <span class="ident">buf</span>: <span class="kw-2">*mut</span> <span class="ident">u8</span>, <span class="ident">len</span>: <span class="ident">usize</span>) -&gt; <span class="ident">SysResult</span> {
-    <span class="kw">let</span> <span class="ident">tmp_path</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">raw_ptr_to_ref_str</span>(<span class="ident">path</span>) }; 
+    <span class="kw">let</span> <span class="ident">tmp_path</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">raw_ptr_to_ref_str</span>(<span class="ident">path</span>) };
     <span class="kw">let</span> <span class="ident">task</span> <span class="op">=</span> <span class="ident">get_current_task</span>().<span class="ident">unwrap</span>();
-    <span class="kw">let</span> <span class="ident">pid</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">pid</span>;    
+    <span class="kw">let</span> <span class="ident">pid</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">pid</span>;
     <span class="kw">let</span> <span class="ident">tid</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">get_tid_num</span>();
     <span class="macro">info!</span>(
         <span class="string">&quot;pid {} tid {} readlinkat: dirfd={:?}, path={:?}, base={:?}, len={}&quot;</span>,
         <span class="ident">pid</span>, <span class="ident">tid</span>, <span class="ident">dir_fd</span>, <span class="ident">tmp_path</span>, <span class="ident">buf</span>, <span class="ident">len</span>
     );
-    
+
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">task_vm</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">vm</span>.<span class="ident">lock</span>();
-    
+
     <span class="kw">if</span> <span class="ident">task_vm</span>.<span class="ident">manually_alloc_page</span>(<span class="ident">path</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">is_err</span>()
-    <span class="op">|</span><span class="op">|</span> <span class="ident">task_vm</span>.<span class="ident">manually_alloc_user_str</span>(<span class="ident">buf</span>, <span class="ident">len</span>).<span class="ident">is_err</span>(){
+        <span class="op">|</span><span class="op">|</span> <span class="ident">task_vm</span>.<span class="ident">manually_alloc_user_str</span>(<span class="ident">buf</span>, <span class="ident">len</span>).<span class="ident">is_err</span>()
+    {
         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ErrorNo::EFAULT</span>); <span class="comment">// 检查传入的地址是否合法</span>
     }
 
@@ -1126,7 +1164,6 @@
         <span class="prelude-val">Err</span>(<span class="ident">ErrorNo::EINVAL</span>)
     }
 }
-
 
 <span class="doccomment">/// 获取文件状态信息</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_fstat</span>(<span class="ident">fd</span>: <span class="ident">usize</span>, <span class="ident">kstat</span>: <span class="kw-2">*mut</span> <span class="ident">Kstat</span>) -&gt; <span class="ident">SysResult</span> {
@@ -1328,6 +1365,10 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_chdir</span>(<span class="ident">path</span>: <span class="kw-2">*const</span> <span class="ident">u8</span>) -&gt; <span class="ident">SysResult</span> {
     <span class="kw">let</span> <span class="ident">task</span> <span class="op">=</span> <span class="ident">get_current_task</span>().<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tcb_inner</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">inner</span>.<span class="ident">lock</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">task_vm</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">vm</span>.<span class="ident">lock</span>();
+    <span class="kw">if</span> <span class="ident">task_vm</span>.<span class="ident">manually_alloc_page</span>(<span class="ident">path</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">is_err</span>() {
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ErrorNo::EINVAL</span>);
+    }
     <span class="kw">let</span> <span class="ident">file_path</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">raw_ptr_to_ref_str</span>(<span class="ident">path</span>) };
 
     <span class="kw">let</span> <span class="ident">new_path</span> <span class="op">=</span> {
@@ -1355,9 +1396,13 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_open</span>(<span class="ident">dir_fd</span>: <span class="ident">i32</span>, <span class="ident">path</span>: <span class="kw-2">*const</span> <span class="ident">u8</span>, <span class="ident">flags</span>: <span class="ident">u32</span>, <span class="ident">user_mode</span>: <span class="ident">i32</span>) -&gt; <span class="ident">SysResult</span> {
     <span class="kw">let</span> <span class="ident">task</span> <span class="op">=</span> <span class="ident">get_current_task</span>().<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">task_fd_manager</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">fd_manager</span>.<span class="ident">lock</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">task_vm</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">vm</span>.<span class="ident">lock</span>();
     <span class="comment">// 如果 fd 已满，则不再添加</span>
     <span class="kw">if</span> <span class="ident">task_fd_manager</span>.<span class="ident">is_full</span>() {
         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ErrorNo::EMFILE</span>);
+    }
+    <span class="kw">if</span> <span class="ident">task_vm</span>.<span class="ident">manually_alloc_page</span>(<span class="ident">path</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">is_err</span>() {
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ErrorNo::EINVAL</span>);
     }
     <span class="kw">let</span> <span class="ident">tmp_path</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">raw_ptr_to_ref_str</span>(<span class="ident">path</span>) };
     <span class="macro">info!</span>(
@@ -1381,7 +1426,10 @@
 
         <span class="macro">info!</span>(
             <span class="string">&quot;try open parent_dir={} file_path={} flag={:x} mode = 0o{:o}&quot;</span>,
-            <span class="ident">parent_dir</span>, <span class="ident">file_path</span>, <span class="ident">flags</span>, <span class="ident">user_mode</span> <span class="op">&amp;</span> <span class="op">!</span><span class="ident">task_fd_manager</span>.<span class="ident">get_umask</span>()
+            <span class="ident">parent_dir</span>,
+            <span class="ident">file_path</span>,
+            <span class="ident">flags</span>,
+            <span class="ident">user_mode</span> <span class="op">&amp;</span> <span class="op">!</span><span class="ident">task_fd_manager</span>.<span class="ident">get_umask</span>()
         );
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">open_flags</span>) <span class="op">=</span> <span class="ident">OpenFlags::from_bits</span>(<span class="ident">flags</span>) {
             <span class="macro">info!</span>(<span class="string">&quot;[{:#?}]&quot;</span>, <span class="ident">open_flags</span>);
@@ -1519,7 +1567,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// 如果 fir_fd &lt; 0，它和 path 共同决定要找的文件；</span>
 <span class="doccomment">/// 如果 fir_fd &gt;=0，它就是文件对应的 fd</span>
-<span class="doccomment">/// 因为它要求文件访问的部分更多，因此放在 fs.rs 而非 times.rs</span>
+<span class="doccomment">/// 因为它要求文件访问的部分更多，因此放在 fs.rs 而非 timer 模块中</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_utimensat</span>(
     <span class="ident">dir_fd</span>: <span class="ident">i32</span>,
     <span class="ident">path</span>: <span class="kw-2">*const</span> <span class="ident">u8</span>,
@@ -1552,13 +1600,20 @@
     };
     <span class="kw">if</span> <span class="ident">dir_fd</span> <span class="op">&gt;</span> <span class="number">0</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">file</span>) <span class="op">=</span> <span class="ident">fd_manager</span>.<span class="ident">get_file</span>(<span class="ident">dir_fd</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-            <span class="ident">file</span>.<span class="ident">set_time</span>(<span class="kw-2">&amp;</span><span class="ident">new_atime</span>, <span class="kw-2">&amp;</span><span class="ident">new_mtime</span>);
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">fat_file</span>) <span class="op">=</span> <span class="ident">file</span>.<span class="ident">as_any</span>().<span class="ident">downcast_ref</span>::<span class="op">&lt;</span><span class="ident">FatFile</span><span class="op">&gt;</span>() {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">fat_file</span>.<span class="ident">inner</span>.<span class="ident">lock</span>();
+                <span class="ident">inner</span>.<span class="ident">atime</span>.<span class="ident">set_as_utime</span>(<span class="kw-2">&amp;</span><span class="ident">new_atime</span>);
+                <span class="ident">inner</span>.<span class="ident">mtime</span>.<span class="ident">set_as_utime</span>(<span class="kw-2">&amp;</span><span class="ident">new_mtime</span>);
+            }
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="number">0</span>);
         }
     } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">parent_dir</span>, <span class="ident">file_path</span>)) <span class="op">=</span> <span class="ident">resolve_path_from_fd</span>(<span class="kw-2">&amp;</span><span class="ident">task</span>, <span class="ident">dir_fd</span>, <span class="ident">path</span>) {
         <span class="kw">if</span> <span class="ident">check_file_exists</span>(<span class="ident">parent_dir</span>.<span class="ident">as_str</span>(), <span class="ident">file_path</span>) {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">file</span>) <span class="op">=</span> <span class="ident">open_file</span>(<span class="ident">parent_dir</span>.<span class="ident">as_str</span>(), <span class="ident">file_path</span>, <span class="ident">OpenFlags::empty</span>()) {
-                <span class="kw">if</span> <span class="ident">file</span>.<span class="ident">set_time</span>(<span class="kw-2">&amp;</span><span class="ident">new_atime</span>, <span class="kw-2">&amp;</span><span class="ident">new_mtime</span>) {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">fat_file</span>) <span class="op">=</span> <span class="ident">file</span>.<span class="ident">as_any</span>().<span class="ident">downcast_ref</span>::<span class="op">&lt;</span><span class="ident">FatFile</span><span class="op">&gt;</span>() {
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">fat_file</span>.<span class="ident">inner</span>.<span class="ident">lock</span>();
+                    <span class="ident">inner</span>.<span class="ident">atime</span>.<span class="ident">set_as_utime</span>(<span class="kw-2">&amp;</span><span class="ident">new_atime</span>);
+                    <span class="ident">inner</span>.<span class="ident">mtime</span>.<span class="ident">set_as_utime</span>(<span class="kw-2">&amp;</span><span class="ident">new_mtime</span>);
                     <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="number">0</span>);
                 }
             }
@@ -1724,18 +1779,31 @@
 
 <span class="doccomment">/// 重命名文件，也可以作为 move 使用。</span>
 <span class="doccomment">/// 目前只支持实际 FAT32 中做 move，其他的文件类型(如vfs)不支持，它们与 FAT32 之间的 move 也不支持。</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_renameat2</span>(<span class="ident">old_dir_fd</span>: <span class="ident">i32</span>, <span class="ident">old_path</span>: <span class="kw-2">*const</span> <span class="ident">u8</span>, <span class="ident">new_dir_fd</span>: <span class="ident">i32</span>, <span class="ident">new_path</span>: <span class="kw-2">*const</span> <span class="ident">u8</span>, <span class="ident">flags</span>: <span class="ident">RenameFlags</span>) -&gt; <span class="ident">SysResult</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_renameat2</span>(
+    <span class="ident">old_dir_fd</span>: <span class="ident">i32</span>,
+    <span class="ident">old_path</span>: <span class="kw-2">*const</span> <span class="ident">u8</span>,
+    <span class="ident">new_dir_fd</span>: <span class="ident">i32</span>,
+    <span class="ident">new_path</span>: <span class="kw-2">*const</span> <span class="ident">u8</span>,
+    <span class="ident">flags</span>: <span class="ident">RenameFlags</span>,
+) -&gt; <span class="ident">SysResult</span> {
     <span class="kw">let</span> <span class="ident">task</span> <span class="op">=</span> <span class="ident">get_current_task</span>().<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">task_vm</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">vm</span>.<span class="ident">lock</span>();
-    <span class="kw">if</span> <span class="ident">task_vm</span>.<span class="ident">manually_alloc_page</span>(<span class="ident">old_path</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">is_err</span>() 
-    <span class="op">|</span><span class="op">|</span> <span class="ident">task_vm</span>.<span class="ident">manually_alloc_page</span>(<span class="ident">new_path</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">is_err</span>() {
+    <span class="kw">if</span> <span class="ident">task_vm</span>.<span class="ident">manually_alloc_page</span>(<span class="ident">old_path</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">is_err</span>()
+        <span class="op">|</span><span class="op">|</span> <span class="ident">task_vm</span>.<span class="ident">manually_alloc_page</span>(<span class="ident">new_path</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">is_err</span>()
+    {
         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ErrorNo::EFAULT</span>); <span class="comment">// 地址不合法</span>
     }
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">old_path</span>, <span class="ident">old_file</span>)) <span class="op">=</span> <span class="ident">resolve_path_from_fd</span>(<span class="kw-2">&amp;</span><span class="ident">task</span>, <span class="ident">old_dir_fd</span>, <span class="ident">old_path</span>) {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">new_path</span>, <span class="ident">new_file</span>)) <span class="op">=</span> <span class="ident">resolve_path_from_fd</span>(<span class="kw-2">&amp;</span><span class="ident">task</span>, <span class="ident">new_dir_fd</span>, <span class="ident">new_path</span>) {
             <span class="comment">//warn!(&quot;rename {old_path} {old_file} {new_path} {new_file}&quot;);</span>
-            <span class="kw">return</span> <span class="ident">rename_or_move</span>(<span class="ident">old_path</span>.<span class="ident">as_str</span>(), <span class="ident">old_file</span>, <span class="ident">new_path</span>.<span class="ident">as_str</span>(), <span class="ident">new_file</span>, <span class="op">!</span><span class="ident">flags</span>.<span class="ident">contains</span>(<span class="ident">RenameFlags::NOREPLACE</span>))
-                .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="number">0</span>);
+            <span class="kw">return</span> <span class="ident">rename_or_move</span>(
+                <span class="ident">old_path</span>.<span class="ident">as_str</span>(),
+                <span class="ident">old_file</span>,
+                <span class="ident">new_path</span>.<span class="ident">as_str</span>(),
+                <span class="ident">new_file</span>,
+                <span class="op">!</span><span class="ident">flags</span>.<span class="ident">contains</span>(<span class="ident">RenameFlags::NOREPLACE</span>),
+            )
+            .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="number">0</span>);
         }
     }
     <span class="prelude-val">Err</span>(<span class="ident">ErrorNo::EINVAL</span>)

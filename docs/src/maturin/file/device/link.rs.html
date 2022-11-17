@@ -237,6 +237,22 @@
 <span id="232">232</span>
 <span id="233">233</span>
 <span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 处理文件系统的链接相关</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! 这个模块中有大量字符串操作，可能有较高的时间复杂度，不建议频繁链接</span>
@@ -273,14 +289,17 @@
         <span class="ident">file</span>.<span class="ident">into</span>()
     };
     <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">path</span>, <span class="kw-2">mut</span> <span class="ident">file</span>) <span class="op">=</span> <span class="ident"><span class="kw">super</span>::map_path_and_file</span>(<span class="ident">path</span>, <span class="ident">file</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>;
-    <span class="kw">if</span> <span class="ident">file</span> <span class="op">==</span> <span class="string">&quot;&quot;</span> { <span class="comment">// path 是个路径</span>
-        <span class="kw">if</span> <span class="ident">path</span> <span class="op">==</span> <span class="ident">ROOT_DIR</span> { <span class="comment">// 如果是根路径</span>
+    <span class="kw">if</span> <span class="ident">file</span> <span class="op">==</span> <span class="string">&quot;&quot;</span> {
+        <span class="comment">// path 是个路径</span>
+        <span class="kw">if</span> <span class="ident">path</span> <span class="op">==</span> <span class="ident">ROOT_DIR</span> {
+            <span class="comment">// 如果是根路径</span>
             <span class="ident">file</span> <span class="op">=</span> <span class="ident">ROOT_DIR</span>.<span class="ident">into</span>()
-        } <span class="kw">else</span> { <span class="comment">// 否则，它是 ./for/example/this/is/a/path/ ，总之至少有两个 &#39;/&#39; 且以 &#39;/&#39; 结尾</span>
+        } <span class="kw">else</span> {
+            <span class="comment">// 否则，它是 ./for/example/this/is/a/path/ ，总之至少有两个 &#39;/&#39; 且以 &#39;/&#39; 结尾</span>
             <span class="comment">// 删除路径尾的 &#39;/&#39;</span>
             <span class="ident">path</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="ident">pos</span> <span class="op">=</span> <span class="ident">path</span>.<span class="ident">rfind</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">unwrap</span>();
-            (<span class="ident">path</span>, <span class="ident">file</span>) <span class="op">=</span> (<span class="ident">path</span>[..<span class="op">=</span><span class="ident">pos</span>].<span class="ident">into</span>(), <span class="ident">path</span>[<span class="ident">pos</span><span class="op">+</span><span class="number">1</span>..].<span class="ident">into</span>());
+            (<span class="ident">path</span>, <span class="ident">file</span>) <span class="op">=</span> (<span class="ident">path</span>[..<span class="op">=</span><span class="ident">pos</span>].<span class="ident">into</span>(), <span class="ident">path</span>[<span class="ident">pos</span> <span class="op">+</span> <span class="number">1</span>..].<span class="ident">into</span>());
         }
     }
     <span class="comment">//info!(&quot;read link: {path} {file}&quot;);</span>
@@ -288,11 +307,16 @@
     <span class="kw">match</span> <span class="ident">map</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">FileDisc::new</span>(<span class="kw-2">&amp;</span><span class="ident">path</span>, <span class="kw-2">&amp;</span><span class="ident">file</span>)) {
         <span class="prelude-val">Some</span>(<span class="ident">disc</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">String::from</span>(<span class="kw-2">&amp;</span><span class="ident">disc</span>.<span class="ident">path</span>[..]) <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">disc</span>.<span class="ident">file</span>[..]),
         <span class="prelude-val">None</span> =&gt; {
-            <span class="kw">static</span> <span class="ident">GCC_INCLUDE</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;./riscv64-linux-musl-native/lib/gcc/riscv64-linux-musl/11.2.1/include/&quot;</span>;
+            <span class="kw">static</span> <span class="ident">GCC_INCLUDE</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span>
+                <span class="string">&quot;./riscv64-linux-musl-native/lib/gcc/riscv64-linux-musl/11.2.1/include/&quot;</span>;
             <span class="kw">static</span> <span class="ident">GCC_LINK_INCLUDE</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;/riscv64-linux-musl-native/include/&quot;</span>;
             <span class="kw">if</span> <span class="ident">path</span>.<span class="ident">starts_with</span>(<span class="ident">GCC_INCLUDE</span>) {
                 <span class="comment">//info!(&quot;read gcc link: {}&quot;, String::from(GCC_LINK_INCLUDE) + String::from(path.clone()).strip_prefix(GCC_INCLUDE).unwrap() + file.as_str());</span>
-                <span class="prelude-val">Some</span>(<span class="ident">String::from</span>(<span class="ident">GCC_LINK_INCLUDE</span>) <span class="op">+</span> <span class="ident">String::from</span>(<span class="ident">path</span>).<span class="ident">strip_prefix</span>(<span class="ident">GCC_INCLUDE</span>).<span class="ident">unwrap</span>() <span class="op">+</span> <span class="ident">file</span>.<span class="ident">as_str</span>())
+                <span class="prelude-val">Some</span>(
+                    <span class="ident">String::from</span>(<span class="ident">GCC_LINK_INCLUDE</span>)
+                        <span class="op">+</span> <span class="ident">String::from</span>(<span class="ident">path</span>).<span class="ident">strip_prefix</span>(<span class="ident">GCC_INCLUDE</span>).<span class="ident">unwrap</span>()
+                        <span class="op">+</span> <span class="ident">file</span>.<span class="ident">as_str</span>(),
+                )
             } <span class="kw">else</span> {
                 <span class="prelude-val">None</span>
             }
@@ -304,7 +328,10 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// 这个函数不对外可见，外部需要调用 try_add_link</span>
 <span class="kw">fn</span> <span class="ident">add_link</span>(<span class="ident">real_path</span>: <span class="ident">String</span>, <span class="ident">real_file</span>: <span class="ident">String</span>, <span class="ident">user_path</span>: <span class="ident">String</span>, <span class="ident">user_file</span>: <span class="ident">String</span>) {
-    <span class="macro">info!</span>(<span class="string">&quot;add link {} {} {} {}&quot;</span>, <span class="ident">real_path</span>, <span class="ident">real_file</span>, <span class="ident">user_path</span>, <span class="ident">user_file</span>);
+    <span class="macro">info!</span>(
+        <span class="string">&quot;add link {} {} {} {}&quot;</span>,
+        <span class="ident">real_path</span>, <span class="ident">real_file</span>, <span class="ident">user_path</span>, <span class="ident">user_file</span>
+    );
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">LINK_PATH_MAP</span>.<span class="ident">lock</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">count_map</span> <span class="op">=</span> <span class="ident">LINK_COUNT_MAP</span>.<span class="ident">lock</span>();
     <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">FileDisc::new</span>(<span class="kw-2">&amp;</span><span class="ident">user_path</span>, <span class="kw-2">&amp;</span><span class="ident">user_file</span>);
@@ -349,7 +376,12 @@
 
 <span class="doccomment">/// 尝试添加一个硬链接。左边是作为链接的路径和文件，右边是实际路径和文件</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_add_rev_link</span>(<span class="ident">new_path</span>: <span class="ident">String</span>, <span class="ident">new_file</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">old_path</span>: <span class="ident">String</span>, <span class="ident">old_file</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">bool</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_add_rev_link</span>(
+    <span class="ident">new_path</span>: <span class="ident">String</span>,
+    <span class="ident">new_file</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+    <span class="ident">old_path</span>: <span class="ident">String</span>,
+    <span class="ident">old_file</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+) -&gt; <span class="ident">bool</span> {
     <span class="ident">try_add_link</span>(<span class="ident">old_path</span>, <span class="ident">old_file</span>, <span class="ident">new_path</span>, <span class="ident">new_file</span>)
 }
 

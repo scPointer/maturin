@@ -85,12 +85,14 @@
 <span id="80">80</span>
 <span id="81">81</span>
 <span id="82">82</span>
+<span id="83">83</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 信号处理函数</span>
 <span class="doccomment">//!</span>
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Bitset</span>, <span class="ident">SignalNo</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::SignalNo</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::SIGNAL_RETURN_TRAP</span>;
 <span class="kw">use</span> <span class="ident">bitflags</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">bitset::Bitset</span>;
 
 <span class="doccomment">/// SigAction::handler 的特殊取值，表示默认处理函数</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SIG_DFL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
@@ -118,7 +120,7 @@
     <span class="kw">pub</span> <span class="ident">flags</span>: <span class="ident">SigActionFlags</span>,
     <span class="doccomment">/// 信号处理时的栈，也被视为 `signal trampoline`，由用户给出，但一般是pthread库使用。</span>
     <span class="doccomment">/// (如果指定)，这个值需要被写入用户程序上下文的 ra 中</span>
-    <span class="doccomment">/// </span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// 只有制定了 SA_RESTORER 参数才需要设置，请通过 get_restorer 调用</span>
     <span class="ident">restorer</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// 信号的掩码</span>

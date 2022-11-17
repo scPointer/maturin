@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["maturin"];
+window.ALL_CRATES = ["bare_metal","base_file","bit_field","bitflags","bitmap_allocator","bitset","buddy_system_allocator","cfg_if","core2","embedded_hal","epoll","fatfs","fscommon","lazy_static","lock","lock_api","log","maturin","memchr","numeric_enum_macro","poll","range_action_map","riscv","sbi_rt","sbi_spec","scopeguard","select","spin","syscall","task_trampoline","timer","virtio_drivers","void","volatile","xmas_elf","zero"];

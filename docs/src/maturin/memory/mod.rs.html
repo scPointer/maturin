@@ -93,7 +93,7 @@ pub use page_table_impl_rv64_sv39::{
 };
 */</span>
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">areas</span>::{<span class="ident">DiffSet</span>, <span class="ident">CutSet</span>, <span class="ident">PmArea</span>, <span class="ident">PmAreaFixed</span>, <span class="ident">PmAreaLazy</span>, <span class="ident">VmArea</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">areas</span>::{<span class="ident">PmArea</span>, <span class="ident">PmAreaFixed</span>, <span class="ident">PmAreaLazy</span>, <span class="ident">VmArea</span>};
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">vmm</span>::{
     <span class="ident">enable_kernel_page_table</span>, <span class="ident">handle_kernel_page_fault</span>, <span class="ident">new_memory_set_for_task</span>, <span class="ident">MemorySet</span>,
@@ -108,7 +108,7 @@ pub use page_table_impl_rv64_sv39::{
     }
     <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">align_up</span>(<span class="ident">virt_to_phys</span>(<span class="ident">kernel_end</span> <span class="kw">as</span> <span class="ident">usize</span>));
     <span class="kw">let</span> <span class="ident">end</span> <span class="op">=</span> <span class="ident">PHYS_MEMORY_END</span>;
-    <span class="macro">vec!</span>[<span class="ident">start</span>..<span class="ident">end</span>, <span class="number">0xd000_0000</span>..<span class="number">0xfe00_0000</span>]
+    <span class="macro">vec!</span>[<span class="ident">start</span>..<span class="ident">end</span>, <span class="number">0xa000_0000</span>..<span class="number">0xbe00_0000</span>]
 }
 
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>

@@ -65,17 +65,13 @@
 <span id="60">60</span>
 <span id="61">61</span>
 <span id="62">62</span>
-<span id="63">63</span>
-<span id="64">64</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 以文件描述符形式保存一个路径。</span>
 <span class="doccomment">//! 主要用于 sys_openat ，这个系统调用需要文件所在目录的 fd</span>
 
 <span class="comment">//#![deny(missing_docs)]</span>
 
 <span class="kw">use</span> <span class="ident">alloc::string::String</span>;
-
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::File</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::file</span>::{<span class="ident">normal_file_mode</span>, <span class="ident">Kstat</span>, <span class="ident">StMode</span>};
+<span class="kw">use</span> <span class="ident">base_file</span>::{<span class="ident">normal_file_mode</span>, <span class="ident">File</span>, <span class="ident">Kstat</span>, <span class="ident">StMode</span>};
 
 <span class="doccomment">/// 仅保存路径的文件描述符实现</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FdDir</span> {

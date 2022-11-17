@@ -65,8 +65,8 @@
 </pre><pre class="rust"><code><span class="doccomment">//! 用户地址空间传来的指针，默认是不安全的</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::MemorySet</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::syscall::ErrorNo</span>;
 <span class="kw">use</span> <span class="ident">lock::MutexGuard</span>;
+<span class="kw">use</span> <span class="ident">syscall::ErrorNo</span>;
 
 <span class="doccomment">/// 指向用户空间的指针。</span>
 <span class="doccomment">///</span>

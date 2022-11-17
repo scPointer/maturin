@@ -295,6 +295,30 @@
 <span id="290">290</span>
 <span id="291">291</span>
 <span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 中断异常处理</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! 所有中断和异常的入口在 trap.S 中的 __alltraps，它会在保存上下文信息后跳转到本文件中的 trap_handler 函数</span>
@@ -322,18 +346,12 @@
     <span class="ident">arch::get_cpu_id</span>,
     <span class="ident">constants::SIGNAL_RETURN_TRAP</span>,
     <span class="ident">memory::PTEFlags</span>,
-    <span class="ident">signal</span>::{<span class="ident">SignalNo</span>, <span class="ident">send_signal</span>},
+    <span class="ident">signal</span>::{<span class="ident">send_signal</span>, <span class="ident">SignalNo</span>},
     <span class="ident">syscall::syscall</span>,
     <span class="ident">task</span>::{
-        <span class="ident">handle_signals</span>,
-        <span class="ident">handle_user_page_fault</span>,
-        <span class="ident">suspend_current_task</span>,
-        <span class="ident">get_current_task</span>,
-        <span class="ident">timer_kernel_to_user</span>,
-        <span class="ident">timer_user_to_kernel</span>,
-        <span class="ident">signal_return</span>,
+        <span class="ident">get_current_task</span>, <span class="ident">handle_signals</span>, <span class="ident">handle_user_page_fault</span>, <span class="ident">signal_return</span>,
+        <span class="ident">suspend_current_task</span>, <span class="ident">timer_kernel_to_user</span>, <span class="ident">timer_user_to_kernel</span>,
     },
-    <span class="ident">timer::set_next_trigger</span>,
 };
 <span class="kw">use</span> <span class="ident">core::arch::global_asm</span>;
 <span class="kw">use</span> <span class="ident">riscv::register</span>::{
@@ -341,7 +359,9 @@
     <span class="ident">scause</span>::{<span class="self">self</span>, <span class="ident">Exception</span>, <span class="ident">Interrupt</span>, <span class="ident">Trap</span>},
     <span class="ident">sie</span>, <span class="ident">sstatus</span>, <span class="ident">stval</span>, <span class="ident">stvec</span>,
 };
+<span class="kw">use</span> <span class="ident">timer::get_next_trigger</span>;
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::arch::set_timer</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">context::TrapContext</span>;
 
 <span class="macro">global_asm!</span>(<span class="macro">include_str!</span>(<span class="string">&quot;trap.S&quot;</span>));
@@ -385,13 +405,17 @@
 <span class="attribute">#[<span class="ident">no_mangle</span>]</span>
 <span class="doccomment">/// 处理来自用户程序的异常/中断</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">user_trap_handler</span>(<span class="ident">cx</span>: <span class="kw-2">&amp;mut</span> <span class="ident">TrapContext</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">TrapContext</span> {
-    
     <span class="comment">//if get_current_task().unwrap().get_tid_num() == 2 {</span>
     <span class="comment">//let mut fs1: f64;</span>
     <span class="comment">//unsafe { core::arch::asm!(&quot;fmv.d.x {0}, fs1&quot;, out(reg) fs1) };</span>
     <span class="comment">//println!(&quot;in fs1 {}&quot;, fs1);</span>
     <span class="comment">//unsafe { core::arch::asm!(&quot;fsd fs1, 0(sp)&quot;) };</span>
-    <span class="macro">trace!</span>(<span class="string">&quot;user sp = {:x}, entry = {:x}, sstatus = {:x}&quot;</span>, <span class="ident">cx</span>.<span class="ident">x</span>[<span class="number">2</span>], <span class="ident">cx</span>.<span class="ident">sepc</span>, <span class="ident">cx</span>.<span class="ident">sstatus</span>.<span class="ident">bits</span>());
+    <span class="macro">trace!</span>(
+        <span class="string">&quot;user sp = {:x}, entry = {:x}, sstatus = {:x}&quot;</span>,
+        <span class="ident">cx</span>.<span class="ident">x</span>[<span class="number">2</span>],
+        <span class="ident">cx</span>.<span class="ident">sepc</span>,
+        <span class="ident">cx</span>.<span class="ident">sstatus</span>.<span class="ident">bits</span>()
+    );
     <span class="comment">//}</span>
     <span class="kw">let</span> <span class="ident">scause</span> <span class="op">=</span> <span class="ident">scause::read</span>(); <span class="comment">// get trap cause</span>
     <span class="kw">let</span> <span class="ident">stval</span> <span class="op">=</span> <span class="ident">stval::read</span>(); <span class="comment">// get extra value</span>
@@ -412,11 +436,17 @@
         }
         <span class="ident">Trap::Exception</span>(<span class="ident">Exception::StoreFault</span>) =&gt; {
             <span class="macro">info!</span>(<span class="string">&quot;[kernel] StoreFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.&quot;</span>, <span class="ident">stval</span>, <span class="ident">cx</span>.<span class="ident">sepc</span>);
-            <span class="ident">send_signal</span>(<span class="ident">get_current_task</span>().<span class="ident">unwrap</span>().<span class="ident">get_tid_num</span>(), <span class="ident">SignalNo::SIGSEGV</span> <span class="kw">as</span> <span class="ident">usize</span>);
+            <span class="ident">send_signal</span>(
+                <span class="ident">get_current_task</span>().<span class="ident">unwrap</span>().<span class="ident">get_tid_num</span>(),
+                <span class="ident">SignalNo::SIGSEGV</span> <span class="kw">as</span> <span class="ident">usize</span>,
+            );
         }
         <span class="ident">Trap::Exception</span>(<span class="ident">Exception::IllegalInstruction</span>) =&gt; {
             <span class="macro">info!</span>(<span class="string">&quot;[cpu {}] IllegalInstruction in application, sepc = {:x}, stval = {:#x}, kernel killed it.&quot;</span>, <span class="ident">get_cpu_id</span>(), <span class="ident">cx</span>.<span class="ident">sepc</span>, <span class="ident">stval</span>);
-            <span class="ident">send_signal</span>(<span class="ident">get_current_task</span>().<span class="ident">unwrap</span>().<span class="ident">get_tid_num</span>(), <span class="ident">SignalNo::SIGSEGV</span> <span class="kw">as</span> <span class="ident">usize</span>);
+            <span class="ident">send_signal</span>(
+                <span class="ident">get_current_task</span>().<span class="ident">unwrap</span>().<span class="ident">get_tid_num</span>(),
+                <span class="ident">SignalNo::SIGSEGV</span> <span class="kw">as</span> <span class="ident">usize</span>,
+            );
         }
         <span class="ident">Trap::Exception</span>(<span class="ident">Exception::InstructionPageFault</span>) =&gt; {
             <span class="macro">info!</span>(<span class="string">&quot;[cpu {}] InstructionPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.&quot;</span>, <span class="ident">get_cpu_id</span>(), <span class="ident">stval</span>, <span class="ident">cx</span>.<span class="ident">sepc</span>);
@@ -427,7 +457,10 @@
             }
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">handle_user_page_fault</span>(<span class="ident">stval</span>, <span class="ident">PTEFlags::USER</span> <span class="op">|</span> <span class="ident">PTEFlags::EXECUTE</span>) {
                 <span class="macro">info!</span>(<span class="string">&quot;{:#?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">send_signal</span>(<span class="ident">get_current_task</span>().<span class="ident">unwrap</span>().<span class="ident">get_tid_num</span>(), <span class="ident">SignalNo::SIGSEGV</span> <span class="kw">as</span> <span class="ident">usize</span>);
+                <span class="ident">send_signal</span>(
+                    <span class="ident">get_current_task</span>().<span class="ident">unwrap</span>().<span class="ident">get_tid_num</span>(),
+                    <span class="ident">SignalNo::SIGSEGV</span> <span class="kw">as</span> <span class="ident">usize</span>,
+                );
             }
             <span class="comment">//PageFault(stval, PTEFlags::USER | PTEFlags::EXECUTE)</span>
         }
@@ -444,7 +477,10 @@
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">handle_user_page_fault</span>(<span class="ident">stval</span>, <span class="ident">PTEFlags::USER</span> <span class="op">|</span> <span class="ident">PTEFlags::READ</span>) {
                 <span class="macro">info!</span>(<span class="string">&quot;[cpu {}] LoadPageFault in application, bad addr = {:#x}, bad instruction = {:#x}.&quot;</span>, <span class="ident">get_cpu_id</span>(), <span class="ident">stval</span>, <span class="ident">cx</span>.<span class="ident">sepc</span>);
                 <span class="macro">info!</span>(<span class="string">&quot;{:#?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">send_signal</span>(<span class="ident">get_current_task</span>().<span class="ident">unwrap</span>().<span class="ident">get_tid_num</span>(), <span class="ident">SignalNo::SIGSEGV</span> <span class="kw">as</span> <span class="ident">usize</span>);
+                <span class="ident">send_signal</span>(
+                    <span class="ident">get_current_task</span>().<span class="ident">unwrap</span>().<span class="ident">get_tid_num</span>(),
+                    <span class="ident">SignalNo::SIGSEGV</span> <span class="kw">as</span> <span class="ident">usize</span>,
+                );
             }
             <span class="comment">//PageFault(stval, PTEFlags::USER | PTEFlags::READ)</span>
         }
@@ -453,7 +489,10 @@
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">handle_user_page_fault</span>(<span class="ident">stval</span>, <span class="ident">PTEFlags::USER</span> <span class="op">|</span> <span class="ident">PTEFlags::WRITE</span>) {
                 <span class="macro">info!</span>(<span class="string">&quot;[cpu {}] StorePageFault in application, bad addr = {:#x}, bad instruction = {:#x}.&quot;</span>, <span class="ident">get_cpu_id</span>(), <span class="ident">stval</span>, <span class="ident">cx</span>.<span class="ident">sepc</span>);
                 <span class="macro">info!</span>(<span class="string">&quot;{:#?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">send_signal</span>(<span class="ident">get_current_task</span>().<span class="ident">unwrap</span>().<span class="ident">get_tid_num</span>(), <span class="ident">SignalNo::SIGSEGV</span> <span class="kw">as</span> <span class="ident">usize</span>);
+                <span class="ident">send_signal</span>(
+                    <span class="ident">get_current_task</span>().<span class="ident">unwrap</span>().<span class="ident">get_tid_num</span>(),
+                    <span class="ident">SignalNo::SIGSEGV</span> <span class="kw">as</span> <span class="ident">usize</span>,
+                );
             }
             <span class="comment">//PageFault(stval, PTEFlags::USER | PTEFlags::WRITE)</span>
         }
@@ -467,7 +506,7 @@
             );
 
             <span class="comment">// 之后需要判断如果是在内核态，则不切换任务</span>
-            <span class="ident">set_next_trigger</span>();
+            <span class="ident">set_timer</span>(<span class="ident">get_next_trigger</span>());
             <span class="ident">suspend_current_task</span>();
         }
         <span class="kw">_</span> =&gt; {
@@ -495,7 +534,12 @@
     <span class="kw">let</span> <span class="ident">scause</span> <span class="op">=</span> <span class="ident">scause::read</span>(); <span class="comment">// get trap cause</span>
     <span class="kw">let</span> <span class="ident">stval</span> <span class="op">=</span> <span class="ident">stval::read</span>(); <span class="comment">// get extra value</span>
 
-    <span class="macro">trace!</span>(<span class="string">&quot;kernel sp = {:x}, entry = {:x}, sstatus = {:x}&quot;</span>, <span class="ident">cx</span>.<span class="ident">x</span>[<span class="number">2</span>], <span class="ident">cx</span>.<span class="ident">sepc</span>, <span class="ident">cx</span>.<span class="ident">sstatus</span>.<span class="ident">bits</span>());
+    <span class="macro">trace!</span>(
+        <span class="string">&quot;kernel sp = {:x}, entry = {:x}, sstatus = {:x}&quot;</span>,
+        <span class="ident">cx</span>.<span class="ident">x</span>[<span class="number">2</span>],
+        <span class="ident">cx</span>.<span class="ident">sepc</span>,
+        <span class="ident">cx</span>.<span class="ident">sstatus</span>.<span class="ident">bits</span>()
+    );
     <span class="comment">/*
     let mut pc: usize;
     unsafe { core::arch::asm!(&quot;auipc {0}, 0&quot;, out(reg) pc) };
@@ -572,7 +616,7 @@
                 <span class="ident">cx</span>.<span class="ident">sepc</span>
             );
             <span class="comment">// 之后需要判断如果是在内核态，则不切换任务</span>
-            <span class="ident">set_next_trigger</span>();
+            <span class="ident">set_timer</span>(<span class="ident">get_next_trigger</span>());
             <span class="comment">//suspend_current_and_run_next();</span>
         }
         <span class="kw">_</span> =&gt; {
@@ -584,7 +628,11 @@
             );
         }
     }
-    <span class="macro">panic!</span>(<span class="string">&quot;kernel trap cause: {:?}, context: {:#x?}&quot;</span>, <span class="ident">scause</span>.<span class="ident">cause</span>(), <span class="ident">cx</span>);
+    <span class="macro">panic!</span>(
+        <span class="string">&quot;kernel trap cause: {:?}, context: {:#x?}&quot;</span>,
+        <span class="ident">scause</span>.<span class="ident">cause</span>(),
+        <span class="ident">cx</span>
+    );
     <span class="comment">//cx</span>
 }
 </code></pre></div>

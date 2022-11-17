@@ -526,133 +526,35 @@
 <span id="521">521</span>
 <span id="522">522</span>
 <span id="523">523</span>
-<span id="524">524</span>
-<span id="525">525</span>
-<span id="526">526</span>
-<span id="527">527</span>
-<span id="528">528</span>
-<span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
-<span id="533">533</span>
-<span id="534">534</span>
-<span id="535">535</span>
-<span id="536">536</span>
-<span id="537">537</span>
-<span id="538">538</span>
-<span id="539">539</span>
-<span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
-<span id="543">543</span>
-<span id="544">544</span>
-<span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
-<span id="548">548</span>
-<span id="549">549</span>
-<span id="550">550</span>
-<span id="551">551</span>
-<span id="552">552</span>
-<span id="553">553</span>
-<span id="554">554</span>
-<span id="555">555</span>
-<span id="556">556</span>
-<span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
-<span id="560">560</span>
-<span id="561">561</span>
-<span id="562">562</span>
-<span id="563">563</span>
-<span id="564">564</span>
-<span id="565">565</span>
-<span id="566">566</span>
-<span id="567">567</span>
-<span id="568">568</span>
-<span id="569">569</span>
-<span id="570">570</span>
-<span id="571">571</span>
-<span id="572">572</span>
-<span id="573">573</span>
-<span id="574">574</span>
-<span id="575">575</span>
-<span id="576">576</span>
-<span id="577">577</span>
-<span id="578">578</span>
-<span id="579">579</span>
-<span id="580">580</span>
-<span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
-<span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
-<span id="589">589</span>
-<span id="590">590</span>
-<span id="591">591</span>
-<span id="592">592</span>
-<span id="593">593</span>
-<span id="594">594</span>
-<span id="595">595</span>
-<span id="596">596</span>
-<span id="597">597</span>
-<span id="598">598</span>
-<span id="599">599</span>
-<span id="600">600</span>
-<span id="601">601</span>
-<span id="602">602</span>
-<span id="603">603</span>
-<span id="604">604</span>
-<span id="605">605</span>
-<span id="606">606</span>
-<span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
-<span id="617">617</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 虚拟地址段映射管理</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">addr_to_page_id</span>, <span class="ident">align_down</span>, <span class="ident">align_up</span>, <span class="ident">cross_page</span>, <span class="ident">get_phys_memory_regions</span>, <span class="ident">page_count</span>,
-    <span class="ident">page_id_to_addr</span>, <span class="ident">virt_to_phys</span>,
-    <span class="ident">DiffSet</span>, <span class="ident">CutSet</span>, <span class="ident">PTEFlags</span>, <span class="ident">PageTable</span>, <span class="ident">PmAreaLazy</span>, <span class="ident">VirtAddr</span>, <span class="ident">VmArea</span>,
+    <span class="ident">addr_to_page_id</span>, <span class="ident">cross_page</span>, <span class="ident">get_phys_memory_regions</span>, <span class="ident">page_count</span>, <span class="ident">page_id_to_addr</span>,
+    <span class="ident">virt_to_phys</span>, <span class="ident">PTEFlags</span>, <span class="ident">PageTable</span>, <span class="ident">PmAreaLazy</span>, <span class="ident">VirtAddr</span>, <span class="ident">VmArea</span>,
 };
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">arch</span>,
-    <span class="ident">file::BackEndFile</span>,
     <span class="ident">constants</span>::{
         <span class="ident">CPU_ID_LIMIT</span>, <span class="ident">DEVICE_END</span>, <span class="ident">DEVICE_START</span>, <span class="ident">IS_PRELOADED_FS_IMG</span>, <span class="ident">IS_TEST_ENV</span>, <span class="ident">MMIO_REGIONS</span>,
-        <span class="ident">PAGE_SIZE</span>, <span class="ident">USER_VIRT_ADDR_LIMIT</span>, <span class="ident">REPORT_PAGE_FAULT</span>,
+        <span class="ident">PAGE_SIZE</span>, <span class="ident">REPORT_PAGE_FAULT</span>, <span class="ident">USER_VIRT_ADDR_LIMIT</span>,
     },
     <span class="ident">error</span>::{<span class="ident">OSError</span>, <span class="ident">OSResult</span>},
+    <span class="ident">file::BackEndFile</span>,
 };
-<span class="kw">use</span> <span class="ident">alloc</span>::{
-    <span class="ident">collections::BTreeMap</span>,
-    <span class="ident">sync::Arc</span>,
-    <span class="ident">vec::Vec</span>,
-};
+<span class="kw">use</span> <span class="ident">alloc</span>::{<span class="ident">boxed::Box</span>, <span class="ident">sync::Arc</span>};
 <span class="kw">use</span> <span class="ident">core</span>::{
     <span class="ident">fmt</span>::{<span class="ident">Debug</span>, <span class="ident">Formatter</span>, <span class="prelude-ty">Result</span>},
     <span class="ident">mem::size_of</span>,
 };
 <span class="kw">use</span> <span class="ident">lock::Mutex</span>;
+<span class="kw">use</span> <span class="ident">range_action_map::RangeActionMap</span>;
 
 <span class="doccomment">/// 内存段和相关的页表</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MemorySet</span> {
     <span class="doccomment">/// 标记内存段的位置</span>
-    <span class="ident">areas</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">VmArea</span><span class="op">&gt;</span>,
+    <span class="ident">area_map</span>: <span class="ident">RangeActionMap</span><span class="op">&lt;</span><span class="ident">VmArea</span><span class="op">&gt;</span>,
     <span class="doccomment">/// 对应的页表</span>
-    <span class="kw">pub</span> <span class="ident">pt</span>: <span class="ident">PageTable</span>,
+    <span class="kw">pub</span> <span class="ident">pt</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">PageTable</span><span class="op">&gt;</span>,
     <span class="doccomment">/// 是否是用户态的</span>
     <span class="ident">is_user</span>: <span class="ident">bool</span>,
 }
@@ -660,132 +562,47 @@
 <span class="kw">impl</span> <span class="ident">MemorySet</span> {
     <span class="doccomment">/// 内核态的映射表</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_kernel</span>() -&gt; <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">pt</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="ident">PageTable::new</span>().<span class="ident">unwrap</span>());
         <span class="self">Self</span> {
-            <span class="ident">areas</span>: <span class="ident">BTreeMap::new</span>(),
-            <span class="ident">pt</span>: <span class="ident">PageTable::new</span>().<span class="ident">unwrap</span>(),
+            <span class="ident">area_map</span>: <span class="ident">RangeActionMap::new</span>(<span class="kw">unsafe</span> { <span class="ident">pt</span>.<span class="ident">self_as_usize</span>() }),
+            <span class="ident">pt</span>,
             <span class="ident">is_user</span>: <span class="bool-val">false</span>,
         }
     }
 
     <span class="doccomment">/// 用户态的映射表</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_user</span>() -&gt; <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">pt</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="ident">PageTable::new</span>().<span class="ident">unwrap</span>());
         <span class="self">Self</span> {
-            <span class="ident">areas</span>: <span class="ident">BTreeMap::new</span>(),
-            <span class="ident">pt</span>: <span class="ident">PageTable::new</span>().<span class="ident">unwrap</span>(),
+            <span class="ident">area_map</span>: <span class="ident">RangeActionMap::new</span>(<span class="kw">unsafe</span> { <span class="ident">pt</span>.<span class="ident">self_as_usize</span>() }),
+            <span class="ident">pt</span>,
             <span class="ident">is_user</span>: <span class="bool-val">true</span>,
         }
-        <span class="comment">/*
-        let mut pt = PageTable::new().unwrap();
-        Self {
-            areas: BTreeMap::new(),
-            pt,
-            is_user: true,
-        }
-        */</span>
     }
-
-    <span class="doccomment">/// 寻找一个起始地址不小于 addr_hint，长为 len 的内存段。找不到时报错</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_free_area</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">hint</span>: <span class="ident">VirtAddr</span>, <span class="ident">len</span>: <span class="ident">usize</span>) -&gt; <span class="ident">OSResult</span><span class="op">&lt;</span><span class="ident">VirtAddr</span><span class="op">&gt;</span> {
-        <span class="comment">// 最好不要有一段内存区间从 0 开始</span>
-        <span class="kw">let</span> <span class="ident">test_addr</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">hint</span> <span class="op">==</span> <span class="number">0</span> { <span class="ident">PAGE_SIZE</span> } <span class="kw">else</span> { <span class="ident">align_up</span>(<span class="ident">hint</span>) };
-        <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">core::iter::once</span>(<span class="ident">test_addr</span>)
-            .<span class="ident">chain</span>(<span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">area</span>)<span class="op">|</span> <span class="ident">area</span>.<span class="ident">end</span>))
-            .<span class="ident">find</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">addr</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">test_free_area</span>(<span class="ident">addr</span>, <span class="ident">addr</span> <span class="op">+</span> <span class="ident">len</span>))
-            .<span class="ident">unwrap</span>();
-        <span class="kw">if</span> <span class="ident">addr</span> <span class="op">+</span> <span class="ident">len</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">USER_VIRT_ADDR_LIMIT</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">OSError::MemorySet_UserMmapIntersectWithKernel</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">addr</span>)
-        }
-    }
-
-    <span class="doccomment">/// 检查 [start, end) 是否与其他内存段冲突。</span>
-    <span class="kw">fn</span> <span class="ident">test_free_area</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">start</span>: <span class="ident">VirtAddr</span>, <span class="ident">end</span>: <span class="ident">VirtAddr</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">before</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">range</span>(..<span class="ident">start</span>).<span class="ident">last</span>() {
-            <span class="kw">if</span> <span class="ident">before</span>.<span class="ident">is_overlap_with</span>(<span class="ident">start</span>, <span class="ident">end</span>) {
-                <span class="kw">return</span> <span class="bool-val">false</span>;
-            }
-        }
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">after</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">range</span>(<span class="ident">start</span>..).<span class="ident">next</span>() {
-            <span class="kw">if</span> <span class="ident">after</span>.<span class="ident">is_overlap_with</span>(<span class="ident">start</span>, <span class="ident">end</span>) {
-                <span class="kw">return</span> <span class="bool-val">false</span>;
-            }
-        }
+    <span class="doccomment">/// 取消一段内存地址映射</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">munmap</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">start</span>: <span class="ident">VirtAddr</span>, <span class="ident">end</span>: <span class="ident">VirtAddr</span>) -&gt; <span class="ident">bool</span> {
+        <span class="comment">//error!(&quot;munmap start {:x} , end {:x}&quot;, start, end);</span>
+        <span class="self">self</span>.<span class="ident">area_map</span>.<span class="ident">unmap</span>(<span class="ident">start</span>, <span class="ident">end</span>);
         <span class="bool-val">true</span>
     }
-
-    <span class="doccomment">/// 调整所有和已知区间相交的区间，空出 [start, end) 段。</span>
-    <span class="doccomment">/// 它可以直接当作 munmap 使用，也可以当作 mmap 的前置操作</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">modify_overlap_areas</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">start</span>: <span class="ident">VirtAddr</span>, <span class="ident">end</span>: <span class="ident">VirtAddr</span>) -&gt; <span class="ident">OSResult</span> {
-        <span class="comment">// 注意，这里把相交的区间直接从 self.areas 里取出来了</span>
-        <span class="comment">// 所以如果仅相交而不需要删除，就需要放回 self.areas</span>
-        <span class="kw">let</span> <span class="ident">areas_to_be_modified</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VmArea</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">areas</span>
-            .<span class="ident">drain_filter</span>(<span class="op">|</span><span class="kw">_</span>, <span class="ident">area</span><span class="op">|</span> <span class="ident">area</span>.<span class="ident">is_overlap_with</span>(<span class="ident">start</span>, <span class="ident">end</span>))
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">v</span>)<span class="op">|</span> <span class="ident">v</span>)
-            .<span class="ident">collect</span>();
-        <span class="kw">for</span> <span class="kw-2">mut</span> <span class="ident">area</span> <span class="kw">in</span> <span class="ident">areas_to_be_modified</span> {
-            <span class="kw">match</span> <span class="ident">area</span>.<span class="ident">shrink_or_split_if_overlap</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pt</span>, <span class="ident">start</span>, <span class="ident">end</span>)<span class="question-mark">?</span> {
-                <span class="ident">DiffSet::Shrinked</span> =&gt; {
-                    <span class="macro">info!</span>(<span class="string">&quot;try shrink to {:x}, {:x}&quot;</span>, <span class="ident">area</span>.<span class="ident">start</span>, <span class="ident">area</span>.<span class="ident">end</span>);
-                    <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">insert</span>(<span class="ident">area</span>.<span class="ident">start</span>, <span class="ident">area</span>);
-                }
-                <span class="ident">DiffSet::Splitted</span>(<span class="ident">left</span>, <span class="ident">right</span>) =&gt; {
-                    <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">insert</span>(<span class="ident">left</span>.<span class="ident">start</span>, <span class="ident">left</span>);
-                    <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">insert</span>(<span class="ident">right</span>.<span class="ident">start</span>, <span class="ident">right</span>);
-                }
-                <span class="kw">_</span> =&gt; {} <span class="comment">// 被删除或者未相交时，就不需要再管了</span>
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
+    <span class="doccomment">/// 修改一段内存映射的权限</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mprotect</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">start</span>: <span class="ident">VirtAddr</span>, <span class="ident">end</span>: <span class="ident">VirtAddr</span>, <span class="ident">new_flags</span>: <span class="ident">PTEFlags</span>) -&gt; <span class="ident">bool</span> {
+        <span class="comment">//error!(&quot;mprotect start {:x} , end {:x}&quot;, start, end);</span>
+        <span class="self">self</span>.<span class="ident">area_map</span>
+            .<span class="ident">mprotect</span>(<span class="ident">start</span>, <span class="ident">end</span>, <span class="ident">new_flags</span>.<span class="ident">bits</span>() <span class="kw">as</span> <span class="ident">usize</span>);
+        <span class="bool-val">true</span>
     }
-
-    <span class="doccomment">/// 调整所有和已知区间相交的区间，修改 [start, end) 段的权限。</span>
-    <span class="doccomment">/// 它可以直接当作 mprotect 使用</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">modify_overlap_areas_with_new_flags</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">start</span>: <span class="ident">VirtAddr</span>, <span class="ident">end</span>: <span class="ident">VirtAddr</span>, <span class="ident">new_flags</span>: <span class="ident">PTEFlags</span>) -&gt; <span class="ident">OSResult</span> {
-        <span class="comment">// 注意，这里把相交的区间直接从 self.areas 里取出来了</span>
-        <span class="comment">// 所以如果仅相交而不需要删除，就需要放回 self.areas</span>
-        <span class="kw">let</span> <span class="ident">areas_to_be_modified</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VmArea</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">areas</span>
-            .<span class="ident">drain_filter</span>(<span class="op">|</span><span class="kw">_</span>, <span class="ident">area</span><span class="op">|</span> <span class="ident">area</span>.<span class="ident">is_overlap_with</span>(<span class="ident">start</span>, <span class="ident">end</span>))
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">v</span>)<span class="op">|</span> <span class="ident">v</span>)
-            .<span class="ident">collect</span>();
-        <span class="kw">for</span> <span class="kw-2">mut</span> <span class="ident">area</span> <span class="kw">in</span> <span class="ident">areas_to_be_modified</span> {
-            <span class="kw">match</span> <span class="ident">area</span>.<span class="ident">split_and_modify_if_overlap</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pt</span>, <span class="ident">start</span>, <span class="ident">end</span>, <span class="ident">new_flags</span>)<span class="question-mark">?</span> {
-                <span class="ident">CutSet::WholeModified</span> =&gt; {
-                    <span class="comment">//info!(&quot;mprotect: modified {:x}, {:x}&quot;, area.start, area.end);</span>
-                    <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">insert</span>(<span class="ident">area</span>.<span class="ident">start</span>, <span class="ident">area</span>);
-                }
-                <span class="ident">CutSet::ModifiedLeft</span>(<span class="ident">left</span>, <span class="ident">right</span>) <span class="op">|</span> <span class="ident">CutSet::ModifiedRight</span>(<span class="ident">left</span>, <span class="ident">right</span>) =&gt; {
-                    <span class="comment">// 在 split_and_modify_if_overlap 内部已经处理过了修改 flags 的部分</span>
-                    <span class="comment">// 所以如果有半边相交，可以直接把切出的区间塞回 self.areas</span>
-                    <span class="comment">//info!(&quot;mprotect: cut and modified one-side {:x}, {:x}&quot;, area.start, area.end);</span>
-                    <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">insert</span>(<span class="ident">left</span>.<span class="ident">start</span>, <span class="ident">left</span>);
-                    <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">insert</span>(<span class="ident">right</span>.<span class="ident">start</span>, <span class="ident">right</span>);
-                }
-                <span class="ident">CutSet::ModifiedMiddle</span>(<span class="ident">left</span>, <span class="ident">mid</span>, <span class="ident">right</span>) =&gt; {
-                    <span class="comment">//info!(&quot;mprotect: cut and modified middle {:x}, {:x}&quot;, area.start, area.end);</span>
-                    <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">insert</span>(<span class="ident">left</span>.<span class="ident">start</span>, <span class="ident">left</span>);
-                    <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">insert</span>(<span class="ident">mid</span>.<span class="ident">start</span>, <span class="ident">mid</span>);
-                    <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">insert</span>(<span class="ident">right</span>.<span class="ident">start</span>, <span class="ident">right</span>);
-                }
-                <span class="kw">_</span> =&gt; {} <span class="comment">// 未相交时，就不需要再管了</span>
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-
     <span class="doccomment">/// 将一段区域中的数据同步到和其对应的文件中</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">msync_areas</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">start</span>: <span class="ident">VirtAddr</span>, <span class="ident">end</span>: <span class="ident">VirtAddr</span>) -&gt; <span class="ident">OSResult</span> {
-        <span class="kw">let</span> <span class="ident">areas</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">iter</span>().<span class="ident">filter</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">area</span>)<span class="op">|</span> <span class="ident">area</span>.<span class="ident">is_overlap_with</span>(<span class="ident">start</span>, <span class="ident">end</span>));
         <span class="comment">// 如果没找到区间， msync 需要报错 ENOMEM，所以需要确认是否至少有一个区间相交</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">area_found</span> <span class="op">=</span> <span class="bool-val">false</span>;
-        <span class="kw">for</span> (<span class="kw">_</span>, <span class="ident">area</span>) <span class="kw">in</span> <span class="ident">areas</span> {
-            <span class="ident">area_found</span> <span class="op">=</span> <span class="bool-val">true</span>;
-            <span class="comment">// VmArea 内部会自行判断相交区间</span>
-            <span class="ident">area</span>.<span class="ident">msync</span>(<span class="ident">start</span>, <span class="ident">end</span>)<span class="question-mark">?</span>;
-        }
-        <span class="kw">if</span> <span class="ident">area_found</span> {
+        <span class="kw">if</span> <span class="self">self</span>
+            .<span class="ident">area_map</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">seg</span><span class="op">|</span> <span class="ident">seg</span>.<span class="ident">is_overlap_with</span>(<span class="ident">start</span>, <span class="ident">end</span>))
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">seg</span><span class="op">|</span> <span class="ident">seg</span>.<span class="ident">msync</span>(<span class="ident">start</span>, <span class="ident">end</span>))
+            .<span class="ident">count</span>()
+            <span class="op">&gt;</span> <span class="number">0</span>
+        {
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else</span> {
             <span class="prelude-val">Err</span>(<span class="ident">OSError::MemorySet_AreaNotMapped</span>)
@@ -804,52 +621,61 @@
         <span class="ident">backend</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BackEndFile</span><span class="op">&gt;</span>,
         <span class="ident">anywhere</span>: <span class="ident">bool</span>,
     ) -&gt; <span class="ident">OSResult</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">start</span>, <span class="ident">end</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">anywhere</span> {
-            <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">end</span> <span class="op">-</span> <span class="ident">start</span>;
-            <span class="comment">// 此处 start 作为 hint</span>
-            <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">find_free_area</span>(<span class="ident">start</span>, <span class="ident">end</span> <span class="op">-</span> <span class="ident">start</span>)<span class="question-mark">?</span>;
-            (<span class="ident">start</span>, <span class="ident">start</span> <span class="op">+</span> <span class="ident">len</span>)
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">anywhere</span> <span class="op">&amp;&amp;</span> <span class="ident">end</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">USER_VIRT_ADDR_LIMIT</span> {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OSError::MemorySet_UserMmapIntersectWithKernel</span>);
+        }
+        <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">end</span> <span class="op">-</span> <span class="ident">start</span>;
+        <span class="kw">if</span> <span class="ident">anywhere</span> {
+            <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">area_map</span>
+                .<span class="ident">mmap_anywhere</span>(<span class="ident">start</span>, <span class="ident">end</span> <span class="op">-</span> <span class="ident">start</span>, <span class="op">|</span><span class="ident">start</span><span class="op">|</span> {
+                    <span class="comment">// 注意此时因为 start 已改变，所以外部的 end 已失效，应该使用 len 计算 end</span>
+                    <span class="kw">let</span> <span class="ident">end</span> <span class="op">=</span> <span class="ident">len</span> <span class="op">+</span> <span class="ident">start</span>;
+                    <span class="comment">//error!(&quot;mmap anywhere get start {:x} , end {:x}&quot;, start, end);</span>
+                    <span class="comment">// 注意实际占用的页数不仅看 data.len()，还要看请求的地址跨越了几页</span>
+                    <span class="kw">let</span> <span class="ident">pma</span> <span class="op">=</span> <span class="ident">PmAreaLazy::new</span>(<span class="ident">page_count</span>(<span class="ident">end</span> <span class="op">-</span> <span class="ident">start</span>), <span class="ident">backend</span>).<span class="ident">unwrap</span>();
+                    <span class="kw">let</span> <span class="ident">area</span> <span class="op">=</span>
+                        <span class="ident">VmArea::new</span>(<span class="ident">start</span>, <span class="ident">end</span>, <span class="ident">flags</span>, <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">pma</span>)), <span class="string">&quot;from mmap&quot;</span>)
+                            .<span class="ident">unwrap</span>();
+                    <span class="ident">area</span>.<span class="ident">map_area</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pt</span>).<span class="ident">unwrap</span>();
+                    <span class="ident">area</span>
+                })
+                .<span class="ident">unwrap</span>();
+            <span class="self">self</span>.<span class="ident">flush_tlb</span>();
+            <span class="prelude-val">Ok</span>(<span class="ident">start</span>)
         } <span class="kw">else</span> {
-            <span class="kw">if</span> <span class="ident">end</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">USER_VIRT_ADDR_LIMIT</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OSError::MemorySet_UserMmapIntersectWithKernel</span>);
-            }
-            <span class="comment">// 否则说明要求特定区间，那么需要 unmap 掉原本相交的区间</span>
-            <span class="self">self</span>.<span class="ident">modify_overlap_areas</span>(<span class="ident">start</span>, <span class="ident">end</span>).<span class="ident">unwrap</span>();
-            (<span class="ident">start</span>, <span class="ident">end</span>)
-        };
-        <span class="comment">//info!(&quot;origin start {:x} end {:x}&quot;, start, end);</span>
-        <span class="comment">// 注意实际占用的页数不仅看 data.len()，还要看请求的地址跨越了几页</span>
-        <span class="kw">let</span> <span class="ident">pma</span> <span class="op">=</span> <span class="ident">PmAreaLazy::new</span>(<span class="ident">page_count</span>(<span class="ident">end</span> <span class="op">-</span> <span class="ident">start</span>), <span class="ident">backend</span>)<span class="question-mark">?</span>;
-        <span class="comment">//pma.write(0, data)?;</span>
-        <span class="comment">//info!(&quot;before align: start {:x}, end {:x}&quot;, start, end);</span>
-        <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">align_down</span>(<span class="ident">start</span>);
-        <span class="kw">let</span> <span class="ident">end</span> <span class="op">=</span> <span class="ident">align_up</span>(<span class="ident">end</span>);
-        <span class="comment">//println!(&quot;after align: start {:x}, end {:x}, pmsize {}&quot;, start, end, align_up(off + data.len()));</span>
-        <span class="kw">let</span> <span class="ident">area</span> <span class="op">=</span> <span class="ident">VmArea::new</span>(<span class="ident">start</span>, <span class="ident">end</span>, <span class="ident">flags</span>, <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">pma</span>)), <span class="string">&quot;from mmap&quot;</span>).<span class="ident">unwrap</span>();
-        <span class="comment">//println!(&quot;start {}, end {}&quot;, start, end);</span>
-        <span class="self">self</span>.<span class="ident">push</span>(<span class="ident">area</span>)<span class="question-mark">?</span>;
-        <span class="comment">// 其实可以只刷新 mmap 的页，但因为这里不清楚具体会 mmap 多大内存，所以按页刷不一定划算</span>
-        <span class="self">self</span>.<span class="ident">flush_tlb</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">start</span>)
+            <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">area_map</span>
+                .<span class="ident">mmap_fixed</span>(<span class="ident">start</span>, <span class="ident">end</span>, <span class="op">|</span><span class="op">|</span> {
+                    <span class="comment">//error!(&quot;mmap fixed get start {:x} , end {:x}&quot;, start, end);</span>
+                    <span class="kw">let</span> <span class="ident">pma</span> <span class="op">=</span> <span class="ident">PmAreaLazy::new</span>(<span class="ident">page_count</span>(<span class="ident">end</span> <span class="op">-</span> <span class="ident">start</span>), <span class="ident">backend</span>).<span class="ident">unwrap</span>();
+                    <span class="kw">let</span> <span class="ident">area</span> <span class="op">=</span>
+                        <span class="ident">VmArea::new</span>(<span class="ident">start</span>, <span class="ident">end</span>, <span class="ident">flags</span>, <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">pma</span>)), <span class="string">&quot;from mmap&quot;</span>)
+                            .<span class="ident">unwrap</span>();
+                    <span class="ident">area</span>.<span class="ident">map_area</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pt</span>).<span class="ident">unwrap</span>();
+                    <span class="ident">area</span>
+                })
+                .<span class="ident">unwrap</span>();
+            <span class="self">self</span>.<span class="ident">flush_tlb</span>();
+            <span class="prelude-val">Ok</span>(<span class="ident">start</span>)
+        }
     }
 
     <span class="doccomment">/// 插入一段内存段，并将其映射到页表里</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">vma</span>: <span class="ident">VmArea</span>) -&gt; <span class="ident">OSResult</span> {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">test_free_area</span>(<span class="ident">vma</span>.<span class="ident">start</span>, <span class="ident">vma</span>.<span class="ident">end</span>) {
-            <span class="macro">info!</span>(<span class="string">&quot;VMA overlap: {:#x?}\n{:#x?}&quot;</span>, <span class="ident">vma</span>, <span class="self">self</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OSError::MemorySet_InvalidRange</span>);
-        }
-        <span class="ident">vma</span>.<span class="ident">map_area</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pt</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">insert</span>(<span class="ident">vma</span>.<span class="ident">start</span>, <span class="ident">vma</span>);
+        <span class="self">self</span>.<span class="ident">area_map</span>
+            .<span class="ident">mmap_fixed</span>(<span class="ident">vma</span>.<span class="ident">start</span>, <span class="ident">vma</span>.<span class="ident">end</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="ident">vma</span>.<span class="ident">map_area</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pt</span>).<span class="ident">unwrap</span>();
+                <span class="ident">vma</span>
+            })
+            .<span class="ident">unwrap</span>();
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// 处理这个映射表对应的错误</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">handle_page_fault</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">vaddr</span>: <span class="ident">VirtAddr</span>, <span class="ident">access_flags</span>: <span class="ident">PTEFlags</span>) -&gt; <span class="ident">OSResult</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">area</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">range</span>(..<span class="op">=</span><span class="ident">vaddr</span>).<span class="ident">last</span>() {
-            <span class="kw">if</span> <span class="ident">area</span>.<span class="ident">contains</span>(<span class="ident">vaddr</span>) {
-                <span class="kw">return</span> <span class="ident">area</span>.<span class="ident">handle_page_fault</span>(<span class="ident">vaddr</span> <span class="op">-</span> <span class="ident">area</span>.<span class="ident">start</span>, <span class="ident">access_flags</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pt</span>);
-            }
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">area</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">area_map</span>.<span class="ident">find</span>(<span class="ident">vaddr</span>) {
+            <span class="kw">return</span> <span class="ident">area</span>.<span class="ident">handle_page_fault</span>(<span class="ident">vaddr</span> <span class="op">-</span> <span class="ident">area</span>.<span class="ident">start</span>, <span class="ident">access_flags</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pt</span>);
         }
         <span class="kw">if</span> <span class="ident">REPORT_PAGE_FAULT</span> {
             <span class="macro">warn!</span>(
@@ -862,10 +688,8 @@
 
     <span class="doccomment">/// 检查一个地址是否分配，如果未分配则强制分配它</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">manually_alloc_page</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">vaddr</span>: <span class="ident">VirtAddr</span>) -&gt; <span class="ident">OSResult</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">area</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">range</span>(..<span class="op">=</span><span class="ident">vaddr</span>).<span class="ident">last</span>() {
-            <span class="kw">if</span> <span class="ident">area</span>.<span class="ident">contains</span>(<span class="ident">vaddr</span>) {
-                <span class="kw">return</span> <span class="ident">area</span>.<span class="ident">manually_alloc_page</span>(<span class="ident">vaddr</span> <span class="op">-</span> <span class="ident">area</span>.<span class="ident">start</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pt</span>);
-            }
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">area</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">area_map</span>.<span class="ident">find</span>(<span class="ident">vaddr</span>) {
+            <span class="kw">return</span> <span class="ident">area</span>.<span class="ident">manually_alloc_page</span>(<span class="ident">vaddr</span> <span class="op">-</span> <span class="ident">area</span>.<span class="ident">start</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pt</span>);
         }
         <span class="prelude-val">Err</span>(<span class="ident">OSError::PageFaultHandler_Unhandled</span>)
     }
@@ -897,35 +721,23 @@
     }
 
     <span class="doccomment">/// 清空用户段的地址映射</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear_user</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear_user_pages</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">is_user</span> {
             <span class="macro">println!</span>(<span class="string">&quot;cannot clear kernel memory set&quot;</span>);
             <span class="kw">return</span>;
         }
-        <span class="kw">for</span> <span class="ident">area</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">values</span>() {
-            <span class="kw">if</span> <span class="ident">area</span>.<span class="ident">is_user</span>() {
-                <span class="ident">area</span>.<span class="ident">unmap_area</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pt</span>).<span class="ident">unwrap</span>();
-            }
-        }
-        <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">clear</span>();
+        <span class="self">self</span>.<span class="ident">area_map</span>
+            .<span class="ident">unmap</span>(<span class="ident">range_action_map::LOWER_LIMIT</span>, <span class="ident">range_action_map::UPPER_LIMIT</span>);
     }
 
     <span class="doccomment">/// 清空用户段的地址映射，但保留内核段的</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear_user_and_save_kernel</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear_user_pages_and_save_kernel</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">is_user</span> {
             <span class="macro">error!</span>(<span class="string">&quot;cannot clear kernel memory set&quot;</span>);
             <span class="kw">return</span>;
         }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">user_area_start</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">for</span> (<span class="ident">start</span>, <span class="ident">area</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="ident">area</span>.<span class="ident">is_user</span>() {
-                <span class="ident">area</span>.<span class="ident">unmap_area</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pt</span>).<span class="ident">unwrap</span>();
-                <span class="ident">user_area_start</span>.<span class="ident">push</span>(<span class="kw-2">*</span><span class="ident">start</span>);
-            }
-        }
-        <span class="kw">for</span> <span class="ident">start</span> <span class="kw">in</span> <span class="ident">user_area_start</span>.<span class="ident">iter</span>() {
-            <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">remove</span>(<span class="ident">start</span>);
-        }
+        <span class="self">self</span>.<span class="ident">area_map</span>
+            .<span class="ident">unmap</span>(<span class="ident">range_action_map::LOWER_LIMIT</span>, <span class="ident">USER_VIRT_ADDR_LIMIT</span>);
     }
 
     <span class="comment">// 清空 TLB</span>
@@ -950,7 +762,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">len</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">processed</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">while</span> <span class="ident">len</span> <span class="op">&gt;</span> <span class="number">0</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">area</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">range</span>(..<span class="op">=</span><span class="ident">start</span>).<span class="ident">last</span>() {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">area</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">area_map</span>.<span class="ident">find</span>(<span class="ident">start</span>) {
                 <span class="kw">if</span> <span class="ident">area</span>.<span class="ident">end</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">start</span> {
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OSError::MemorySet_InvalidRange</span>);
                 }
@@ -1007,7 +819,7 @@
     <span class="doccomment">/// 2. 对用户的地址段，所有虚拟地址和其中的数据相同，但对应的物理地址与 self 中的不同</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">copy_as_fork</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">OSResult</span><span class="op">&lt;</span><span class="ident">MemorySet</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ms</span> <span class="op">=</span> <span class="ident">new_memory_set_for_task</span>()<span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">area</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">values</span>() {
+        <span class="kw">for</span> <span class="ident">area</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">area_map</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="ident">area</span>.<span class="ident">is_user</span>() {
                 <span class="ident">ms</span>.<span class="ident">push</span>(<span class="ident">area</span>.<span class="ident">copy_to_new_area_with_data</span>()<span class="question-mark">?</span>)<span class="question-mark">?</span>;
             }
@@ -1019,14 +831,14 @@
 <span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">MemorySet</span> {
     <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="comment">//println!(&quot;MemorySet drop&quot;);</span>
-        <span class="self">self</span>.<span class="ident">clear_user</span>()
+        <span class="self">self</span>.<span class="ident">clear_user_pages</span>()
     }
 }
 
 <span class="kw">impl</span> <span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">MemorySet</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span>) -&gt; <span class="prelude-ty">Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;MemorySet&quot;</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;areas&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">areas</span>.<span class="ident">values</span>())
+            .<span class="ident">field</span>(<span class="string">&quot;map&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">area_map</span>)
             .<span class="ident">field</span>(<span class="string">&quot;page_table_root&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">pt</span>.<span class="ident">get_root_paddr</span>())
             .<span class="ident">finish</span>()
     }

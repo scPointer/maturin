@@ -149,9 +149,9 @@
 
 <span class="comment">//#![deny(missing_docs)]</span>
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">normal_file_mode</span>, <span class="ident">File</span>, <span class="ident">Kstat</span>, <span class="ident">StMode</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::arch::stdin::getchar</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::task::suspend_current_task</span>;
+<span class="kw">use</span> <span class="ident">base_file</span>::{<span class="ident">normal_file_mode</span>, <span class="ident">File</span>, <span class="ident">Kstat</span>, <span class="ident">StMode</span>};
 
 <span class="doccomment">/// 标准输入流</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Stdin</span>;

@@ -45,8 +45,6 @@
 <span id="40">40</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 等待机制，记录线程是否等待在某个事件</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::timer::get_time_us</span>;
-
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Waiter</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> {
     <span class="doccomment">/// 唤醒这个waiter</span>
     <span class="kw">fn</span> <span class="ident">wake</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>);
@@ -66,7 +64,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">timed_out</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">timed_out_us</span>: <span class="ident">timed_out</span>.<span class="ident">unwrap_or</span>(<span class="ident">usize::MAX</span>),
-            <span class="ident">woken</span>: <span class="bool-val">false</span>
+            <span class="ident">woken</span>: <span class="bool-val">false</span>,
         }
     }
 }
@@ -76,12 +74,15 @@
         <span class="self">self</span>.<span class="ident">woken</span> <span class="op">=</span> <span class="bool-val">true</span>;
     }
     <span class="kw">fn</span> <span class="ident">is_woken</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">woken</span> { <span class="comment">// 主动唤醒</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">woken</span> {
+            <span class="comment">// 主动唤醒</span>
             <span class="bool-val">true</span>
-        } <span class="kw">else</span> { <span class="comment">// 超时唤醒</span>
-            <span class="ident">get_time_us</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">timed_out_us</span>
+        } <span class="kw">else</span> {
+            <span class="comment">// 超时唤醒</span>
+            <span class="ident">timer::get_time_us</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">timed_out_us</span>
         }
     }
-}</code></pre></div>
+}
+</code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="maturin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (1f7fb6413 2022-04-10)" ></div>
 </body></html>

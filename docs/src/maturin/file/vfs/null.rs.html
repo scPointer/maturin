@@ -38,11 +38,9 @@
 <span id="33">33</span>
 <span id="34">34</span>
 <span id="35">35</span>
-<span id="36">36</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 空文件，用于 dev/null</span>
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">File</span>, <span class="ident">Kstat</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::file</span>::{<span class="ident">normal_file_mode</span>, <span class="ident">StMode</span>};
+<span class="kw">use</span> <span class="ident">base_file</span>::{<span class="ident">normal_file_mode</span>, <span class="ident">File</span>, <span class="ident">Kstat</span>, <span class="ident">StMode</span>};
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NullFile</span>;
 

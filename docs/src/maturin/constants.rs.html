@@ -128,25 +128,91 @@
 <span id="123">123</span>
 <span id="124">124</span>
 <span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
 </pre><pre class="rust"><code><span class="doccomment">//! OS运行时用到的常量</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! 内存地址分布说明：</span>
+<span class="doccomment">//! /* ------------------------------ 用户程序 ------------------------------*/</span>
+<span class="doccomment">//! /// 用户栈大小</span>
+<span class="doccomment">//! pub const USER_STACK_SIZE: usize = 0xf0_0000; // 2 MB</span>
+<span class="doccomment">//! /// 初始用户栈大小，用于存放 argc/argv/envs/auxv</span>
+<span class="doccomment">//! pub const USER_INIT_STACK_SIZE: usize = 0x4000; // 16 KB,</span>
+<span class="doccomment">//! /// 用户栈底位置。同时也是最开始的用户堆顶位置</span>
+<span class="doccomment">//! pub const USER_STACK_OFFSET: usize = 0x4000_0000 - USER_STACK_SIZE;</span>
+<span class="doccomment">//! /// 用户地址最大不能超过这个值</span>
+<span class="doccomment">//! pub const USER_VIRT_ADDR_LIMIT: usize = 0xFFFF_FFFF;</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! /* ------------------------------ MMIO ------------------------------*/</span>
+<span class="doccomment">//! /// 用于设备 MMIO 的内存段。这些地址会在页表中做恒等映射</span>
+<span class="doccomment">//! pub const MMIO_REGIONS: &amp;[AddrArea] = &amp;[AddrArea(0x10001000, 0x10002000)];</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! /* ------------------------------ 内核 ------------------------------*/</span>
+<span class="doccomment">//! /// 内核中虚拟地址相对于物理地址的偏移</span>
+<span class="doccomment">//! pub const PHYS_VIRT_OFFSET: usize = 0xFFFF_FFFF_0000_0000;</span>
+<span class="doccomment">//! /// 表示内存的地址段起始</span>
+<span class="doccomment">//! pub const PHYS_MEMORY_OFFSET: usize = 0x8000_0000;</span>
+<span class="doccomment">//! // 内核起始地址 0x8020_0000</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! // 内核的各段、堆栈分配等在 memory/vmm.rs:414 init_kernel_memory_set()，详细的大小设定在 constants.rs</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! /// 表示内存的地址段结束</span>
+<span class="doccomment">//! pub const PHYS_MEMORY_END: usize = 0x9f00_0000;</span>
+<span class="doccomment">//! // free memory 段 (这段代码在 memory/mod.rs)</span>
+<span class="doccomment">//! let start = align_up(virt_to_phys(kernel_end as usize));</span>
+<span class="doccomment">//! let end = PHYS_MEMORY_END;</span>
+<span class="doccomment">//! vec![start..end, 0xd000_0000..0xfe00_0000]</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! /// 文件系统镜像大小。</span>
+<span class="doccomment">//! pub const FS_IMG_SIZE: usize = 0x1000_0000; // 256MB</span>
+<span class="doccomment">//! /// 设备(sdcard)映射到内存的起始位置</span>
+<span class="doccomment">//! pub const DEVICE_START: usize = 0xa000_0000;</span>
+<span class="doccomment">//! /// 设备映射到内存的最后位置</span>
+<span class="doccomment">//! pub const DEVICE_END: usize = DEVICE_START + FS_IMG_SIZE;</span>
 
 <span class="comment">//#![deny(missing_docs)]</span>
 
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-<span class="doccomment">/// 是否是 sifive 平台</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PLATFORM_SIFIVE</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
 <span class="doccomment">/// 编号最小的可用的 cpu_id</span>
 <span class="doccomment">/// - virt 下，每个核都可用，所以是从0开始</span>
 <span class="doccomment">/// - sifive 下，0号是小核，目前还用不到，所以从1开始</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FIRST_CPU_ID</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">PLATFORM_SIFIVE</span> { <span class="number">1</span> } <span class="kw">else</span> { <span class="number">0</span> };
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FIRST_CPU_ID</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sifive&quot;</span>) { <span class="number">1</span> } <span class="kw">else</span> { <span class="number">0</span> };
 <span class="doccomment">/// 指定一个特定的 cpu，用于执行启动过程中只能进行一次的初始化过程</span>
 <span class="comment">//pub const BOOTSTRAP_CPU_ID: usize = FIRST_CPU_ID;</span>
 <span class="doccomment">/// 最大的cpu_id再+1，可以认为是总的核数(无论是否使用)。目前在 virt 下是 4，在 sifive 下是 5</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CPU_ID_LIMIT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">FIRST_CPU_ID</span> <span class="op">+</span> <span class="number">4</span>;
 <span class="doccomment">/// 最后一个 CPU 的编号</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LAST_CPU_ID</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">CPU_ID_LIMIT</span> <span class="op">-</span> <span class="number">1</span>;
-<span class="doccomment">/// 时钟频率，和平台有关</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CLOCK_FREQ</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">PLATFORM_SIFIVE</span> { <span class="number">100_0000</span> } <span class="kw">else</span> { <span class="number">1250_0000</span> };
 <span class="doccomment">/// 是否单核运行。单核运行时，则其他核只启动，不运行用户程序</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IS_SINGLE_CORE</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
 <span class="doccomment">/// 是否在启动后暂停。如果为 true，则所有核都只启动，不进入用户程序</span>
@@ -162,11 +228,11 @@
 <span class="doccomment">/// 即 log2(PAGE_SIZE)</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PAGE_SIZE_BITS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0xc</span>; <span class="comment">// 4 KB = 2^12</span>
 <span class="doccomment">/// 内核栈大小</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">KERNEL_STACK_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x800_000</span>; <span class="comment">// 512 KB</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">KERNEL_STACK_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x80_000</span>; <span class="comment">// 8 MB -&gt; 512 KB</span>
 <span class="doccomment">/// 内核堆的大小</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">KERNEL_HEAP_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x200_0000</span>; <span class="comment">// 12 MB</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">KERNEL_HEAP_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0xc0_0000</span>; <span class="comment">// 32 MB -&gt; 12 MB</span>
 <span class="doccomment">/// 用户栈大小</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">USER_STACK_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0xf0_0000</span>; <span class="comment">// 2 MB // `lmbench_all lat_fs /var/tmp` 会默认访问到 0x3ffdfb08 </span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">USER_STACK_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x20_0000</span>; <span class="comment">// 15 MB -&gt; 2 MB // `lmbench_all lat_fs /var/tmp` 会默认访问到 0x3ffdfb08</span>
 <span class="doccomment">/// 初始用户栈大小，用于存放 argc/argv/envs/auxv</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">USER_INIT_STACK_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x4000</span>; <span class="comment">// 16 KB,</span>
 <span class="doccomment">/// 用户栈底位置。同时也是最开始的用户堆顶位置</span>
@@ -178,7 +244,7 @@
 <span class="doccomment">/// 表示内存的地址段由此开始</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PHYS_MEMORY_OFFSET</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x8000_0000</span>;
 <span class="doccomment">/// 表示内存的地址段到此为止</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PHYS_MEMORY_END</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x9f00_0000</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PHYS_MEMORY_END</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x8800_0000</span>;
 
 <span class="doccomment">/// 入口用户程序。OS启动后，只会启动以此为名的用户程序。</span>
 <span class="doccomment">/// 一般来说，这个程序会通过 fork / exec 启动终端和其他程序</span>
@@ -187,9 +253,7 @@
 <span class="doccomment">/// 最小的 tid(进程号) 是 0，最大的 pid 是 TID_LIMIT-1</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">TID_LIMIT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4096</span>;
 <span class="doccomment">/// 预设的文件描述符数量限制</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FD_LIMIT_ORIGIN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">64</span>;
-<span class="doccomment">/// 最大允许的文件描述符数量</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FD_LIMIT_HARD</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">256</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FD_LIMIT_ORIGIN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">256</span>;
 <span class="doccomment">/// sys_pipe创建的管道的大小，单位为字节</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PIPE_SIZE_LIMIT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x40_000</span>; <span class="comment">// 64 KB</span>
 <span class="doccomment">/// socket 使用的 buffer 大小</span>
@@ -206,7 +270,7 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IS_PRELOADED_FS_IMG</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">false</span>;
 <span class="doccomment">/// 文件系统镜像的大小。注意这个量和 fs-init 模块中 `/src/main.rs` 里生成镜像时的大小相同。</span>
 <span class="doccomment">/// 启动时会从 .data 段加载加载</span>
-<span class="kw">const</span> <span class="ident">LOCAL_FS_IMG_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x1000_0000</span>; <span class="comment">// 256MB</span>
+<span class="kw">const</span> <span class="ident">LOCAL_FS_IMG_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x200_0000</span>; <span class="comment">// 16MB</span>
 <span class="doccomment">/// 测试时的文件系统镜像大小。</span>
 <span class="doccomment">/// 注意因为这个文件太大，默认是已经被qemu加载好了，启动时不会加载</span>
 <span class="kw">const</span> <span class="ident">TEST_FS_IMG_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x4000_0000</span>; <span class="comment">// 1GB</span>
@@ -217,7 +281,7 @@
     <span class="ident">LOCAL_FS_IMG_SIZE</span>
 };
 <span class="doccomment">/// 设备(sdcard)映射到内存的起始位置</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DEVICE_START</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0xa000_0000</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DEVICE_START</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x9000_0000</span>;
 <span class="doccomment">/// 设备映射到内存的最后位置</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DEVICE_END</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">DEVICE_START</span> <span class="op">+</span> <span class="ident">FS_IMG_SIZE</span>;
 
@@ -240,11 +304,11 @@
 <span class="doccomment">/// SIGINFO 要求把一些信息存在用户栈上，从用户栈开辟一块空间来保存它们</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">USER_STACK_RED_ZONE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0x200</span>; <span class="comment">// 512 B</span>
 <span class="doccomment">/// 一个在 Sv39 页表里不合法的地址。</span>
-<span class="doccomment">/// </span>
+<span class="doccomment">///</span>
 <span class="doccomment">/// 如果 sigaction 中没有设置 SA_RESTORER，那么需要内核来代替libc库实现&quot;信号执行完成后通过sigreturn返回&quot;的效果</span>
 <span class="doccomment">/// 但是mmap一块地址把&quot;手动调用ecall执行 sigreturn&quot;写进去又显得不够优雅，因为用户地址空间会多出来一块它并不知道的trampoline</span>
 <span class="doccomment">/// 所以现在通过把 ra 写成一个特定地址的方式，让信号处理函数执行完之后，到这里触发 Page Fault，再由内核进行 sigreturn</span>
-<span class="doccomment">/// </span>
+<span class="doccomment">///</span>
 <span class="doccomment">/// 另外，把触发signal的用户pc写成ra是行不通的，因为 signal 语义上要求信号处理结束时恢复之前的一切寄存器状态</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SIGNAL_RETURN_TRAP</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0xffff_0000_8080_0000</span>;
 

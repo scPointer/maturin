@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["maturin"] = [{"text":"impl <a class=\"trait\" href=\"range_action_map/segment/trait.Segment.html\" title=\"trait range_action_map::segment::Segment\">Segment</a> for <a class=\"struct\" href=\"maturin/memory/areas/struct.VmArea.html\" title=\"struct maturin::memory::areas::VmArea\">VmArea</a>","synthetic":false,"types":["maturin::memory::areas::VmArea"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

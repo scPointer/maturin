@@ -233,18 +233,34 @@
 <span id="228">228</span>
 <span id="229">229</span>
 <span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 把物理地址段实现为 lazy 分配需要的页帧</span>
 
 <span class="comment">//#![deny(missing_docs)]</span>
 
 <span class="kw">use</span> <span class="ident">alloc</span>::{<span class="ident">sync::Arc</span>, <span class="ident">vec::Vec</span>};
+<span class="kw">use</span> <span class="ident">base_file::File</span>;
 <span class="kw">use</span> <span class="ident">core::fmt</span>::{<span class="ident">Debug</span>, <span class="ident">Formatter</span>, <span class="prelude-ty">Result</span>};
 
 <span class="kw">use</span> <span class="ident">lock::Mutex</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">PmArea</span>, <span class="ident">VmArea</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::{<span class="ident">OSError</span>, <span class="ident">OSResult</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::file</span>::{<span class="ident">File</span>, <span class="ident">BackEndFile</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::file::BackEndFile</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::memory</span>::{
     <span class="ident">addr</span>::{<span class="self">self</span>, <span class="ident">addr_to_page_id</span>, <span class="ident">align_down</span>},
     <span class="ident">Frame</span>, <span class="ident">PTEFlags</span>, <span class="ident">PhysAddr</span>, <span class="ident">VirtAddr</span>, <span class="ident">PAGE_SIZE</span>, <span class="ident">USER_VIRT_ADDR_LIMIT</span>,
@@ -263,7 +279,10 @@
 
     <span class="kw">fn</span> <span class="ident">clone_as_fork</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">OSResult</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">PmArea</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">new_backend</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">backend</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> <span class="ident">b</span>.<span class="ident">clone_as_fork</span>());
-        <span class="prelude-val">Ok</span>(<span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident"><span class="self">Self</span>::new</span>(<span class="self">self</span>.<span class="ident">frames</span>.<span class="ident">len</span>(), <span class="ident">new_backend</span>)<span class="question-mark">?</span>)))
+        <span class="prelude-val">Ok</span>(<span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident"><span class="self">Self</span>::new</span>(
+            <span class="self">self</span>.<span class="ident">frames</span>.<span class="ident">len</span>(),
+            <span class="ident">new_backend</span>,
+        )<span class="question-mark">?</span>)))
     }
 
     <span class="kw">fn</span> <span class="ident">get_frame</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">idx</span>: <span class="ident">usize</span>, <span class="ident">need_alloc</span>: <span class="ident">bool</span>) -&gt; <span class="ident">OSResult</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PhysAddr</span><span class="op">&gt;</span><span class="op">&gt;</span> {
@@ -271,7 +290,10 @@
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">frame</span>) <span class="op">=</span> <span class="ident">Frame::new</span>() {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">backend</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">backend</span> {
                     <span class="comment">// 无法读取则直接置零</span>
-                    <span class="kw">if</span> <span class="ident">backend</span>.<span class="ident">read_from_offset</span>(<span class="ident">idx</span> <span class="op">*</span> <span class="ident">PAGE_SIZE</span>, <span class="ident">frame</span>.<span class="ident">as_slice_mut</span>()).<span class="ident">is_none</span>() {
+                    <span class="kw">if</span> <span class="ident">backend</span>
+                        .<span class="ident">read_from_offset</span>(<span class="ident">idx</span> <span class="op">*</span> <span class="ident">PAGE_SIZE</span>, <span class="ident">frame</span>.<span class="ident">as_slice_mut</span>())
+                        .<span class="ident">is_none</span>()
+                    {
                         <span class="macro">warn!</span>(<span class="string">&quot;PmAreaLazy: cannot read from backend file&quot;</span>);
                         <span class="ident">frame</span>.<span class="ident">zero</span>();
                     }
@@ -286,20 +308,28 @@
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">frames</span>[<span class="ident">idx</span>].<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">f</span><span class="op">|</span> <span class="ident">f</span>.<span class="ident">start_paddr</span>()))
     }
 
-    <span class="kw">fn</span> <span class="ident">sync_frame_with_file</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">idx</span>: <span class="ident">usize</span>) -&gt; <span class="ident">OSResult</span> {
+    <span class="kw">fn</span> <span class="ident">sync_frame_with_file</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">idx</span>: <span class="ident">usize</span>) {
         <span class="comment">// 有后端文件就同步，即使没有也不报错</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">backend</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">backend</span> {
             <span class="comment">// 无法写回也无所谓，当前区域仍可使用</span>
-            <span class="ident">backend</span>.<span class="ident">write_to_offset</span>(<span class="ident">idx</span> <span class="op">*</span> <span class="ident">PAGE_SIZE</span>, <span class="self">self</span>.<span class="ident">frames</span>[<span class="ident">idx</span>].<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">as_slice</span>()).<span class="ident">unwrap_or</span>(<span class="number">0</span>);
+            <span class="ident">backend</span>
+                .<span class="ident">write_to_offset</span>(
+                    <span class="ident">idx</span> <span class="op">*</span> <span class="ident">PAGE_SIZE</span>,
+                    <span class="self">self</span>.<span class="ident">frames</span>[<span class="ident">idx</span>].<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">as_slice</span>(),
+                )
+                .<span class="ident">unwrap_or</span>(<span class="number">0</span>);
         }
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">fn</span> <span class="ident">release_frame</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">idx</span>: <span class="ident">usize</span>) -&gt; <span class="ident">OSResult</span> {
-        <span class="kw">let</span> <span class="ident">frame</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">frames</span>[<span class="ident">idx</span>].<span class="ident">take</span>().<span class="ident">ok_or</span>(<span class="ident">OSError::PmAreaLazy_ReleaseNotAllocatedPage</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">frame</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">frames</span>[<span class="ident">idx</span>]
+            .<span class="ident">take</span>()
+            .<span class="ident">ok_or</span>(<span class="ident">OSError::PmAreaLazy_ReleaseNotAllocatedPage</span>)<span class="question-mark">?</span>;
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">backend</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">backend</span> {
             <span class="comment">// 无法写回也无所谓，当前区域仍可使用</span>
-            <span class="ident">backend</span>.<span class="ident">write_to_offset</span>(<span class="ident">idx</span> <span class="op">*</span> <span class="ident">PAGE_SIZE</span>, <span class="ident">frame</span>.<span class="ident">as_slice</span>()).<span class="ident">unwrap_or</span>(<span class="number">0</span>);
+            <span class="ident">backend</span>
+                .<span class="ident">write_to_offset</span>(<span class="ident">idx</span> <span class="op">*</span> <span class="ident">PAGE_SIZE</span>, <span class="ident">frame</span>.<span class="ident">as_slice</span>())
+                .<span class="ident">unwrap_or</span>(<span class="number">0</span>);
         }
         <span class="prelude-val">Ok</span>(())
     }

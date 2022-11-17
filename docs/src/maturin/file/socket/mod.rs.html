@@ -265,12 +265,25 @@
 <span id="260">260</span>
 <span id="261">261</span>
 <span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 暂时的 socket 实现</span>
 
 <span class="kw">mod</span> <span class="ident">loopback</span>;
 <span class="kw">mod</span> <span class="ident">resolution</span>;
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">File</span>, <span class="ident">OpenFlags</span>};
+<span class="kw">use</span> <span class="ident">base_file</span>::{<span class="ident">File</span>, <span class="ident">OpenFlags</span>};
 <span class="kw">use</span> <span class="ident">core::mem::size_of</span>;
 <span class="kw">use</span> <span class="ident">lock::RwLock</span>;
 <span class="kw">use</span> <span class="ident">loopback</span>::{<span class="ident">can_read</span>, <span class="ident">can_write</span>, <span class="ident">read_from_port</span>, <span class="ident">write_to_port</span>, <span class="ident">LOCAL_LOOPBACK_ADDR</span>};
@@ -297,7 +310,6 @@
 
 <span class="kw">impl</span> <span class="ident">Socket</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">domain</span>: <span class="ident">Domain</span>, <span class="ident">s_type</span>: <span class="ident">SocketType</span>, <span class="ident">protocol</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-        
         <span class="self">Self</span> {
             <span class="ident">domain</span>: <span class="ident">domain</span>,
             <span class="ident">stype</span>: <span class="ident">s_type</span>,
@@ -379,7 +391,10 @@
                 }
             }
         } <span class="kw">else</span> {
-            <span class="macro">warn!</span>(<span class="string">&quot;local endpoint is invalid {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">read</span>().<span class="ident">local_endpoint</span>);
+            <span class="macro">warn!</span>(
+                <span class="string">&quot;local endpoint is invalid {:?}&quot;</span>,
+                <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">read</span>().<span class="ident">local_endpoint</span>
+            );
         }
 
         <span class="bool-val">false</span>
@@ -400,7 +415,10 @@
                 <span class="kw">_</span> =&gt; {}
             }
         }
-        <span class="macro">info!</span>(<span class="string">&quot;local endpoint is invalid now {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">read</span>().<span class="ident">remote_endpoint</span>);
+        <span class="macro">info!</span>(
+            <span class="string">&quot;local endpoint is invalid now {:?}&quot;</span>,
+            <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">read</span>().<span class="ident">remote_endpoint</span>
+        );
         <span class="bool-val">true</span>
     }
     <span class="doccomment">/// 获取文件状态信息</span>
@@ -431,8 +449,18 @@
                 <span class="kw">if</span> (<span class="ident">ip</span> <span class="op">==</span> <span class="number">0</span>) <span class="op">|</span><span class="op">|</span> (<span class="ident">ip</span> <span class="op">==</span> <span class="ident">LOCAL_LOOPBACK_ADDR</span>) {
                     <span class="comment">//Fixme, 用于建立TCP连接</span>
                     <span class="kw">let</span> <span class="ident">port</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">flags</span> <span class="op">==</span> <span class="number">100</span> {
-                        <span class="ident">port</span> <span class="op">+</span> <span class="number">100</span>
-                    } <span class="kw">else</span> { <span class="ident">port</span> };
+                        <span class="kw">if</span> <span class="ident">port</span> <span class="op">==</span> <span class="number">0</span> {
+                            <span class="ident">get_ephemeral_port</span>() <span class="op">+</span> <span class="number">100</span> <span class="op">-</span> <span class="number">2</span>
+                        } <span class="kw">else</span> {
+                            <span class="ident">port</span> <span class="op">+</span> <span class="number">100</span>
+                        }
+                    } <span class="kw">else</span> {
+                        <span class="kw">if</span> <span class="ident">port</span> <span class="op">==</span> <span class="number">0</span> {
+                            <span class="ident">get_ephemeral_port</span>() <span class="op">-</span> <span class="number">1</span>
+                        } <span class="kw">else</span> {
+                            <span class="ident">port</span>
+                        }
+                    };
                     <span class="ident">write_to_port</span>(<span class="ident">port</span>, <span class="ident">buf</span>)
                 } <span class="kw">else</span> {
                     <span class="macro">warn!</span>(<span class="string">&quot;Unknown IP: {:#x}&quot;</span>, <span class="ident">ip</span>);
@@ -467,9 +495,7 @@
                 <span class="kw-2">*</span><span class="ident">src_len</span> <span class="op">=</span> <span class="ident">size_of</span>::<span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>() <span class="kw">as</span> <span class="ident">u32</span>;
                 <span class="kw">if</span> (<span class="ident">ip</span> <span class="op">==</span> <span class="number">0</span>) <span class="op">|</span><span class="op">|</span> (<span class="ident">ip</span> <span class="op">==</span> <span class="ident">LOCAL_LOOPBACK_ADDR</span>) {
                     <span class="comment">//Fixme, 用于建立TCP连接</span>
-                    <span class="kw">let</span> <span class="ident">port</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">flags</span> <span class="op">==</span> <span class="number">100</span> {
-                        <span class="ident">port</span> <span class="op">+</span> <span class="number">100</span>
-                    } <span class="kw">else</span> { <span class="ident">port</span> };
+                    <span class="kw">let</span> <span class="ident">port</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">flags</span> <span class="op">==</span> <span class="number">100</span> { <span class="ident">port</span> <span class="op">+</span> <span class="number">100</span> } <span class="kw">else</span> { <span class="ident">port</span> };
                     <span class="ident">read_from_port</span>(<span class="ident">port</span>, <span class="ident">buf</span>)
                 } <span class="kw">else</span> {
                     <span class="macro">warn!</span>(<span class="string">&quot;Unknown IP: {:#x}&quot;</span>, <span class="ident">ip</span>);

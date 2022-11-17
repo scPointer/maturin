@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["CutSet","当前 VmArea 和另一个给定的需要 mprotect 的区间的相交关系 这里仅考虑区间已经相交的情况，如果不确认是否相交，需要先调用 VmArea::is_overlap_with"],["DiffSet","当前 VmArea 和另一个给定的需要 unmap 的区间的相交关系"]]});

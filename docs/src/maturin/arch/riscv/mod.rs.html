@@ -337,24 +337,24 @@
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused</span>)]</span>
 <span class="attribute">#[<span class="ident">inline</span>]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear_bss</span>() {
-    <span class="kw">unsafe</span> { <span class="macro">core::arch::asm!</span>(
+    <span class="kw">unsafe</span> {
+        <span class="macro">core::arch::asm!</span>(
             <span class="string">&quot;
             la t0, sbss
             la t1, ebss
             bgeu t0, t1, 2f
             &quot;</span>,
-
             <span class="string">&quot;
             1:
             sd zero, (t0)
             addi t0, t0, 8
             bltu t0, t1, 1b
             &quot;</span>,
-
             <span class="string">&quot;
             2:
             &quot;</span>,
-            ) };
+        )
+    };
 }
 
 <span class="attribute">#[<span class="ident">inline</span>]</span>

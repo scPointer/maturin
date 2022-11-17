@@ -91,16 +91,22 @@
 <span id="86">86</span>
 <span id="87">87</span>
 <span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 测例文件示例</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! os启动后执行时，会运行这些文件</span>
 
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">TESTCASES</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>] <span class="op">=</span> <span class="kw-2">&amp;</span>[
+    <span class="comment">//&quot;busybox sh&quot;,</span>
 
-    <span class="comment">// 运行 redis 示例</span>
+    <span class="comment">// 运行 redis 示例（不是在这里打开，而是在 busybox sh 的终端中输入）</span>
     <span class="comment">//&quot;./redis-server /redis.conf --loglevel verbose &amp;&quot;, // 打开 redis 服务端，后台运行</span>
-    <span class="comment">//&quot;redis-cli-static&quot;, // 打开 redis 客户端</span>
+    <span class="comment">//&quot;./redis-cli-static&quot;, // 打开 redis 客户端</span>
+    <span class="comment">//&quot;kill 3&quot;, // 退出 redis 客户端后，服务端的输出可能比较烦，可以在 busybox sh 的终端中杀掉服务端。</span>
+    <span class="comment">// 因为终端的pid是2，所以按上面的步骤启动的服务端pid是3。当然如果之前开了其他程序，可能服务端就不是3了。</span>
+    <span class="comment">// 或者也可以一开始就使用 &quot;./redis-server /redis.conf &amp;&quot; 启动服务端，这样它就不会频繁输出 log。</span>
 
     <span class="comment">// 运行 gcc 示例</span>
     <span class="comment">//&quot;./riscv64-linux-musl-native/bin/riscv64-linux-musl-gcc ./2.c -static&quot;, // 直接生成可执行文件</span>
@@ -110,73 +116,71 @@
     <span class="comment">//&quot;./a.out&quot;,</span>
     <span class="comment">//&quot;busybox hexdump -C 2.o&quot;,</span>
 
-    <span class="string">&quot;busybox sh&quot;</span>,
-
     <span class="comment">// 测 lua 或者 busybox 的时候**不要**打开 base_info，内核输出非常多</span>
-
-    <span class="comment">//&quot;busybox sh lua_testcode.sh&quot;, // lua 测例</span>
-    <span class="comment">//&quot;busybox sh busybox_testcode.sh&quot;, // busybox 测例</span>
-    <span class="comment">//&quot;busybox sh lmbench_testcode.sh&quot;, // lmbench 测例(见下)</span>
+    <span class="string">&quot;busybox sh lua_testcode.sh&quot;</span>,     <span class="comment">// lua 测例</span>
+    <span class="string">&quot;busybox sh busybox_testcode.sh&quot;</span>, <span class="comment">// busybox 测例</span>
+    <span class="string">&quot;busybox sh lmbench_testcode.sh&quot;</span>, <span class="comment">// lmbench 测例(见下)</span>
 
     <span class="comment">/* // 很少一点 libc 测例。完整评测见 ./file/test.rs 中，需要把其中 TESTCASES_ITER 和 TEST_STATUS 的值换掉
     // &quot;./runtest.exe -w entry-dynamic.exe argv&quot;,
     // &quot;./runtest.exe -w entry-dynamic.exe tls_init&quot;,
     // &quot;./runtest.exe -w entry-dynamic.exe tls_local_exec&quot;,
     // &quot;./runtest.exe -w entry-dynamic.exe pthread_exit_cancel&quot;,
-    */</span> 
+    */</span>
 
-    <span class="comment">/* //lmbench 1
+    <span class="comment">/*
+    //lmbench 1
     &quot;lmbench_all lat_syscall -P 1 null&quot;,
     &quot;lmbench_all lat_syscall -P 1 read&quot;,
     &quot;lmbench_all lat_syscall -P 1 write&quot;,
-    */</span>
-    
-    <span class="comment">/* //lmbench 2
+
+
+    //lmbench 2
     &quot;busybox mkdir -p /var/tmp&quot;,
     &quot;busybox touch /var/tmp/lmbench&quot;,
     &quot;lmbench_all lat_syscall -P 1 stat /var/tmp/lmbench&quot;,
     &quot;lmbench_all lat_syscall -P 1 fstat /var/tmp/lmbench&quot;,
     &quot;lmbench_all lat_syscall -P 1 open /var/tmp/lmbench&quot;,
-    */</span>
 
-    <span class="comment">/* //lmbench 3
+
+    //lmbench 3
     &quot;lmbench_all lat_select -n 100 -P 1 file&quot;,
     &quot;lmbench_all lat_sig -P 1 install&quot;,
     &quot;lmbench_all lat_sig -P 1 catch&quot;,
     &quot;lmbench_all lat_sig -P 1 prot lat_sig&quot;,
-    */</span>
 
-    <span class="comment">/* //lmbench 4
+
+    //lmbench 4
     &quot;lmbench_all lat_pipe -P 1&quot;,
     &quot;lmbench_all lat_proc -P 1 fork&quot;,
     &quot;lmbench_all lat_proc -P 1 exec&quot;,
     &quot;busybox cp hello /tmp&quot;,
     &quot;lmbench_all lat_proc -P 1 shell&quot;,
-    */</span>
-    
-    <span class="comment">/* //lmbench 5
+
+
+    //lmbench 5
     &quot;lmbench_all lmdd label=\&quot;File /var/tmp/XXX write bandwidth:\&quot; of=/var/tmp/XXX move=1m fsync=1 print=3&quot;,
     &quot;lmbench_all lat_pagefault -P 1 /var/tmp/XXX&quot;,
     &quot;lmbench_all lat_mmap -P 1 512k /var/tmp/XXX&quot;,
-    */</span>
 
-    <span class="comment">/* //lmbench 6
+
+    //lmbench 6
     &quot;busybox echo file system latency&quot;,
     &quot;lmbench_all lat_fs /var/tmp&quot;,
-    */</span>
 
-    <span class="comment">/* //lmbench 5.2
+
+    //lmbench 5.2
     &quot;busybox echo Bandwidth measurements&quot;,
     &quot;lmbench_all bw_pipe -P 1&quot;,
     &quot;lmbench_all bw_file_rd -P 1 512k io_only /var/tmp/XXX&quot;,
     &quot;lmbench_all bw_file_rd -P 1 512k open2close /var/tmp/XXX&quot;,
     &quot;lmbench_all bw_mmap_rd -P 1 512k mmap_only /var/tmp/XXX&quot;,
     &quot;lmbench_all bw_mmap_rd -P 1 512k open2close /var/tmp/XXX&quot;,
-    */</span>
 
-    <span class="comment">/* //lmbench 7
-    //&quot;busybox echo context switch overhead&quot;,
-    //&quot;lmbench_all lat_ctx -P 1 -s 32 2 4 8 16 24 32 64 96&quot;,
+
+    //lmbench 7
+    &quot;busybox echo context switch overhead&quot;,
+    &quot;lmbench_all lat_ctx -P 1 -s 32 2 4 8 16 24 32 64 96&quot;,
     */</span>
 ];
 </code></pre></div>

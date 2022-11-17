@@ -209,12 +209,12 @@
 
 <span class="kw">use</span> <span class="ident">alloc::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">alloc::vec::Vec</span>;
+<span class="kw">use</span> <span class="ident">base_file</span>::{<span class="ident">File</span>, <span class="ident">OpenFlags</span>};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::{<span class="ident">FD_LIMIT_HARD</span>, <span class="ident">FD_LIMIT_ORIGIN</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::FD_LIMIT_ORIGIN</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::{<span class="ident">OSError</span>, <span class="ident">OSResult</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::memory::FdAllocator</span>;
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">File</span>, <span class="ident">OpenFlags</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::stdio</span>::{<span class="ident">Stderr</span>, <span class="ident">Stdin</span>, <span class="ident">Stdout</span>};
 
 <span class="doccomment">/// 文件描述符管理，每个进程应该有一个</span>
@@ -367,7 +367,7 @@
     <span class="doccomment">/// 修改当前 fd 的上限</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">modify_limit</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">new_limit</span>: <span class="ident">usize</span>) {
         <span class="comment">// 上限不能超过最初始的设定，因为分配器的实现是固定的</span>
-        <span class="kw">let</span> <span class="ident">new_limit</span> <span class="op">=</span> <span class="ident">new_limit</span>.<span class="ident">min</span>(<span class="ident">FD_LIMIT_HARD</span>).<span class="ident">max</span>(<span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">new_limit</span> <span class="op">=</span> <span class="ident">new_limit</span>.<span class="ident">min</span>(<span class="ident">base_file::FD_LIMIT_HARD</span>).<span class="ident">max</span>(<span class="number">0</span>);
         <span class="kw">if</span> <span class="ident">new_limit</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">limit</span> {
             <span class="self">self</span>.<span class="ident">fd_allocator</span>.<span class="ident">shrink_range</span>(<span class="ident">new_limit</span>, <span class="self">self</span>.<span class="ident">limit</span>);
         } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">new_limit</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">limit</span> {

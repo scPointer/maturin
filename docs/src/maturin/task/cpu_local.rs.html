@@ -407,6 +407,10 @@
 <span id="402">402</span>
 <span id="403">403</span>
 <span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 每个核当前正在运行的任务及上下文信息</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
@@ -423,7 +427,7 @@
         <span class="ident">global_logoff_signals</span>, <span class="ident">send_signal</span>, <span class="ident">SigActionDefault</span>, <span class="ident">SigActionFlags</span>, <span class="ident">SigInfo</span>, <span class="ident">SignalNo</span>,
         <span class="ident">SignalUserContext</span>, <span class="ident">SIG_IGN</span>,
     },
-    <span class="ident">syscall</span>::{<span class="ident">clear_loop_checker</span>, <span class="ident">check_thread_blocked</span>},
+    <span class="ident">syscall</span>::{<span class="ident">check_thread_blocked</span>, <span class="ident">clear_loop_checker</span>},
 };
 <span class="kw">use</span> <span class="ident">alloc</span>::{<span class="ident">sync::Arc</span>, <span class="ident">vec::Vec</span>};
 <span class="kw">use</span> <span class="ident">core::mem::size_of</span>;
@@ -587,13 +591,18 @@
             }
         }
     }
-    <span class="macro">trace!</span>(<span class="string">&quot;[cpu {}] tid {} exited with code {}&quot;</span>, <span class="ident">cpu_id</span>, <span class="ident">task</span>.<span class="ident">get_tid_num</span>(), <span class="ident">exit_code</span>);
+    <span class="macro">trace!</span>(
+        <span class="string">&quot;[cpu {}] tid {} exited with code {}&quot;</span>,
+        <span class="ident">cpu_id</span>,
+        <span class="ident">task</span>.<span class="ident">get_tid_num</span>(),
+        <span class="ident">exit_code</span>
+    );
     <span class="kw">let</span> <span class="ident">idle_task_cx_ptr</span> <span class="op">=</span> <span class="ident">cpu_local</span>.<span class="ident">get_idle_task_cx_ptr</span>();
     <span class="comment">//println!(&quot;idle task context ptr {:x}&quot;, idle_task_cx_ptr as usize);</span>
     <span class="comment">//drop(task_inner);</span>
     <span class="ident">drop</span>(<span class="ident">task</span>);
     <span class="ident">drop</span>(<span class="ident">cpu_local</span>);
-    
+
     <span class="comment">// 切换回 run_tasks() 中</span>
     <span class="kw">unsafe</span> {
         <span class="ident">__move_to_context</span>(<span class="ident">idle_task_cx_ptr</span>);
@@ -676,7 +685,7 @@
 
     <span class="comment">// &lt;- 之前是那么考虑的，但内存压力大的情况下好像可能不够用，还是提前gc吧</span>
     <span class="kw">if</span> <span class="ident">Arc::strong_count</span>(<span class="kw-2">&amp;</span><span class="ident">task</span>.<span class="ident">vm</span>) <span class="op">==</span> <span class="number">1</span> {
-        <span class="ident">task</span>.<span class="ident">vm</span>.<span class="ident">lock</span>().<span class="ident">clear_user</span>();
+        <span class="ident">task</span>.<span class="ident">vm</span>.<span class="ident">lock</span>().<span class="ident">clear_user_pages</span>();
     }
 }
 
@@ -788,7 +797,6 @@
                 }
             }
         } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">signal</span> <span class="op">==</span> <span class="ident">SignalNo::SIGSEGV</span> <span class="op">|</span><span class="op">|</span> <span class="ident">signal</span> <span class="op">==</span> <span class="ident">SignalNo::SIGBUS</span> {
-            
             <span class="comment">//在处理信号的过程中又触发 SIGSEGV 或 SIGBUS，那么说明该直接结束了，否则会无限递归触发</span>
             <span class="ident">exit_current_task</span>(<span class="op">-</span><span class="number">1</span>);
         }

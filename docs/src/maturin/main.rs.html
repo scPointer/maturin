@@ -205,6 +205,72 @@
 <span id="200">200</span>
 <span id="201">201</span>
 <span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 程序入口为 mod arch/riscv/mod.rs 中的函数 entry ( 也是build.rs中的ENTRY(_start) ),</span>
 <span class="doccomment">//! 函数 entry 将cpu_id存到tp寄存器并设置好初始的内核栈与页表后，跳转到 start_kernel 启动</span>
 
@@ -237,7 +303,6 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">syscall</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">task</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">testcases</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">timer</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">trap</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">utils</span>;
 
@@ -260,15 +325,82 @@
 
 <span class="macro">core::arch::global_asm!</span>(<span class="macro">include_str!</span>(<span class="string">&quot;fs.S&quot;</span>));
 
+<span class="kw">use</span> <span class="ident">alloc::sync::Arc</span>;
+<span class="kw">use</span> <span class="ident">base_file::File</span>;
 <span class="comment">// use core::sync::atomic::AtomicUsize;</span>
 <span class="comment">// static BOOTED_CPU_NUM: AtomicUsize = AtomicUsize::new(0);</span>
 <span class="kw">use</span> <span class="ident">log</span>::<span class="kw-2">*</span>;
+
+<span class="kw">struct</span> <span class="ident">TaskTrampoline</span>;
+
+<span class="kw">impl</span> <span class="ident">task_trampoline::TaskTrampoline</span> <span class="kw">for</span> <span class="ident">TaskTrampoline</span> {
+    <span class="kw">fn</span> <span class="ident">suspend_current_task</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="ident">task::suspend_current_task</span>()
+    }
+
+    <span class="kw">fn</span> <span class="ident">get_file</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fd</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">base_file::File</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">task</span> <span class="op">=</span> <span class="ident">task::get_current_task</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">fd_manager</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">fd_manager</span>.<span class="ident">lock</span>();
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">file</span>) <span class="op">=</span> <span class="ident">fd_manager</span>.<span class="ident">get_file</span>(<span class="ident">fd</span>) {
+            <span class="prelude-val">Some</span>(<span class="ident">file</span>)
+        } <span class="kw">else</span> {
+            <span class="prelude-val">None</span>
+        }
+    }
+
+    <span class="kw">fn</span> <span class="ident">push_file</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">file</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">File</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">u64</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">task</span> <span class="op">=</span> <span class="ident">task::get_current_task</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fd_manager</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">fd_manager</span>.<span class="ident">lock</span>();
+        <span class="comment">// TODO: 考虑是否要将错误类型返回给用户</span>
+        <span class="ident">fd_manager</span>.<span class="ident">push</span>(<span class="ident">file</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="number">1</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">manually_alloc_user_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">*const</span> <span class="ident">u8</span>, <span class="ident">len</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">u64</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">task</span> <span class="op">=</span> <span class="ident">task::get_current_task</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">task_vm</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">vm</span>.<span class="ident">lock</span>();
+        <span class="comment">// TODO: 考虑是否要将错误类型返回给用户</span>
+        <span class="ident">task_vm</span>.<span class="ident">manually_alloc_user_str</span>(<span class="ident">buf</span>, <span class="ident">len</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="number">1</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">manually_alloc_range</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">start_vaddr</span>: <span class="ident">usize</span>, <span class="ident">end_vaddr</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">u64</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">task</span> <span class="op">=</span> <span class="ident">task::get_current_task</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">task_vm</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">vm</span>.<span class="ident">lock</span>();
+        <span class="comment">// TODO: 考虑是否要将错误类型返回给用户</span>
+        <span class="ident">task_vm</span>
+            .<span class="ident">manually_alloc_range</span>(<span class="ident">start_vaddr</span>, <span class="ident">end_vaddr</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="number">1</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">raw_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">usize</span>, <span class="ident">usize</span>) {
+        <span class="kw">let</span> <span class="ident">task</span> <span class="op">=</span> <span class="ident">task::get_current_task</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">time</span>.<span class="ident">lock</span>();
+        <span class="ident">time</span>.<span class="ident">output_raw</span>()
+    }
+
+    <span class="kw">fn</span> <span class="ident">raw_timer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">usize</span>, <span class="ident">usize</span>) {
+        <span class="kw">let</span> <span class="ident">task</span> <span class="op">=</span> <span class="ident">task::get_current_task</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">time</span>.<span class="ident">lock</span>();
+        <span class="ident">time</span>.<span class="ident">output_raw_timer</span>()
+    }
+
+    <span class="kw">fn</span> <span class="ident">set_timer</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">timer_interval_us</span>: <span class="ident">usize</span>,
+        <span class="ident">timer_remained_us</span>: <span class="ident">usize</span>,
+        <span class="ident">timer_type</span>: <span class="ident">usize</span>,
+    ) -&gt; <span class="ident">bool</span> {
+        <span class="kw">let</span> <span class="ident">task</span> <span class="op">=</span> <span class="ident">task::get_current_task</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">time</span>.<span class="ident">lock</span>();
+        <span class="ident">time</span>.<span class="ident">set_raw_timer</span>(<span class="ident">timer_interval_us</span>, <span class="ident">timer_remained_us</span>, <span class="ident">timer_type</span>)
+    }
+}
 
 <span class="attribute">#[<span class="ident">no_mangle</span>]</span>
 <span class="doccomment">/// 主核启动OS</span>
 <span class="kw">pub</span> <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span> <span class="ident">start_kernel</span>(<span class="ident">_arg0</span>: <span class="ident">usize</span>, <span class="ident">_arg1</span>: <span class="ident">usize</span>) -&gt; <span class="op">!</span> {
     <span class="ident">arch::clear_bss</span>(); <span class="comment">// 清空 bss 段</span>
     <span class="ident">console::init_logger</span>(<span class="ident"><span class="kw">crate</span>::constants::LOG_LEVEL</span>).<span class="ident">unwrap</span>();
+    <span class="ident">task_trampoline::init_task_trampoline</span>(<span class="kw-2">&amp;</span><span class="ident">TaskTrampoline</span>);
     <span class="ident">memory::allocator_init</span>(); <span class="comment">// 初始化堆分配器和页帧分配器</span>
     <span class="ident">memory::enable_kernel_page_table</span>(); <span class="comment">// 构造并切换到内核态页表与 MemorySet</span>
     <span class="ident">trap::init</span>(); <span class="comment">// 设置异常/中断的入口，即 stvec</span>

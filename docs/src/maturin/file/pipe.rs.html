@@ -204,15 +204,30 @@
 <span id="199">199</span>
 <span id="200">200</span>
 <span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 管道实现</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! 相当于两个文件，其中一个只读，一个只可写，但指向同一片内存。</span>
 <span class="doccomment">//! Pipe 的读写可能会触发进程切换。</span>
 <span class="doccomment">//! 目前的实现中，Pipe会请求并获取页帧，不占用内核堆/栈</span>
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">File</span>, <span class="ident">BufferFile</span>, <span class="ident">OpenFlags</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::BufferFile</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">constants::PIPE_SIZE_LIMIT</span>, <span class="ident">task::suspend_current_task</span>};
 <span class="kw">use</span> <span class="ident">alloc::sync::Arc</span>;
+<span class="kw">use</span> <span class="ident">base_file</span>::{<span class="ident">File</span>, <span class="ident">OpenFlags</span>};
 <span class="kw">use</span> <span class="ident">lock::Mutex</span>;
 
 <span class="doccomment">/// 管道内部的 buffer，是个循环队列</span>
@@ -242,17 +257,24 @@
         <span class="self">self</span>.<span class="ident">len</span> <span class="op">-</span><span class="op">=</span> <span class="ident">max_len</span>;
         <span class="comment">//println!(&quot;set posr {}&quot;, self.head);</span>
         <span class="comment">// 设置指针到数据前</span>
-        <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">set_pos</span>(<span class="self">self</span>.<span class="ident">head</span>); }
+        <span class="kw">unsafe</span> {
+            <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">set_pos</span>(<span class="self">self</span>.<span class="ident">head</span>);
+        }
         <span class="comment">// 循环队列不用跨过起点</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">head</span> <span class="op">+</span> <span class="ident">max_len</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">size_limit</span> {
             <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">read_inner</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>[..<span class="ident">max_len</span>]);
             <span class="self">self</span>.<span class="ident">head</span> <span class="op">+</span><span class="op">=</span> <span class="ident">max_len</span>;
-        } <span class="kw">else</span> { <span class="comment">// 需要跨过起点</span>
-            <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">read_inner</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>[..<span class="self">self</span>.<span class="ident">size_limit</span><span class="op">-</span><span class="self">self</span>.<span class="ident">head</span>]);
-            <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">set_pos</span>(<span class="number">0</span>); }
-            <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">read_inner</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>[<span class="self">self</span>.<span class="ident">size_limit</span><span class="op">-</span><span class="self">self</span>.<span class="ident">head</span>..<span class="ident">max_len</span>]);
+        } <span class="kw">else</span> {
+            <span class="comment">// 需要跨过起点</span>
+            <span class="self">self</span>.<span class="ident">data</span>
+                .<span class="ident">read_inner</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>[..<span class="self">self</span>.<span class="ident">size_limit</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">head</span>]);
+            <span class="kw">unsafe</span> {
+                <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">set_pos</span>(<span class="number">0</span>);
+            }
+            <span class="self">self</span>.<span class="ident">data</span>
+                .<span class="ident">read_inner</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buf</span>[<span class="self">self</span>.<span class="ident">size_limit</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">head</span>..<span class="ident">max_len</span>]);
             <span class="comment">// self.head 后面加的是负数，但它又是 usize，最好不用 +=</span>
-            <span class="self">self</span>.<span class="ident">head</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">head</span> <span class="op">+</span> <span class="ident">max_len</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">size_limit</span>; 
+            <span class="self">self</span>.<span class="ident">head</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">head</span> <span class="op">+</span> <span class="ident">max_len</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">size_limit</span>;
         }
         <span class="ident">max_len</span>
     }
@@ -261,17 +283,23 @@
         <span class="kw">let</span> <span class="ident">max_len</span> <span class="op">=</span> <span class="ident">buf</span>.<span class="ident">len</span>().<span class="ident">min</span>(<span class="self">self</span>.<span class="ident">size_limit</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">len</span>);
         <span class="self">self</span>.<span class="ident">len</span> <span class="op">+</span><span class="op">=</span> <span class="ident">max_len</span>;
         <span class="comment">// 设置指针到数据后</span>
-        <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">set_pos</span>(<span class="self">self</span>.<span class="ident">end</span>); }
+        <span class="kw">unsafe</span> {
+            <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">set_pos</span>(<span class="self">self</span>.<span class="ident">end</span>);
+        }
         <span class="comment">// 循环队列不用跨过起点</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">end</span> <span class="op">+</span> <span class="ident">max_len</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">size_limit</span> {
             <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">write_inner</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[..<span class="ident">max_len</span>]);
             <span class="self">self</span>.<span class="ident">end</span> <span class="op">+</span><span class="op">=</span> <span class="ident">max_len</span>;
-        } <span class="kw">else</span> { <span class="comment">// 需要跨过起点</span>
-            <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">write_inner</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[..<span class="self">self</span>.<span class="ident">size_limit</span><span class="op">-</span><span class="self">self</span>.<span class="ident">end</span>]);
-            <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">set_pos</span>(<span class="number">0</span>); }
-            <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">write_inner</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="self">self</span>.<span class="ident">size_limit</span><span class="op">-</span><span class="self">self</span>.<span class="ident">end</span>..<span class="ident">max_len</span>]);
+        } <span class="kw">else</span> {
+            <span class="comment">// 需要跨过起点</span>
+            <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">write_inner</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[..<span class="self">self</span>.<span class="ident">size_limit</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">end</span>]);
+            <span class="kw">unsafe</span> {
+                <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">set_pos</span>(<span class="number">0</span>);
+            }
+            <span class="self">self</span>.<span class="ident">data</span>
+                .<span class="ident">write_inner</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="self">self</span>.<span class="ident">size_limit</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">end</span>..<span class="ident">max_len</span>]);
             <span class="comment">// self.end 后面加的是负数，但它又是 usize，最好不用 +=</span>
-            <span class="self">self</span>.<span class="ident">end</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">end</span> <span class="op">+</span> <span class="ident">max_len</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">size_limit</span>; 
+            <span class="self">self</span>.<span class="ident">end</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">end</span> <span class="op">+</span> <span class="ident">max_len</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">size_limit</span>;
         }
         <span class="ident">max_len</span>
     }

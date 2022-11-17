@@ -326,6 +326,10 @@
 <span id="321">321</span>
 <span id="322">322</span>
 <span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 页表实现</span>
 
 <span class="comment">//#![deny(missing_docs)]</span>
@@ -467,6 +471,10 @@
             }
         }
         <span class="prelude-val">Some</span>(<span class="ident">pte</span>.<span class="ident">addr</span>())
+    }
+    <span class="doccomment">/// 获取这个页表结构的地址，注意不是根页面地址，而是这个存着 root_paddr 和 frames 的结构的地址</span>
+    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">self_as_usize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
+        <span class="self">self</span> <span class="kw">as</span> <span class="kw-2">*const</span> <span class="self">Self</span> <span class="kw">as</span> <span class="ident">usize</span>
     }
     <span class="doccomment">/// 查找一个页表项，如为空则新建页面</span>
     <span class="kw">fn</span> <span class="ident">find_pte_create</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">vaddr</span>: <span class="ident">VirtAddr</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="ident">PageTableEntry</span><span class="op">&gt;</span> {

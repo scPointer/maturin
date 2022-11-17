@@ -616,24 +616,50 @@
 <span id="611">611</span>
 <span id="612">612</span>
 <span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 与进程相关的系统调用</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">resolve_clone_flags_and_signal</span>, <span class="ident">ErrorNo</span>, <span class="ident">MMAPFlags</span>, <span class="ident">RLimit</span>, <span class="ident">SysResult</span>, <span class="ident">UtsName</span>, <span class="ident">WaitFlags</span>,
-    <span class="ident">MMAPPROT</span>, <span class="ident">MSyncFlags</span>, <span class="ident">RLIMIT_AS</span>, <span class="ident">RLIMIT_NOFILE</span>, <span class="ident">RLIMIT_STACK</span>, <span class="ident">SIG_BLOCK</span>, <span class="ident">SIG_SETMASK</span>, <span class="ident">SIG_UNBLOCK</span>,
+    <span class="ident">resolve_clone_flags_and_signal</span>, <span class="ident">MMAPFlags</span>, <span class="ident">MSyncFlags</span>, <span class="ident">RLimit</span>, <span class="ident">SysResult</span>, <span class="ident">UtsName</span>, <span class="ident">WaitFlags</span>,
+    <span class="ident">MMAPPROT</span>, <span class="ident">RLIMIT_AS</span>, <span class="ident">RLIMIT_NOFILE</span>, <span class="ident">RLIMIT_STACK</span>, <span class="ident">SIG_BLOCK</span>, <span class="ident">SIG_SETMASK</span>, <span class="ident">SIG_UNBLOCK</span>,
 };
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">constants</span>::{<span class="ident">SIGSET_SIZE_IN_BYTE</span>, <span class="ident">USER_STACK_SIZE</span>, <span class="ident">USER_VIRT_ADDR_LIMIT</span>, <span class="ident">FD_LIMIT_HARD</span>, <span class="ident">USE_MSYNC</span>},
-    <span class="ident">file</span>::{<span class="ident">SeekFrom</span>, <span class="ident">BackEndFile</span>},
-    <span class="ident">signal</span>::{<span class="ident">send_signal</span>, <span class="ident">Bitset</span>, <span class="ident">SigAction</span>, <span class="ident">SignalNo</span>},
-    <span class="ident">memory</span>::{<span class="ident">page_offset</span>, <span class="ident">align_up</span>, <span class="ident">align_down</span>},
+    <span class="ident">constants</span>::{<span class="ident">SIGSET_SIZE_IN_BYTE</span>, <span class="ident">USER_STACK_SIZE</span>, <span class="ident">USER_VIRT_ADDR_LIMIT</span>, <span class="ident">USE_MSYNC</span>},
+    <span class="ident">file</span>::{<span class="ident">BackEndFile</span>, <span class="ident">SeekFrom</span>},
+    <span class="ident">memory</span>::{<span class="ident">align_down</span>, <span class="ident">align_up</span>, <span class="ident">page_offset</span>},
+    <span class="ident">signal</span>::{<span class="ident">send_signal</span>, <span class="ident">SigAction</span>, <span class="ident">SignalNo</span>},
+    <span class="ident">syscall::flags::SysInfo</span>,
     <span class="ident">task</span>::{
         <span class="ident">exec_new_task</span>, <span class="ident">exit_current_task</span>, <span class="ident">get_current_task</span>, <span class="ident">push_task_to_scheduler</span>, <span class="ident">signal_return</span>,
         <span class="ident">suspend_current_task</span>,
     },
     <span class="ident">utils</span>::{<span class="ident">raw_ptr_to_string</span>, <span class="ident">str_ptr_array_to_vec_string</span>},
 };
+<span class="kw">use</span> <span class="ident">bitset::Bitset</span>;
 <span class="kw">use</span> <span class="ident">core::mem::size_of</span>;
+<span class="kw">use</span> <span class="ident">syscall::ErrorNo</span>;
+<span class="kw">use</span> <span class="ident">timer::get_time_sec</span>;
 
 <span class="doccomment">/// 进程退出，并提供 exit_code 供 wait 等 syscall 拿取</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_exit</span>(<span class="ident">exit_code</span>: <span class="ident">i32</span>) -&gt; <span class="op">!</span> {
@@ -781,8 +807,10 @@ fn sys_fork(user_stack: Option&lt;usize&gt;) -&gt; SysResult {
 <span class="doccomment">///</span>
 <span class="doccomment">/// 目前只支持 WNOHANG 选项</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_wait4</span>(<span class="ident">pid</span>: <span class="ident">isize</span>, <span class="ident">exit_code_ptr</span>: <span class="kw-2">*mut</span> <span class="ident">i32</span>, <span class="ident">option</span>: <span class="ident">WaitFlags</span>) -&gt; <span class="ident">SysResult</span> {
-    <span class="macro">info!</span>(<span class="string">&quot;sys_wait4 {}, {:x}, {:#?}&quot;</span>,
-          <span class="ident">pid</span>, <span class="ident">exit_code_ptr</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">option</span>);
+    <span class="macro">info!</span>(
+        <span class="string">&quot;sys_wait4 {}, {:x}, {:#?}&quot;</span>,
+        <span class="ident">pid</span>, <span class="ident">exit_code_ptr</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">option</span>
+    );
     <span class="kw">loop</span> {
         <span class="kw">let</span> <span class="ident">child_pid</span> <span class="op">=</span> <span class="ident">waitpid</span>(<span class="ident">pid</span>, <span class="ident">exit_code_ptr</span>);
         <span class="comment">// 找不到子进程，直接返回-1</span>
@@ -914,8 +942,7 @@ fn sys_fork(user_stack: Option&lt;usize&gt;) -&gt; SysResult {
             <span class="kw">let</span> <span class="ident">backend</span> <span class="op">=</span> <span class="ident">BackEndFile::new</span>(<span class="ident">file</span>, <span class="ident">offset</span>, <span class="ident">prot</span>.<span class="ident">into</span>());
             <span class="ident">drop</span>(<span class="ident">tcb_inner</span>);
             <span class="comment">// mmap 内部需要拿 inner 锁</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">start</span>) <span class="op">=</span>
-                <span class="ident">task</span>.<span class="ident">mmap</span>(<span class="ident">start</span>, <span class="ident">start</span> <span class="op">+</span> <span class="ident">len</span>, <span class="ident">prot</span>.<span class="ident">into</span>(), <span class="prelude-val">Some</span>(<span class="ident">backend</span>), <span class="ident">anywhere</span>)
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">start</span>) <span class="op">=</span> <span class="ident">task</span>.<span class="ident">mmap</span>(<span class="ident">start</span>, <span class="ident">start</span> <span class="op">+</span> <span class="ident">len</span>, <span class="ident">prot</span>.<span class="ident">into</span>(), <span class="prelude-val">Some</span>(<span class="ident">backend</span>), <span class="ident">anywhere</span>)
             {
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">start</span>);
             }
@@ -941,7 +968,10 @@ fn sys_fork(user_stack: Option&lt;usize&gt;) -&gt; SysResult {
         <span class="string">&quot;try mprotect start={:x} len={:x} prot=[{:#?}]&quot;</span>,
         <span class="ident">start</span>, <span class="ident">len</span>, <span class="ident">prot</span>
     );
-    <span class="kw">if</span> <span class="ident">get_current_task</span>().<span class="ident">unwrap</span>().<span class="ident">mprotect</span>(<span class="ident">start</span>, <span class="ident">start</span> <span class="op">+</span> <span class="ident">len</span>, <span class="ident">prot</span>.<span class="ident">into</span>()) {
+    <span class="kw">if</span> <span class="ident">get_current_task</span>()
+        .<span class="ident">unwrap</span>()
+        .<span class="ident">mprotect</span>(<span class="ident">start</span>, <span class="ident">start</span> <span class="op">+</span> <span class="ident">len</span>, <span class="ident">prot</span>.<span class="ident">into</span>())
+    {
         <span class="prelude-val">Ok</span>(<span class="number">0</span>)
     } <span class="kw">else</span> {
         <span class="prelude-val">Err</span>(<span class="ident">ErrorNo::EINVAL</span>)
@@ -949,21 +979,20 @@ fn sys_fork(user_stack: Option&lt;usize&gt;) -&gt; SysResult {
 }
 
 <span class="doccomment">/// 映射一段内存</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_msync</span>(
-    <span class="ident">start</span>: <span class="ident">usize</span>,
-    <span class="ident">len</span>: <span class="ident">usize</span>,
-    <span class="ident">flags</span>: <span class="ident">MSyncFlags</span>,
-) -&gt; <span class="ident">SysResult</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_msync</span>(<span class="ident">start</span>: <span class="ident">usize</span>, <span class="ident">len</span>: <span class="ident">usize</span>, <span class="ident">flags</span>: <span class="ident">MSyncFlags</span>) -&gt; <span class="ident">SysResult</span> {
     <span class="kw">if</span> <span class="op">!</span><span class="ident">USE_MSYNC</span> {
         <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="number">0</span>);
     }
-    <span class="macro">info!</span>(<span class="string">&quot;try msync start={:x} len={:x} flags=[{:#?}]&quot;</span>, <span class="ident">start</span>, <span class="ident">len</span>, <span class="ident">flags</span>);
+    <span class="macro">info!</span>(
+        <span class="string">&quot;try msync start={:x} len={:x} flags=[{:#?}]&quot;</span>,
+        <span class="ident">start</span>, <span class="ident">len</span>, <span class="ident">flags</span>
+    );
     <span class="comment">// 检查是否区间不是按页aligned的</span>
     <span class="kw">if</span> <span class="ident">page_offset</span>(<span class="ident">start</span>) <span class="op">!</span><span class="op">=</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">page_offset</span>(<span class="ident">start</span> <span class="op">+</span> <span class="ident">len</span>) <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ErrorNo::EINVAL</span>);
     }
     <span class="kw">if</span> <span class="ident">flags</span>.<span class="ident">contains</span>(<span class="ident">MSyncFlags::INVALIDATE</span>) {
-        <span class="macro">error!</span>(<span class="string">&quot;MSyncFlags::INVALIDATE is unsupported!&quot;</span>);
+        <span class="macro">warn!</span>(<span class="string">&quot;MSyncFlags::INVALIDATE is unsupported!&quot;</span>);
         <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="number">0</span>);
     }
     <span class="kw">if</span> <span class="ident">get_current_task</span>().<span class="ident">unwrap</span>().<span class="ident">msync</span>(<span class="ident">start</span>, <span class="ident">start</span> <span class="op">+</span> <span class="ident">len</span>) {
@@ -977,6 +1006,20 @@ fn sys_fork(user_stack: Option&lt;usize&gt;) -&gt; SysResult {
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_uname</span>(<span class="ident">uts</span>: <span class="kw-2">*mut</span> <span class="ident">UtsName</span>) -&gt; <span class="ident">SysResult</span> {
     <span class="kw">unsafe</span> {
         (<span class="kw-2">*</span><span class="ident">uts</span>) <span class="op">=</span> <span class="ident">UtsName::default</span>();
+    }
+    <span class="prelude-val">Ok</span>(<span class="number">0</span>)
+}
+
+<span class="doccomment">/// 获取系统的启动时间和内存信息。</span>
+<span class="doccomment">/// 目前只支持启动时间</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sys_sysinfo</span>(<span class="ident">info</span>: <span class="kw-2">*mut</span> <span class="ident">SysInfo</span>) -&gt; <span class="ident">SysResult</span> {
+    <span class="kw">let</span> <span class="ident">task</span> <span class="op">=</span> <span class="ident">get_current_task</span>().<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">task_vm</span> <span class="op">=</span> <span class="ident">task</span>.<span class="ident">vm</span>.<span class="ident">lock</span>();
+    <span class="kw">if</span> <span class="ident">task_vm</span>.<span class="ident">manually_alloc_type</span>(<span class="ident">info</span>).<span class="ident">is_err</span>() {
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ErrorNo::EFAULT</span>);
+    }
+    <span class="kw">unsafe</span> {
+        (<span class="kw-2">*</span><span class="ident">info</span>).<span class="ident">uptime</span> <span class="op">=</span> <span class="ident">get_time_sec</span>() <span class="kw">as</span> <span class="ident">isize</span>;
     }
     <span class="prelude-val">Ok</span>(<span class="number">0</span>)
 }
@@ -1019,7 +1062,8 @@ fn sys_fork(user_stack: Option&lt;usize&gt;) -&gt; SysResult {
         <span class="prelude-val">Ok</span>(<span class="number">0</span>)
     } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">pid</span> <span class="op">==</span> <span class="number">0</span> {
         <span class="prelude-val">Err</span>(<span class="ident">ErrorNo::ESRCH</span>)
-    } <span class="kw">else</span> { <span class="comment">// 如果 signal_id == 0，则仅为了检查是否存在对应进程，此时应该返回参数错误。是的，用户库是会刻意触发这个错误的</span>
+    } <span class="kw">else</span> {
+        <span class="comment">// 如果 signal_id == 0，则仅为了检查是否存在对应进程，此时应该返回参数错误。是的，用户库是会刻意触发这个错误的</span>
         <span class="prelude-val">Err</span>(<span class="ident">ErrorNo::EINVAL</span>)
     }
 }
@@ -1205,7 +1249,7 @@ fn sys_fork(user_stack: Option&lt;usize&gt;) -&gt; SysResult {
                     <span class="kw">unsafe</span> {
                         <span class="kw-2">*</span><span class="ident">old_limit</span> <span class="op">=</span> <span class="ident">RLimit</span> {
                             <span class="ident">rlim_cur</span>: <span class="ident">limit</span> <span class="kw">as</span> <span class="ident">u64</span>,
-                            <span class="ident">rlim_max</span>: <span class="ident">FD_LIMIT_HARD</span> <span class="kw">as</span> <span class="ident">u64</span>,
+                            <span class="ident">rlim_max</span>: <span class="ident">limit</span> <span class="kw">as</span> <span class="ident">u64</span>,
                         };
                     }
                 }

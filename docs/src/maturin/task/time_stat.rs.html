@@ -178,8 +178,6 @@
 <span id="173">173</span>
 <span id="174">174</span>
 <span id="175">175</span>
-<span id="176">176</span>
-<span id="177">177</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 统计进程的用户态和内核态时间</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! 统计的时间以毫秒为单位，用于 sys_getrusage 和 sys_times</span>
@@ -192,7 +190,7 @@
 <span class="doccomment">//! &gt; 这样统计的时间仍然是对的</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::signal</span>::{<span class="ident">send_signal</span>, <span class="ident">SignalNo</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::timer</span>::{<span class="ident">get_time_us</span>, <span class="ident">TimeVal</span>};
+<span class="kw">use</span> <span class="ident">timer</span>::{<span class="ident">get_time_us</span>, <span class="ident">TimeVal</span>};
 
 <span class="doccomment">/// 进程的时间统计，基于 lmbench 需要，主要用于 sys_getrusage</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TimeStat</span> {
@@ -245,12 +243,6 @@
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="ident"><span class="self">Self</span>::NONE</span>,
         }
     }
-}
-
-<span class="doccomment">/// sys_gettimer / sys_settimer 指定的类型，用户输入输出计时器</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ITimerVal</span> {
-    <span class="ident">it_interval</span>: <span class="ident">TimeVal</span>,
-    <span class="ident">it_value</span>: <span class="ident">TimeVal</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">TimeStat</span> {
@@ -318,16 +310,20 @@
         (<span class="self">self</span>.<span class="ident">utime_us</span>, <span class="self">self</span>.<span class="ident">stime_us</span>)
     }
 
-    <span class="doccomment">/// 以 TimeVal 形式输出计时器信息</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_timer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">itimer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">ITimerVal</span>) {
-        <span class="ident">itimer</span>.<span class="ident">it_interval</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">timer_interval_us</span>.<span class="ident">into</span>();
-        <span class="ident">itimer</span>.<span class="ident">it_value</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">timer_remained_us</span>.<span class="ident">into</span>();
+    <span class="doccomment">/// 以 TimeVal 字段格式输出计时器信息</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">output_raw_timer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">usize</span>, <span class="ident">usize</span>) {
+        (<span class="self">self</span>.<span class="ident">timer_interval_us</span>, <span class="self">self</span>.<span class="ident">timer_remained_us</span>)
     }
-    <span class="doccomment">/// 以 TimeVal 形式读入计时器信息，返回是否设置成功(类型参数对就算设置成功)</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_timer</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">itimer</span>: <span class="kw-2">&amp;</span><span class="ident">ITimerVal</span>, <span class="ident">timer_type</span>: <span class="ident">usize</span>) -&gt; <span class="ident">bool</span> {
+    <span class="doccomment">/// 以 TimeVal 字段格式形式读入计时器信息，返回是否设置成功(类型参数对就算设置成功)</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_raw_timer</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">timer_interval_us</span>: <span class="ident">usize</span>,
+        <span class="ident">timer_remained_us</span>: <span class="ident">usize</span>,
+        <span class="ident">timer_type</span>: <span class="ident">usize</span>,
+    ) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">timer_type</span> <span class="op">=</span> <span class="ident">timer_type</span>.<span class="ident">into</span>();
-        <span class="self">self</span>.<span class="ident">timer_interval_us</span> <span class="op">=</span> <span class="ident">itimer</span>.<span class="ident">it_interval</span>.<span class="ident">into</span>();
-        <span class="self">self</span>.<span class="ident">timer_remained_us</span> <span class="op">=</span> <span class="ident">itimer</span>.<span class="ident">it_value</span>.<span class="ident">into</span>();
+        <span class="self">self</span>.<span class="ident">timer_interval_us</span> <span class="op">=</span> <span class="ident">timer_interval_us</span>.<span class="ident">into</span>();
+        <span class="self">self</span>.<span class="ident">timer_remained_us</span> <span class="op">=</span> <span class="ident">timer_remained_us</span>.<span class="ident">into</span>();
         <span class="self">self</span>.<span class="ident">timer_type</span> <span class="op">!</span><span class="op">=</span> <span class="ident">TimerType::NONE</span>
     }
     <span class="doccomment">/// 从计时器中尝试减少一段时间，如果时间归零，则发送信号</span>

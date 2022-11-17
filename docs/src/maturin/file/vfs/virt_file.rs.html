@@ -232,13 +232,21 @@
 <span id="227">227</span>
 <span id="228">228</span>
 <span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
 </pre><pre class="rust"><code><span class="doccomment">//! 内存中保存的虚文件，可以有 backend 指向它实际映射的内容</span>
 
-<span class="kw">use</span> <span class="ident">alloc</span>::{<span class="ident">vec::Vec</span>};
-<span class="kw">use</span> <span class="ident">lock::Mutex</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::file</span>::{<span class="ident">File</span>, <span class="ident">Kstat</span>, <span class="ident">StMode</span>, <span class="ident">OpenFlags</span>, <span class="ident">SeekFrom</span>, <span class="ident">normal_file_mode</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::memory</span>::{<span class="ident">Frame</span>, <span class="ident">addr_to_page_id</span>, <span class="ident">page_offset</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::PAGE_SIZE</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::file::SeekFrom</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::memory</span>::{<span class="ident">addr_to_page_id</span>, <span class="ident">page_offset</span>, <span class="ident">Frame</span>};
+<span class="kw">use</span> <span class="ident">alloc::vec::Vec</span>;
+<span class="kw">use</span> <span class="ident">base_file</span>::{<span class="ident">normal_file_mode</span>, <span class="ident">File</span>, <span class="ident">Kstat</span>, <span class="ident">OpenFlags</span>, <span class="ident">StMode</span>};
+<span class="kw">use</span> <span class="ident">lock::Mutex</span>;
 
 <span class="doccomment">/// 临时文件</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VirtFile</span> {
@@ -260,7 +268,7 @@
 <span class="kw">impl</span> <span class="ident">VirtFile</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">flags</span>: <span class="ident">OpenFlags</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">inner</span>: <span class="ident">Mutex::new</span>(<span class="ident">VirtFileInner::new</span>(<span class="ident">flags</span>))
+            <span class="ident">inner</span>: <span class="ident">Mutex::new</span>(<span class="ident">VirtFileInner::new</span>(<span class="ident">flags</span>)),
         }
     }
 }
@@ -278,7 +286,8 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read_inner</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
         <span class="comment">// 读到的实际长度</span>
         <span class="kw">let</span> <span class="ident">read_len</span> <span class="op">=</span> <span class="ident">buf</span>.<span class="ident">len</span>().<span class="ident">min</span>(<span class="self">self</span>.<span class="ident">size</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">pos</span>);
-        <span class="kw">if</span> <span class="ident">read_len</span> <span class="op">==</span> <span class="number">0</span> { <span class="comment">// 如果已经没有内容可读了</span>
+        <span class="kw">if</span> <span class="ident">read_len</span> <span class="op">==</span> <span class="number">0</span> {
+            <span class="comment">// 如果已经没有内容可读了</span>
             <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="number">0</span>);
         }
         <span class="comment">// 现在读到文件内的第几页</span>
@@ -295,14 +304,15 @@
         <span class="comment">// 先读第一页</span>
         <span class="ident">buf</span>[..<span class="ident">PAGE_SIZE</span> <span class="op">-</span> <span class="ident">off</span>].<span class="ident">copy_from_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">frames</span>[<span class="ident">page_now</span>].<span class="ident">as_slice</span>()[<span class="ident">off</span>..]);
         <span class="comment">// 记录下现在读到 buf_pos 处</span>
-        <span class="kw">let</span>  <span class="kw-2">mut</span> <span class="ident">buf_pos</span> <span class="op">=</span> <span class="ident">PAGE_SIZE</span> <span class="op">-</span> <span class="ident">off</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf_pos</span> <span class="op">=</span> <span class="ident">PAGE_SIZE</span> <span class="op">-</span> <span class="ident">off</span>;
         <span class="comment">// 然后从下一页开始，依次读整页</span>
-        <span class="kw">for</span> <span class="ident">page</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">frames</span>[<span class="ident">page_now</span><span class="op">+</span><span class="number">1</span>..] {
+        <span class="kw">for</span> <span class="ident">page</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">frames</span>[<span class="ident">page_now</span> <span class="op">+</span> <span class="number">1</span>..] {
             <span class="comment">// 需要读完这一整页</span>
             <span class="kw">if</span> <span class="ident">buf_pos</span> <span class="op">+</span> <span class="ident">PAGE_SIZE</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">read_len</span> {
-                <span class="ident">buf</span>[<span class="ident">buf_pos</span>..<span class="ident">buf_pos</span><span class="op">+</span><span class="ident">PAGE_SIZE</span>].<span class="ident">copy_from_slice</span>(<span class="ident">page</span>.<span class="ident">as_slice</span>());
+                <span class="ident">buf</span>[<span class="ident">buf_pos</span>..<span class="ident">buf_pos</span> <span class="op">+</span> <span class="ident">PAGE_SIZE</span>].<span class="ident">copy_from_slice</span>(<span class="ident">page</span>.<span class="ident">as_slice</span>());
                 <span class="ident">buf_pos</span> <span class="op">+</span><span class="op">=</span> <span class="ident">PAGE_SIZE</span>;
-            } <span class="kw">else</span> { <span class="comment">// 否则，是最后一页了。这里不用考虑文件长度，因为计算 read_len 的时候已保证了不会超长度</span>
+            } <span class="kw">else</span> {
+                <span class="comment">// 否则，是最后一页了。这里不用考虑文件长度，因为计算 read_len 的时候已保证了不会超长度</span>
                 <span class="ident">buf</span>[<span class="ident">buf_pos</span>..<span class="ident">read_len</span>].<span class="ident">copy_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">page</span>.<span class="ident">as_slice</span>()[..<span class="ident">read_len</span> <span class="op">-</span> <span class="ident">buf_pos</span>]);
                 <span class="comment">//buf_pos += read_len - PAGE_SIZE;</span>
                 <span class="kw">break</span>;
@@ -313,7 +323,8 @@
     }
     <span class="doccomment">/// 内部对写文件的实现</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_inner</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">buf</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> { <span class="comment">// 特判没有实际写入的情况</span>
+        <span class="kw">if</span> <span class="ident">buf</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
+            <span class="comment">// 特判没有实际写入的情况</span>
             <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="number">0</span>);
         }
         <span class="kw">if</span> (<span class="self">self</span>.<span class="ident">size</span> <span class="op">&amp;</span> (<span class="number">0x100_0000</span> <span class="op">-</span> <span class="number">1</span>)) <span class="op">==</span> <span class="number">0</span> {
@@ -325,14 +336,14 @@
         <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">frames</span>.<span class="ident">len</span>()..<span class="op">=</span><span class="ident">page_needed</span> {
             <span class="comment">// 此处不处理申请时溢出的情况</span>
             <span class="self">self</span>.<span class="ident">frames</span>.<span class="ident">push</span>(<span class="ident">Frame::new</span>().<span class="ident">unwrap</span>());
-        };
+        }
         <span class="comment">// 现在在文件内的第几页</span>
         <span class="kw">let</span> <span class="ident">page_now</span> <span class="op">=</span> <span class="ident">addr_to_page_id</span>(<span class="self">self</span>.<span class="ident">pos</span>);
         <span class="comment">// 页内的偏移量</span>
         <span class="kw">let</span> <span class="ident">off</span> <span class="op">=</span> <span class="ident">page_offset</span>(<span class="self">self</span>.<span class="ident">pos</span>);
         <span class="comment">// 如果一个页内可以解决，就简化处理</span>
         <span class="kw">if</span> <span class="ident">off</span> <span class="op">+</span> <span class="ident">buf</span>.<span class="ident">len</span>() <span class="op">&lt;</span><span class="op">=</span> <span class="ident">PAGE_SIZE</span> {
-            <span class="self">self</span>.<span class="ident">frames</span>[<span class="ident">page_now</span>].<span class="ident">as_slice_mut</span>()[<span class="ident">off</span>..<span class="ident">off</span><span class="op">+</span><span class="ident">buf</span>.<span class="ident">len</span>()].<span class="ident">copy_from_slice</span>(<span class="ident">buf</span>);
+            <span class="self">self</span>.<span class="ident">frames</span>[<span class="ident">page_now</span>].<span class="ident">as_slice_mut</span>()[<span class="ident">off</span>..<span class="ident">off</span> <span class="op">+</span> <span class="ident">buf</span>.<span class="ident">len</span>()].<span class="ident">copy_from_slice</span>(<span class="ident">buf</span>);
             <span class="comment">// 更新文件指针和文件大小</span>
             <span class="self">self</span>.<span class="ident">pos</span> <span class="op">+</span><span class="op">=</span> <span class="ident">buf</span>.<span class="ident">len</span>();
             <span class="self">self</span>.<span class="ident">size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">size</span>.<span class="ident">max</span>(<span class="self">self</span>.<span class="ident">pos</span>);
@@ -343,12 +354,14 @@
         <span class="comment">// 记录下现在写到 buf_pos 处</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf_pos</span> <span class="op">=</span> <span class="ident">PAGE_SIZE</span> <span class="op">-</span> <span class="ident">off</span>;
         <span class="comment">// 然后从下一页开始，依次读整页</span>
-        <span class="kw">for</span> <span class="ident">page</span> <span class="kw">in</span> <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">frames</span>[<span class="ident">page_now</span><span class="op">+</span><span class="number">1</span>..] {
+        <span class="kw">for</span> <span class="ident">page</span> <span class="kw">in</span> <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">frames</span>[<span class="ident">page_now</span> <span class="op">+</span> <span class="number">1</span>..] {
             <span class="comment">// 需要读完这一整页</span>
             <span class="kw">if</span> <span class="ident">buf_pos</span> <span class="op">+</span> <span class="ident">PAGE_SIZE</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">buf</span>.<span class="ident">len</span>() {
-                <span class="ident">page</span>.<span class="ident">as_slice_mut</span>().<span class="ident">copy_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">buf_pos</span>..<span class="ident">buf_pos</span><span class="op">+</span><span class="ident">PAGE_SIZE</span>]);
+                <span class="ident">page</span>.<span class="ident">as_slice_mut</span>()
+                    .<span class="ident">copy_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">buf_pos</span>..<span class="ident">buf_pos</span> <span class="op">+</span> <span class="ident">PAGE_SIZE</span>]);
                 <span class="ident">buf_pos</span> <span class="op">+</span><span class="op">=</span> <span class="ident">PAGE_SIZE</span>;
-            } <span class="kw">else</span> { <span class="comment">//否则，是最后一页了。这里不用考虑文件长度，因为计算 read_len 的时候已保证了不会超长度</span>
+            } <span class="kw">else</span> {
+                <span class="comment">//否则，是最后一页了。这里不用考虑文件长度，因为计算 read_len 的时候已保证了不会超长度</span>
                 <span class="ident">page</span>.<span class="ident">as_slice_mut</span>()[..<span class="ident">buf</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">buf_pos</span>].<span class="ident">copy_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">buf_pos</span>..]);
                 <span class="comment">//buf_pos += buf.len() - PAGE_SIZE;</span>
                 <span class="kw">break</span>;
@@ -386,7 +399,8 @@
                 <span class="self">self</span>.<span class="ident">pos</span> <span class="op">=</span> <span class="ident">pos</span> <span class="kw">as</span> <span class="ident">usize</span>;
             }
             <span class="ident">SeekFrom::Current</span>(<span class="ident">pos</span>) =&gt; {
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">pos</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">+</span> <span class="ident">pos</span> <span class="op">&lt;</span> <span class="number">0</span> { <span class="comment">// 不能移动到文件前</span>
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">pos</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">+</span> <span class="ident">pos</span> <span class="op">&lt;</span> <span class="number">0</span> {
+                    <span class="comment">// 不能移动到文件前</span>
                     <span class="kw">return</span> <span class="prelude-val">None</span>;
                 } <span class="kw">else</span> {
                     <span class="self">self</span>.<span class="ident">pos</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">pos</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">+</span> <span class="ident">pos</span>) <span class="kw">as</span> <span class="ident">usize</span>;
@@ -460,6 +474,7 @@
     <span class="kw">fn</span> <span class="ident">write_to_offset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pos</span>: <span class="ident">usize</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">lock</span>().<span class="ident">write_to_offset</span>(<span class="ident">pos</span>, <span class="ident">buf</span>)
     }
-}</code></pre></div>
+}
+</code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="maturin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (1f7fb6413 2022-04-10)" ></div>
 </body></html>

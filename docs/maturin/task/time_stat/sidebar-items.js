@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["TimerType","sys_settimer / sys_gettimer 中设定的 which，即计时器类型"]],"struct":[["ITimerVal","sys_gettimer / sys_settimer 指定的类型，用户输入输出计时器"],["TimeStat","进程的时间统计，基于 lmbench 需要，主要用于 sys_getrusage"]]});
+initSidebarItems({"enum":[["TimerType","sys_settimer / sys_gettimer 中设定的 which，即计时器类型"]],"struct":[["TimeStat","进程的时间统计，基于 lmbench 需要，主要用于 sys_getrusage"]]});
