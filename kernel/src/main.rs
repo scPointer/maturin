@@ -5,12 +5,9 @@
 #![no_main]
 #![deny(warnings)]
 #![feature(panic_info_message)]
-#![feature(default_alloc_error_handler)]
-#![feature(naked_functions, asm_sym, asm_const)]
+#![feature(naked_functions, asm_const)]
 // MemorySet 处理相交的 VmArea 时需要
 #![feature(btree_drain_filter)]
-// used in file/device/link.rs
-#![feature(const_btree_new)]
 // test.rs 输入 argv 需要
 #![feature(drain_filter)]
 
