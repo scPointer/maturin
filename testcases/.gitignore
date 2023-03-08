@@ -1,0 +1,4 @@
+*.img
+*.S
+backup*
+lmbench

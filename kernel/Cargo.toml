@@ -21,21 +21,21 @@ numeric-enum-macro = { path = "../dependencies/numeric-enum-macro" }
 lock = { path = "../dependencies/kernel-sync" }
 # lock = { git = "https://github.com/DeathWish5/kernel-sync" }
 
-fatfs = { path = "../rust-fatfs", version = "0.4", default-features = false, features = [
+fatfs = { path = "../modified_dependencies/rust-fatfs", version = "0.4", default-features = false, features = [
     "alloc",
     "lfn",
 ] }
-fscommon = { path = "../fscommon", version = "0.1.1" }
+fscommon = { path = "../modified_dependencies/fscommon", version = "0.1.1" }
 
-syscall = { path = "../syscall" }
-epoll = { path = "../epoll" }
-base-file = { path = "../base-file" }
-bitset = { path = "../bitset" }
-task-trampoline = { path = "../task-trampoline" }
-poll = { path = "../poll" }
-select = { path = "../select" }
-timer = { path = "../timer" }
-range-action-map = { path = "../range-action-map", default-features = false }
+syscall = { path = "../modules/syscall" }
+epoll = { path = "../modules/epoll" }
+base-file = { path = "../modules/base-file" }
+bitset = { path = "../modules/bitset" }
+task-trampoline = { path = "../modules/task-trampoline" }
+poll = { path = "../modules/poll" }
+select = { path = "../modules/select" }
+timer = { path = "../modules/timer" }
+range-action-map = { path = "../modules/range-action-map", default-features = false }
 
 [features]
 sifive = ["timer/sifive"]

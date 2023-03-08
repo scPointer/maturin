@@ -1,3 +1,6 @@
 Cargo.lock
 src/fs.S
+src/link_app.S
 trace
+dbg.S
+*.img

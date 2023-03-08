@@ -123,7 +123,7 @@ impl TestStatus {
         for info in SYS_INFO.lock().iter() {
             info!("{info}");
         }
-        panic!("");
+        panic!("all test end.");
     }
 }
 

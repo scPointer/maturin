@@ -3,7 +3,7 @@
 //! 内存地址分布说明：
 //! /* ------------------------------ 用户程序 ------------------------------*/
 //! /// 用户栈大小
-//! pub const USER_STACK_SIZE: usize = 0xf0_0000; // 2 MB
+//! pub const USER_STACK_SIZE: usize = 0xf0_0000; // 30 MB
 //! /// 初始用户栈大小，用于存放 argc/argv/envs/auxv
 //! pub const USER_INIT_STACK_SIZE: usize = 0x4000; // 16 KB,
 //! /// 用户栈底位置。同时也是最开始的用户堆顶位置
@@ -13,7 +13,7 @@
 //!
 //! /* ------------------------------ MMIO ------------------------------*/
 //! /// 用于设备 MMIO 的内存段。这些地址会在页表中做恒等映射
-//! pub const MMIO_REGIONS: &[AddrArea] = &[AddrArea(0x10001000, 0x10002000)];
+//! pub const MMIO_REGIONS: &\[AddrArea\] = &\[AddrArea(0x10001000, 0x10002000)\];
 //!
 //! /* ------------------------------ 内核 ------------------------------*/
 //! /// 内核中虚拟地址相对于物理地址的偏移
@@ -108,7 +108,7 @@ pub const IS_TEST_ENV: bool = true;
 pub const IS_PRELOADED_FS_IMG: bool = false;
 /// 文件系统镜像的大小。注意这个量和 fs-init 模块中 `/src/main.rs` 里生成镜像时的大小相同。
 /// 启动时会从 .data 段加载加载
-const LOCAL_FS_IMG_SIZE: usize = 0x200_0000; // 16MB
+const LOCAL_FS_IMG_SIZE: usize = 0x200_0000; // 32MB
 /// 测试时的文件系统镜像大小。
 /// 注意因为这个文件太大，默认是已经被qemu加载好了，启动时不会加载
 const TEST_FS_IMG_SIZE: usize = 0x4000_0000; // 1GB

@@ -23,10 +23,12 @@ $(error Unsupported architecture $(ARCH))
 endif
 
 qemu := qemu-system-$(ARCH)
-build_path := target/$(target)/$(MODE)
+cur_dir := $(shell pwd)
+build_path := $(cur_dir)/target/$(target)/$(MODE)
 kernel := $(build_path)/maturin
 kernel_img := $(build_path)/maturin.img
-testcases_img := ../fat.img
+disk_img_from := $(cur_dir)/../testcases/$(DISK_DIR)/
+testcases_img := $(cur_dir)/fat.img
 
 build_args := --target $(target)
 ifeq ($(MODE), release)
@@ -62,14 +64,16 @@ build: $(kernel_img)
 
 testcases-img:
 	@rm -f $(testcases_img)
-	@cd ../fs-init && cargo run --release -- -b -s ../oscomp_testcases/$(DISK_DIR)/ -t ../oscomp_testcases/$(DISK_DIR)/ -o $(testcases_img)
+	@cd ../modules/fs-init && cargo run --release -- -b -s $(disk_img_from) -t $(disk_img_from) -o $(testcases_img)
 
 gcc-img: testcases-img
 	mkdir ../foo
 	sudo mount $(testcases_img) ../foo
-	-sudo cp -r -a ../oscomp_testcases/gcc/* ../foo/
+	cd ../testcases/gcc && tar -zxvf ../riscv64-linux-musl-native.tgz
+	-sudo cp -r -a ../testcases/gcc/* ../foo/
 	sudo umount $(testcases_img)
 	rmdir ../foo
+	cd ../testcases/gcc && rm -rf ./riscv64-linux-musl-native
 
 fu740: $(kernel_img)
 	gzip -9 -cvf $(kernel_img) > ../os.bin.gz

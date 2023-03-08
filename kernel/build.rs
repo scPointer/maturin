@@ -8,7 +8,7 @@ use std::{
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
-    println!("cargo:rerun-if-changed=../fat.img");
+    println!("cargo:rerun-if-changed=fat.img");
     insert_fs_img().unwrap();
 
     let ld = &PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("linker.ld");
@@ -36,7 +36,7 @@ img_end:"#,
     Ok(())
 }
 
-const IMG_PATH: &str = "../fat.img";
+const IMG_PATH: &str = "fat.img";
 
 const LINKER: &str = "\
 OUTPUT_ARCH(riscv)
