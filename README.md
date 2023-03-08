@@ -30,6 +30,26 @@ $ make run
 
 - 需要检查 `\kernel\src\constants.rs` 中的常量`pub const IS_PRELOADED_FS_IMG: bool`（在72行左右），需要修改这个值为 false。
 
+## 项目结构
+
+- `dependencies`：部分依赖库，因为比赛评测机不联网所以需要放到项目里
+
+- `modified_dependencies`：经过修改的依赖库，和原库的功能/接口等不一定相同
+
+- `modules`：手动实现的内核模块，以 Rust crate 的形式，希望能用在别的 OS 中
+
+- `doc`：项目文档和报告
+
+- `docs`：部署的 Rust 文档，见 https://scpointer.github.io/maturin/
+
+- `kernel`：内核代码
+
+- `testcases`：测例程序，可打包成文件系统镜像由内核读取
+
+- `user`：(曾经的) Rust 用户测例程序
+
+- `tools`：其他工具
+
 ## 测例切换与执行
 
 目前可以加载 `libc` 测例或 `busybox/lua/lmbench` 测例或前面所有测例(judge)或`gcc`库，默认为 `judge`。

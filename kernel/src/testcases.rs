@@ -4,7 +4,7 @@
 
 #[allow(dead_code)]
 pub const TESTCASES: &[&str] = &[
-    "busybox sh",
+    //"busybox sh",
 
     // 运行 redis 示例（不是在这里打开，而是在 busybox sh 的终端中输入）
     //"./redis-server /redis.conf --loglevel verbose &", // 打开 redis 服务端，后台运行
@@ -22,9 +22,9 @@ pub const TESTCASES: &[&str] = &[
     //"busybox hexdump -C 2.o",
 
     // 测 lua 或者 busybox 的时候**不要**打开 base_info，内核输出非常多
-    //"busybox sh lua_testcode.sh",     // lua 测例
-    //"busybox sh busybox_testcode.sh", // busybox 测例
-    //"busybox sh lmbench_testcode.sh", // lmbench 测例(见下)
+    "busybox sh lua_testcode.sh",     // lua 测例
+    "busybox sh busybox_testcode.sh", // busybox 测例
+    "busybox sh lmbench_testcode.sh", // lmbench 测例(见下)
 
     /* // 很少一点 libc 测例。完整评测见 ./file/test.rs 中，需要把其中 TESTCASES_ITER 和 TEST_STATUS 的值换掉
     // "./runtest.exe -w entry-dynamic.exe argv",
