@@ -62,13 +62,13 @@ build: $(kernel_img)
 
 testcases-img:
 	@rm -f $(testcases_img)
-	@cd ../fs-init && cargo run --release -- -b -s ../oscomp_testcases/$(DISK_DIR)/ -t ../oscomp_testcases/$(DISK_DIR)/ -o ../
+	@cd ../fs-init && cargo run --release -- -b -s ../oscomp_testcases/$(DISK_DIR)/ -t ../oscomp_testcases/$(DISK_DIR)/ -o $(testcases_img)
 
 gcc-img: testcases-img
 	mkdir ../foo
-	sudo mount ../fat.img ../foo
+	sudo mount $(testcases_img) ../foo
 	-sudo cp -r -a ../oscomp_testcases/gcc/* ../foo/
-	sudo umount ../fat.img
+	sudo umount $(testcases_img)
 	rmdir ../foo
 
 fu740: $(kernel_img)

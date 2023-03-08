@@ -9,21 +9,24 @@ edition = "2021"
 [dependencies]
 buddy_system_allocator = "= 0.6"
 bitflags = "= 1.3.2"
-log = { path = "../dependencies/log", version = "0.4" }
 xmas-elf = "0.7"
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
 virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers", rev = "f2fb8b9" }
+
+log = { path = "../dependencies/log", version = "0.4" }
+sbi-rt = { path = "../dependencies/sbi-rt" }
 bitmap-allocator = { path = "../dependencies/bitmap-allocator" }
+numeric-enum-macro = { path = "../dependencies/numeric-enum-macro" }
 lock = { path = "../dependencies/kernel-sync" }
 # lock = { git = "https://github.com/DeathWish5/kernel-sync" }
+
 fatfs = { path = "../rust-fatfs", version = "0.4", default-features = false, features = [
     "alloc",
     "lfn",
 ] }
 fscommon = { path = "../fscommon", version = "0.1.1" }
-sbi-rt = { path = "../dependencies/sbi-rt" }
-numeric-enum-macro = { path = "../dependencies/numeric-enum-macro" }
+
 syscall = { path = "../syscall" }
 epoll = { path = "../epoll" }
 base-file = { path = "../base-file" }
