@@ -7,13 +7,14 @@ mod external {
     pub use std::mem::ManuallyDrop;
     pub use std::{marker::PhantomData, ops::Range, vec::Vec};
 }
+
 #[cfg(not(feature = "std"))]
 mod external {
     extern crate alloc;
-    use alloc::vec::Vec;
-    use core::marker::PhantomData;
-    use core::mem::ManuallyDrop;
-    use core::ops::Range;
+    pub use alloc::vec::Vec;
+    pub use core::marker::PhantomData;
+    pub use core::mem::ManuallyDrop;
+    pub use core::ops::Range;
 }
 
 use external::*;

@@ -36,6 +36,7 @@ poll = { path = "../modules/poll" }
 select = { path = "../modules/select" }
 timer = { path = "../modules/timer" }
 range-action-map = { path = "../modules/range-action-map", default-features = false }
+maturin-page-frame = { path = "../modules/maturin-page-frame", default-features = false }
 
 [features]
 sifive = ["timer/sifive"]

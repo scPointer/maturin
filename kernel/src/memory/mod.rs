@@ -9,7 +9,7 @@ mod vmm;
 
 use crate::{
     constants::{
-        DEVICE_END, DEVICE_START, PAGE_SIZE, PHYS_MEMORY_END, PHYS_MEMORY_OFFSET, PHYS_VIRT_OFFSET,
+        DEVICE_END, DEVICE_START, PAGE_SIZE, PHYS_MEMORY_END, PHYS_VIRT_OFFSET,
         USER_VIRT_ADDR_LIMIT,
     },
     error::OSResult,

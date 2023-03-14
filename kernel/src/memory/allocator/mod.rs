@@ -10,9 +10,6 @@ mod frame;
 mod heap;
 mod tid;
 
-use super::{get_phys_memory_regions, phys_to_virt};
-use super::{PhysAddr, PAGE_SIZE, PHYS_MEMORY_OFFSET};
-
 pub use fd::FdAllocator;
 pub use frame::Frame;
 pub use tid::Tid;
