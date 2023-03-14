@@ -1,7 +1,10 @@
 [package]
 name = "maturin-page-frame"
 version = "0.1.0"
+authors = ["scpointer <jax01@foxmail.com>"]
 edition = "2021"
+license = "MIT"
+description = "Page frame allocator with RAII for kernel"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,5 +13,7 @@ std = []
 default = ["std"]
 
 [dependencies]
-bitmap-allocator = { path = "../../dependencies/bitmap-allocator" }
-lock = { path = "../../dependencies/kernel-sync" }
+# bitmap-allocator = { path = "your/path/to/bitmap-allocator" }
+bitmap-allocator = { git = "https://github.com/rcore-os/bitmap-allocator/" }
+# lock = { path = "your/path/to/kernel-sync" }
+lock = { git = "https://github.com/DeathWish5/kernel-sync" }
