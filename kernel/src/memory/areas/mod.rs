@@ -317,6 +317,7 @@ impl VmArea {
 fn get_page_table<'a>(args: PageTableRoot) -> &'a mut PageTable {
     unsafe { &mut *(args as *mut PageTable) }
 }
+
 impl Segment for VmArea {
     fn modify(&mut self, new_flag: Flags, args: PageTableRoot) {
         self.flags = PTEFlags::from_bits(new_flag as u8).unwrap();

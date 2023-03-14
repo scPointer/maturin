@@ -8,7 +8,7 @@
 //! 
 //! 如需在 `std` 环境使用，直接在 `Cargo.toml` 引入即可；
 //! 如需在内核中使用，则需要选择：
-//! ```
+//! ```ignore
 //! range-action-map = { path = "https://github.com/scPointer/maturin/tree/memory-area-mod/range-action-map", default-features = false }
 //! ```
 //! 
