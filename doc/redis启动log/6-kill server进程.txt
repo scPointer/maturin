@@ -1,0 +1,41 @@
+先通过 quit 退出 client，然后通过(busybox 给 server 发)结束进程信号退出。
+
+127.0.0.1:6379> quit
+/ # kill 3
+/ # Syscall GETPID, [3, 4111030, 2790, 2, 14a8, 0] ...ret -> 3(0x3)
+Syscall WRITE, [1, 3ffff740, 1, 0, 0, 0]3 ...ret -> 1(0x1)
+Syscall WRITE, [1, 4110fe0, 11, 0, 0, 0]:signal-handler ( ...ret -> 17(0x11)
+Syscall WRITE, [1, 3ffff740, 4, 0, 0, 0]3952 ...ret -> 4(0x4)
+Syscall WRITE, [1, 4110fd8, 2, 0, 0, 0])  ...ret -> 2(0x2)
+Syscall WRITE, [1, 4111030, 27, 0, 0, 0]Received SIGTERM scheduling shutdown... ...ret -> 39(0x27)
+Syscall WRITE, [1, 41113e0, 1, 0, 0, 0]
+ ...ret -> 1(0x1)
+Syscall SIGRETURN, [1, 41113e0, 1, 0, 0, 1] ...ret -> 0(0x0)
+Syscall GETPID, [3, 3ffff4f0, 0, 14a8, 600000007, 4157e10] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3ffff122, 1, 36, 0, 0] ...ret -> 3(0x3)
+Syscall WRITEV, [1, 3ffff0a0, 2, a, a, 41cfc20]3:M 01 Jan 1970 01:05:53.069 # User requested shutdown...
+ ...ret -> 58(0x3a)
+Syscall GETPID, [2, 3ffff460, 1, 14a8, 600000007, 4157e10] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3ffff092, 1, 34, 0, 0] ...ret -> 3(0x3)
+Syscall WRITEV, [1, 3ffff010, 2, a, a, 41cfc20]3:M 01 Jan 1970 01:05:53.143 * Saving the final RDB snapshot before exiting.
+ ...ret -> 77(0x4d)
+Syscall GETPID, [0, 6eb8, 0, 0, 41b0d98, 180] ...ret -> 3(0x3)
+Syscall IOCTL, [8, 5413, 3fffe698, 1, 77, 0] ...ret -> 0(0x0)
+Syscall GETPID, [3fffe700, d49aa0, ffffffff80000001, ffffffff80000001, ffffffff80000001, 4093fea] ...ret -> 3(0x3)
+Syscall WRITEV, [8, 3fffe430, 2, a, a, d49b90] ...ret -> 28(0x1c)
+Syscall WRITEV, [8, 3fffe680, 2, 0, d49bca, d49b90] ...ret -> 58(0x3a)
+Syscall FSYNC, [8, 0, 0, 0, 0, 0] ...ret -> 0(0x0)
+Syscall CLOSE, [8, 0, 0, ffffffffbfffffff, 0, 4100908] ...ret -> 0(0x0)
+Syscall RENAMEAT2, [ffffffffffffff9c, 3fffe770, ffffffffffffff9c, 6eb8, 0, 3fffe770] ...ret -> 0(0x0)
+Syscall FDATASYNC, [8, 0, 0, 0, 0, 0] ...ret -> 0(0x0)
+Syscall CLOSE, [8, 0, 0, 0, 0, 0] ...ret -> 0(0x0)
+Syscall GETPID, [2, 3fffe2a0, 0, 14a8, 600000007, 4157e10] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3fffded2, 1, 34, 0, 0] ...ret -> 3(0x3)
+Syscall WRITEV, [1, 3fffde50, 2, a, a, 41cfc20]3:M 01 Jan 1970 01:05:53.646 * DB saved on disk
+ ...ret -> 48(0x30)
+Syscall CLOSE, [6, 0, 0, 0, 0, 0] ...ret -> 0(0x0)
+Syscall GETPID, [3, 3ffff460, 0, 14a8, 600000007, 4157e10] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3ffff092, 1, 34, 0, 0] ...ret -> 3(0x3)
+Syscall WRITEV, [1, 3ffff010, 2, a, a, 41cfc20]3:M 01 Jan 1970 01:05:53.743 # Redis is now ready to exit, bye bye...
+ ...ret -> 70(0x46)
+Syscall EXIT_GROUP, [0, 0, 0, 0, 0, 0]

@@ -1,0 +1,656 @@
+每次操作基本就是 mmap / munmap 然后读写文件(文件已被 epoll 设置好映射)。
+目前还不清楚为什么每次都要 mmap，可能是它把每次 transaction 都当成新程序去跑？
+
+127.0.0.1:6379> keys *
+Syscall MMAP, [0, 5000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=5000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 13930496(0xd49000)
+Syscall READ, [7, d494ad, 4000, 0, 0, 0] ...ret -> 21(0x15)
+Syscall MMAP, [0, 7000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=7000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 13955072(0xd4f000)
+Syscall WRITEV, [7, 3fffb880, 1, 0, 0, 0] ...ret -> 4(0x4)
+(empty array)
+127.0.0.1:6379> Syscall MUNMAP, [d49000, 5000, 0, ffffffff80000001, ffffffff80000001, 0] ...ret -> 0(0x0)
+127.0.0.1:6379>
+
+
+127.0.0.1:6379> set mycsv 1,mydata,10
+Syscall MMAP, [0, 5000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=5000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 13930496(0xd49000)
+Syscall READ, [7, d494cd, 4000, 0, 0, 0] ...ret -> 42(0x2a)
+Syscall MMAP, [0, 7000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=7000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 13983744(0xd56000)
+Syscall WRITE, [7, d4e098, 5, 0, 0, 0] ...ret -> 5(0x5)
+OK
+127.0.0.1:6379> Syscall MUNMAP, [d49000, 5000, 0, ffffffff80000001, ffffffff80000001, 0] ...ret -> 0(0x0)
+127.0.0.1:6379> 
+
+127.0.0.1:6379> del mycsv
+Syscall MMAP, [0, 5000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=5000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 13930496(0xd49000)
+Syscall READ, [7, d4954d, 4000, 0, 0, 0] ...ret -> 24(0x18)
+Syscall WRITE, [7, d4e098, 4, 0, 0, 0] ...ret -> 4(0x4)
+(integer) 1
+127.0.0.1:6379> Syscall MUNMAP, [d49000, 5000, 0, ffffffff80000001, ffffffff80000001, 0] ...ret -> 0(0x0)
+127.0.0.1:6379> 
+
+127.0.0.1:6379> CONFIG GET *
+Syscall MMAP, [0, 5000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=5000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 13930496(0xd49000)
+Syscall READ, [7, d4955d, 4000, 0, 0, 0] ...ret -> 32(0x20)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 14041088(0xd64000)
+Syscall MUNMAP, [d64000, 1000, 0, ffffffff80000001, ffffffff80000001, 0] ...ret -> 0(0x0)
+Syscall MMAP, [0, 5000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=5000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 14041088(0xd64000)
+Syscall GETCWD, [3ffff3c0, 400, 0, 1, 400, 10] ...ret -> 1073738688(0x3ffff3c0)
+Syscall MMAP, [0, 7000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=7000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 14061568(0xd69000)
+Syscall MUNMAP, [d4e000, 1000, 0, ffffffff80000001, ffffffff80000001, 0] ...ret -> 0(0x0)
+Syscall WRITEV, [7, 3fffb880, 2, 0, 0, 0] ...ret -> 6040(0x1798)
+Syscall MUNMAP, [d64000, 5000, 0, ffffffff80000001, ffffffff80000001, 0] ...ret -> 0(0x0)
+  1) "repl-backlog-size"
+  2) "1048576"
+  3) "stream-node-max-entries"
+  4) "100"
+  5) "hll-sparse-max-bytes"
+  6) "3000"
+  7) "aof-disable-auto-gc"
+  8) "no"
+  9) "busy-reply-threshold"
+ 10) "5000"
+ 11) "maxmemory-samples"
+ 12) "5"
+ 13) "slave-read-only"
+ 14) "yes"
+ 15) "cluster-config-file"
+ 16) "nodes.conf"
+ 17) "repl-ping-slave-period"
+ 18) "10"
+ 19) "dbfilename"
+ 20) "dump.rdb"
+ 21) "databases"
+ 22) "16"
+ 23) "hz"
+ 24) "10"
+ 25) "rdbchecksum"
+ 26) "yes"
+ 27) "repl-timeout"
+ 28) "60"
+ 29) "lazyfree-lazy-server-del"
+ 30) "no"
+ 31) "lazyfree-lazy-eviction"
+ 32) "no"
+ 33) "hash-max-listpack-entries"
+ 34) "512"
+ 35) "tcp-backlog"
+ 36) "511"
+ 37) "logfile"
+ 38) ""
+ 39) "slave-lazy-flush"
+ 40) "no"
+ 41) "replica-ignore-maxmemory"
+ 42) "yes"
+ 43) "io-threads"
+ 44) "1"
+ 45) "syslog-facility"
+ 46) "local0"
+ 47) "auto-aof-rewrite-min-size"
+ 48) "67108864"
+ 49) "active-defrag-ignore-bytes"
+ 50) "104857600"
+ 51) "repl-diskless-sync-delay"
+ 52) "5"
+ 53) "active-defrag-cycle-max"
+ 54) "25"
+ 55) "acllog-max-len"
+ 56) "128"
+ 57) "bind-source-addr"
+ 58) ""
+ 59) "pidfile"
+ 60) ""
+ 61) "list-max-ziplist-size"
+ 62) "-2"
+ 63) "repl-diskless-load"
+ 64) "disabled"
+ 65) "appendfilename"
+ 66) "appendonly.aof"
+ 67) "client-output-buffer-limit"
+ 68) "normal 0 0 0 slave 268435456 67108864 60 pubsub 33554432 8388608 60"
+ 69) "cluster-replica-no-failover"
+ 70) "no"
+ 71) "daemonize"
+ 72) "no"
+ 73) "maxmemory"
+ 74) "0"
+ 75) "cluster-enabled"
+ 76) "no"
+ 77) "repl-diskless-sync"
+ 78) "yes"
+ 79) "replicaof"
+ 80) ""
+ 81) "masterauth"
+ 82) ""
+ 83) "cluster-allow-replica-migration"
+ 84) "yes"
+ 85) "cluster-node-timeout"
+ 86) "15000"
+ 87) "dir"
+ 88) "/"
+ 89) "aof-rewrite-incremental-fsync"
+ 90) "yes"
+ 91) "cluster-preferred-endpoint-type"
+ 92) "ip"
+ 93) "lazyfree-lazy-user-flush"
+ 94) "no"
+ 95) "socket-mark-id"
+ 96) "0"
+ 97) "slave-ignore-maxmemory"
+ 98) "yes"
+ 99) "zset-max-ziplist-value"
+100) "64"
+101) "cluster-allow-reads-when-down"
+102) "no"
+103) "replica-announce-port"
+104) "0"
+105) "cluster-announce-ip"
+106) ""
+107) "proc-title-template"
+108) "{title} {listen-addr} {server-mode}"
+109) "active-expire-effort"
+110) "1"
+111) "active-defrag-threshold-upper"
+112) "100"
+113) "cluster-allow-pubsubshard-when-down"
+114) "yes"
+115) "crash-log-enabled"
+116) "yes"
+117) "notify-keyspace-events"
+118) ""
+119) "lazyfree-lazy-expire"
+120) "no"
+121) "protected-mode"
+122) "no"
+123) "lfu-decay-time"
+124) "1"
+125) "cluster-announce-bus-port"
+126) "0"
+127) "active-defrag-cycle-min"
+128) "1"
+129) "min-replicas-max-lag"
+130) "10"
+131) "port"
+132) "6379"
+133) "replica-announced"
+134) "yes"
+135) "client-query-buffer-limit"
+136) "1073741824"
+137) "rdb-save-incremental-fsync"
+138) "yes"
+139) "activerehashing"
+140) "yes"
+141) "syslog-ident"
+142) "redis"
+143) "shutdown-timeout"
+144) "10"
+145) "zset-max-listpack-value"
+146) "64"
+147) "repl-diskless-sync-max-replicas"
+148) "0"
+149) "unixsocket"
+150) ""
+151) "unixsocketperm"
+152) "0"
+153) "disable-thp"
+154) "yes"
+155) "min-slaves-to-write"
+156) "0"
+157) "cluster-require-full-coverage"
+158) "yes"
+159) "io-threads-do-reads"
+160) "no"
+161) "requirepass"
+162) ""
+163) "aclfile"
+164) ""
+165) "syslog-enabled"
+166) "no"
+167) "always-show-logo"
+168) "no"
+169) "zset-max-ziplist-entries"
+170) "128"
+171) "crash-memcheck-enabled"
+172) "yes"
+173) "save"
+174) "3600 1 300 100 60 10000"
+175) "loglevel"
+176) "notice"
+177) "cluster-replica-validity-factor"
+178) "10"
+179) "oom-score-adj"
+180) "no"
+181) "no-appendfsync-on-rewrite"
+182) "no"
+183) "latency-tracking"
+184) "yes"
+185) "bind"
+186) "* -::*"
+187) "enable-protected-configs"
+188) "no"
+189) "cluster-link-sendbuf-limit"
+190) "0"
+191) "replica-read-only"
+192) "yes"
+193) "replica-announce-ip"
+194) ""
+195) "masteruser"
+196) ""
+197) "bio_cpulist"
+198) ""
+199) "replica-serve-stale-data"
+200) "yes"
+201) "enable-debug-command"
+202) "no"
+203) "aof-timestamp-enabled"
+204) "no"
+205) "maxmemory-eviction-tenacity"
+206) "10"
+207) "acl-pubsub-default"
+208) "resetchannels"
+209) "latency-monitor-threshold"
+210) "0"
+211) "aof_rewrite_cpulist"
+212) ""
+213) "slave-priority"
+214) "100"
+215) "slave-announce-port"
+216) "0"
+217) "auto-aof-rewrite-percentage"
+218) "100"
+219) "list-compress-depth"
+220) "0"
+221) "hash-max-ziplist-value"
+222) "64"
+223) "lfu-log-factor"
+224) "10"
+225) "slowlog-max-len"
+226) "128"
+227) "shutdown-on-sigint"
+228) "default"
+229) "timeout"
+230) "0"
+231) "propagation-error-behavior"
+232) "ignore"
+233) "maxmemory-clients"
+234) "0"
+235) "appendonly"
+236) "no"
+237) "lazyfree-lazy-user-del"
+238) "no"
+239) "min-slaves-max-lag"
+240) "10"
+241) "cluster-slave-no-failover"
+242) "no"
+243) "set-max-intset-entries"
+244) "512"
+245) "cluster-slave-validity-factor"
+246) "10"
+247) "replica-lazy-flush"
+248) "no"
+249) "tracking-table-max-keys"
+250) "1000000"
+251) "replica-priority"
+252) "100"
+253) "appendfsync"
+254) "everysec"
+255) "hash-max-ziplist-entries"
+256) "512"
+257) "tcp-keepalive"
+258) "300"
+259) "repl-disable-tcp-nodelay"
+260) "no"
+261) "lua-time-limit"
+262) "5000"
+263) "activedefrag"
+264) "no"
+265) "server_cpulist"
+266) ""
+267) "slave-announce-ip"
+268) ""
+269) "replica-ignore-disk-write-errors"
+270) "no"
+271) "maxclients"
+272) "10000"
+273) "maxmemory-policy"
+274) "noeviction"
+275) "list-max-listpack-size"
+276) "-2"
+277) "cluster-port"
+278) "0"
+279) "cluster-announce-port"
+280) "0"
+281) "jemalloc-bg-thread"
+282) "yes"
+283) "cluster-announce-tls-port"
+284) "0"
+285) "enable-module-command"
+286) "no"
+287) "cluster-migration-barrier"
+288) "1"
+289) "hash-max-listpack-value"
+290) "64"
+291) "oom-score-adj-values"
+292) "0 200 800"
+293) "dynamic-hz"
+294) "yes"
+295) "sanitize-dump-payload"
+296) "no"
+297) "repl-ping-replica-period"
+298) "10"
+299) "slave-serve-stale-data"
+300) "yes"
+301) "rdbcompression"
+302) "yes"
+303) "proto-max-bulk-len"
+304) "536870912"
+305) "appenddirname"
+306) "appendonlydir"
+307) "active-defrag-threshold-lower"
+308) "10"
+309) "shutdown-on-sigterm"
+310) "default"
+311) "cluster-announce-hostname"
+312) ""
+313) "active-defrag-max-scan-fields"
+314) "1000"
+315) "ignore-warnings"
+316) ""
+317) "aof-load-truncated"
+318) "yes"
+319) "zset-max-listpack-entries"
+320) "128"
+321) "aof-use-rdb-preamble"
+322) "yes"
+323) "rdb-del-sync-files"
+324) "no"
+325) "set-proc-title"
+326) "yes"
+327) "supervised"
+328) "no"
+329) "min-replicas-to-write"
+330) "0"
+331) "slowlog-log-slower-than"
+332) "10000"
+333) "latency-tracking-info-percentiles"
+334) "50 99 99.9"
+335) "stream-node-max-bytes"
+336) "4096"
+337) "bgsave_cpulist"
+338) ""
+339) "slaveof"
+340) ""
+341) "stop-writes-on-bgsave-error"
+342) "yes"
+343) "repl-backlog-ttl"
+344) "3600"
+(2.77s)
+127.0.0.1:6379> Syscall MUNMAP, [d49000, 5000, 0, ffffffff80000001, ffffffff80000001, 0] ...ret -> 0(0x0)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 13930496(0xd49000)
+127.0.0.1:6379> 
+
+127.0.0.1:6379> info
+Syscall MMAP, [0, 5000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=5000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 13934592(0xd4a000)
+Syscall READ, [7, d4a5ad, 4000, 0, 0, 0] ...ret -> 14(0xe)
+Syscall UNAME, [41afc10, 130d79, 130d79, 9bf64b461a309976, ffffffffffffffbf, 1] ...ret -> 0(0x0)
+Syscall GETPID, [4110940, 3fffeca0, 0, 40, 0, 1] ...ret -> 3(0x3)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 14041088(0xd64000)
+Syscall MUNMAP, [d64000, 1000, 0, ffffffff80000001, ffffffff80000001, 0] ...ret -> 0(0x0)
+Syscall MMAP, [0, 7000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=7000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 14090240(0xd70000)
+Syscall GETRUSAGE, [0, 3ffff360, d71265, a, 4115f44, 12]Syscall GETRUSAGE, [ffffffffffffffff, 3ffff470, d71265, a, 4115f44, fffffffffffff000]Syscall GETRUSAGE, [1, 3ffff580, d712e6, a, 4115f44, 12]Syscall MMAP, [0, 5000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=5000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 14041088(0xd64000)
+Syscall MADVISE, [d71000, 1000, 8, 2000, fffffffffffff000, fff] ...ret -> 0(0x0)
+Syscall MUNMAP, [d70000, 7000, 0, ffffffff80000001, ffffffff80000001, 0] ...ret -> 0(0x0)
+Syscall MMAP, [0, 7000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=7000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 14090240(0xd70000)
+Syscall MUNMAP, [d49000, 1000, 0, ffffffff80000001, ffffffff80000001, 0] ...ret -> 0(0x0)
+Syscall WRITEV, [7, 3fffb880, 2, 0, 0, 0] ...ret -> 4921(0x1339)
+Syscall MUNMAP, [d64000, 5000, 0, ffffffff80000001, ffffffff80000001, 0] ...ret -> 0(0x0)
+# Server
+redis_version:7.0.4
+redis_git_sha1:00000000
+redis_git_dirty:0
+redis_build_id:5fa836af3336448a
+redis_mode:standalone
+os:MaturinOS 233 RISC-V 64 on SIFIVE FU740
+arch_bits:64
+monotonic_clock:POSIX clock_gettime
+multiplexing_api:epoll
+atomicvar_api:c11-builtin
+gcc_version:11.2.1
+process_id:3
+process_supervised:no
+run_id:228b23c523198a760b016c8b18a7782212a5a6cc
+tcp_port:6379
+server_time_usec:3036738709
+uptime_in_seconds:2983
+uptime_in_days:0
+hz:10
+configured_hz:10
+lru_clock:3036
+executable:/./redis-server
+config_file:/redis.conf
+io_threads_active:0
+
+# Clients
+connected_clients:1
+cluster_connections:0
+maxclients:10000
+client_recent_max_input_buffer:10
+client_recent_max_output_buffer:0
+blocked_clients:0
+tracking_clients:0
+clients_in_timeout_table:0
+
+# Memory
+used_memory:1138934
+used_memory_human:1.09M
+used_memory_rss:0
+used_memory_rss_human:0B
+used_memory_peak:1216775
+used_memory_peak_human:1.16M
+used_memory_peak_perc:93.60%
+used_memory_overhead:995084
+used_memory_startup:993093
+used_memory_dataset:143850
+used_memory_dataset_perc:98.63%
+allocator_allocated:1120037
+allocator_active:18446744073709519872
+allocator_resident:18446744073709519872
+total_system_memory:0
+total_system_memory_human:0B
+used_memory_lua:31744
+used_memory_vm_eval:31744
+used_memory_lua_human:31.00K
+used_memory_scripts_eval:0
+number_of_cached_scripts:0
+number_of_functions:0
+number_of_libraries:0
+used_memory_vm_functions:32768
+used_memory_vm_total:64512
+used_memory_vm_total_human:63.00K
+used_memory_functions:213
+used_memory_scripts:213
+used_memory_scripts_human:213B
+maxmemory:0
+maxmemory_human:0B
+maxmemory_policy:noeviction
+allocator_frag_ratio:16469763031040.00
+allocator_frag_bytes:18446744073708399835
+allocator_rss_ratio:1.00
+allocator_rss_bytes:0
+rss_overhead_ratio:0.00
+rss_overhead_bytes:31744
+mem_fragmentation_ratio:0.00
+mem_fragmentation_bytes:-1120037
+mem_not_counted_for_evict:0
+mem_replication_backlog:0
+mem_total_replication_buffers:0
+mem_clients_slaves:0
+mem_clients_normal:1778
+mem_cluster_links:0
+mem_aof_buffer:0
+mem_allocator:libc
+active_defrag_running:0
+lazyfree_pending_objects:0
+lazyfreed_objects:0
+
+# Persistence
+loading:0
+async_loading:0
+current_cow_peak:0
+current_cow_size:0
+current_cow_size_age:0
+current_fork_perc:0.00
+current_save_keys_processed:0
+current_save_keys_total:0
+rdb_changes_since_last_save:5
+rdb_bgsave_in_progress:0
+rdb_last_save_time:53
+rdb_last_bgsave_status:ok
+rdb_last_bgsave_time_sec:-1
+rdb_current_bgsave_time_sec:-1
+rdb_saves:0
+rdb_last_cow_size:0
+rdb_last_load_keys_expired:0
+rdb_last_load_keys_loaded:0
+aof_enabled:0
+aof_rewrite_in_progress:0
+aof_rewrite_scheduled:0
+aof_last_rewrite_time_sec:-1
+aof_current_rewrite_time_sec:-1
+aof_last_bgrewrite_status:ok
+aof_rewrites:0
+aof_rewrites_consecutive_failures:0
+aof_last_write_status:ok
+aof_last_cow_size:0
+module_fork_in_progress:0
+module_fork_last_cow_size:0
+
+# Stats
+total_connections_received:1
+total_commands_processed:9
+instantaneous_ops_per_sec:0
+total_net_input_bytes:336
+total_net_output_bytes:176812
+total_net_repl_input_bytes:0
+total_net_repl_output_bytes:0
+instantaneous_input_kbps:0.00
+instantaneous_output_kbps:0.00
+instantaneous_input_repl_kbps:0.00
+instantaneous_output_repl_kbps:0.00
+rejected_connections:0
+sync_full:0
+sync_partial_ok:0
+sync_partial_err:0
+expired_keys:0
+expired_stale_perc:0.00
+expired_time_cap_reached_count:0
+expire_cycle_cpu_milliseconds:3758
+evicted_keys:0
+evicted_clients:0
+total_eviction_exceeded_time:0
+current_eviction_exceeded_time:0
+keyspace_hits:0
+keyspace_misses:0
+pubsub_channels:0
+pubsub_patterns:0
+pubsubshard_channels:0
+latest_fork_usec:0
+total_forks:0
+migrate_cached_sockets:0
+slave_expires_tracked_keys:0
+active_defrag_hits:0
+active_defrag_misses:0
+active_defrag_key_hits:0
+active_defrag_key_misses:0
+total_active_defrag_time:0
+current_active_defrag_time:0
+tracking_total_keys:0
+tracking_total_items:0
+tracking_total_prefixes:0
+unexpected_error_replies:0
+total_error_replies:0
+dump_payload_sanitizations:0
+total_reads_processed:10
+total_writes_processed:10
+io_threaded_reads_processed:0
+io_threaded_writes_processed:0
+reply_buffer_shrinks:2
+reply_buffer_expands:1
+
+# Replication
+role:master
+connected_slaves:0
+master_failover_state:no-failover
+master_replid:da2a3e36887ed847714f9f0beaa982578fabb379
+master_replid2:0000000000000000000000000000000000000000
+master_repl_offset:0
+second_repl_offset:-1
+repl_backlog_active:0
+repl_backlog_size:1048576
+repl_backlog_first_byte_offset:0
+repl_backlog_histlen:0
+
+# CPU
+used_cpu_sys:1054.193308
+used_cpu_user:981.856322
+used_cpu_sys_children:1054.213818
+used_cpu_user_children:981.877088
+used_cpu_sys_main_thread:1054.239408
+used_cpu_user_main_thread:981.903583
+
+# Modules
+
+# Errorstats
+
+# Cluster
+cluster_enabled:0
+
+# Keyspace
+(2.26s)
+127.0.0.1:6379> Syscall MUNMAP, [d4a000, 5000, 0, ffffffff80000001, ffffffff80000001, 0] ...ret -> 0(0x0)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 13930496(0xd49000)
+127.0.0.1:6379> 
+
+127.0.0.1:6379> ping
+Syscall MMAP, [0, 5000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=5000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 13934592(0xd4a000)
+Syscall READ, [7, d4a60d, 4000, 0, 0, 0] ...ret -> 14(0xe)
+Syscall MMAP, [0, 14000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=14000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 14213120(0xd8e000)
+Syscall WRITE, [7, d490b8, 7, 0, 0, 0] ...ret -> 7(0x7)
+PONG
+127.0.0.1:6379> Syscall MUNMAP, [d4a000, 5000, 0, ffffffff80000001, ffffffff80000001, 0] ...ret -> 0(0x0)
+127.0.0.1:6379> 

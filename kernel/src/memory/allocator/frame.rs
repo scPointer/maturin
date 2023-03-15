@@ -2,9 +2,8 @@
 
 extern crate maturin_page_frame;
 
-
-use crate::memory::get_phys_memory_regions;
 use crate::constants::{PAGE_SIZE, PHYS_MEMORY_OFFSET};
+use crate::memory::get_phys_memory_regions;
 
 pub struct PageFrameConfig;
 impl maturin_page_frame::PageFrameConfig for PageFrameConfig {
