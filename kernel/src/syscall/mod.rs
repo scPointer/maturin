@@ -51,7 +51,12 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         return 0;
     };
     debug!("Syscall {:?}, {:x?}", syscall_id, args);
-
+    if sys_getpid().unwrap() == 3 {
+        print!("Syscall {:?}, {:x?}", syscall_id, args);
+    }
+    if syscall_id == SyscallNo::EPOLL_WAIT {
+        panic!("panic");
+    }
     let result = match syscall_id {
         SyscallNo::GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
         SyscallNo::EPOLL_CREATE => epoll::sys_epoll_create(args[0]),
@@ -279,11 +284,17 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         Ok(a0) => {
             if syscall_id != SyscallNo::GETRUSAGE && syscall_id != SyscallNo::CLOCK_GET_TIME {
                 debug!("{:?} ret -> {} = {:#x}", syscall_id, a0, a0);
+                if sys_getpid().unwrap() == 3 {
+                    println!(" ...ret -> {}({:#x})", a0, a0);
+                }
             }
             a0 as isize
         }
         Err(num) => {
             warn!("{:?} ret -> {:?}", syscall_id, num);
+            if sys_getpid().unwrap() == 3 {
+                println!(" ...ret -> {:?}", num);
+            }
             num as isize
         }
     }

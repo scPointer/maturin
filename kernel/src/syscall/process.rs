@@ -268,6 +268,12 @@ pub fn sys_mmap(
         "mmap start={:x} len={:x} prot=[{:#?}] flags=[{:#?}] fd={} offset={:x}",
         start, len, prot, flags, fd, offset
     );
+    if sys_getpid().unwrap() == 3 {
+        println!(
+            "\nmmap start={:x} len={:x} prot=[{:#?}] flags=[{:#?}] fd={} offset={:x}",
+            start, len, prot, flags, fd, offset
+        );
+    }
     /*
     // 检查是否区间不是按页aligned的
     if page_offset(start) != 0 || page_offset(start + len) != 0 {
