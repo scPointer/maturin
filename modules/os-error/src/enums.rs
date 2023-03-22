@@ -1,9 +1,5 @@
 //! 错误类型
 
-extern crate os_error;
-pub use os_error::{OSError, OSResult};
-
-/*
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
 #[repr(i32)]
@@ -53,9 +49,6 @@ pub enum OSError {
     MemorySet_UnmapAreaNotFound,
     MemorySet_AreaNotMapped,
     Task_MmapLengthDisagree,
-    // unmap 一段 VMA 可能会把分成两段
-    // 本身不该算是错误，只是目前还没有实现
-    MemorySet_PartialUnmap,
 
     Loader_ParseElfFailed,
     Loader_InvalidSegment,
@@ -77,6 +70,3 @@ pub enum OSError {
     // 找不到要求的文件描述符
     FdManager_FdNotFound,
 }
-
-pub type OSResult<T = ()> = Result<T, OSError>;
- */

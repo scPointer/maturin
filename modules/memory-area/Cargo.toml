@@ -1,0 +1,18 @@
+[package]
+name = "memory-area"
+version = "0.1.0"
+authors = ["scpointer <jax01@foxmail.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+backend = []
+
+
+[dependencies]
+bitflags = "= 1.3.2"
+
+log = { path = "../../dependencies/log", version = "0.4" }
+lock = { path = "../../dependencies/kernel-sync" }

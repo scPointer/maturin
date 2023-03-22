@@ -37,6 +37,7 @@ select = { path = "../modules/select" }
 timer = { path = "../modules/timer" }
 range-action-map = { path = "../modules/range-action-map", default-features = false }
 maturin-page-frame = { path = "../modules/maturin-page-frame", default-features = false }
+os-error = { path = "../modules/os-error" }
 
 [features]
 sifive = ["timer/sifive"]

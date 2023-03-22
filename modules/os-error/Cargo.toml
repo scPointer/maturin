@@ -1,0 +1,15 @@
+[package]
+name = "os-error"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["enum"]
+enum = []
+numeric = []
+numeric_enum = ["numeric-enum-macro"]
+
+[dependencies]
+numeric-enum-macro = { path = "../../dependencies/numeric-enum-macro", optional = true }

@@ -42,19 +42,20 @@ pub struct ElfLoader<'a> {
     elf: ElfFile<'a>,
 }
 
+/*
 impl From<&str> for OSError {
     fn from(s: &str) -> Self {
         warn!("parse ELF file failed: {}", s);
         OSError::Loader_ParseElfFailed
     }
 }
-
+ */
 impl<'a> ElfLoader<'a> {
     pub fn new(elf_data: &'a [u8]) -> OSResult<Self> {
         let elf = ElfFile::new(elf_data).unwrap();
         // 检查类型
         if elf.header.pt1.class() != header::Class::SixtyFour {
-            return Err("32-bit ELF is not supported on the riscv64".into());
+            return Self::parse_err("32-bit ELF is not supported on the riscv64");
         }
         /*
         if elf.header.pt2.type_().as_type() != header::Type::Executable {
@@ -64,9 +65,14 @@ impl<'a> ElfLoader<'a> {
         match elf.header.pt2.machine().as_machine() {
             #[cfg(target_arch = "riscv64")]
             header::Machine::Other(0xF3) => {}
-            _ => return Err("invalid ELF arch".into()),
+            _ => return Self::parse_err("invalid ELF arch"),
         };
         Ok(Self { elf })
+    }
+    /// 输出出错信息，并归类为 elf 错误
+    fn parse_err(info: &str) -> OSResult<Self> {
+        warn!("parse ELF file failed: {}", info);
+        Err(OSError::Loader_ParseElfFailed)
     }
     /// 解析 elf 文件并初始化一个用户程序，其中 args 为用户程序执行时的参数。
     ///
@@ -176,8 +182,12 @@ impl<'a> ElfLoader<'a> {
                         REL_GOT | REL_PLT | R_RISCV_64 => {
                             let dynsym = &dynamic_symbols[entry.get_symbol_table_index() as usize];
                             let symval = if dynsym.shndx() == 0 {
-                                let name = dynsym.get_name(&self.elf)?;
-                                panic!("symbol not found: {:?}", name);
+                                match dynsym.get_name(&self.elf) {
+                                    Ok(name) => panic!("symbol not found: {:?}", name),
+                                    Err(infos) => {
+                                        return Self::parse_err(infos).map(|_| (0usize, 0usize))
+                                    }
+                                }
                             } else {
                                 dyn_base + dynsym.value() as usize
                             };
@@ -229,8 +239,12 @@ impl<'a> ElfLoader<'a> {
                     5 => {
                         let dynsym = &dynamic_symbols[entry.get_symbol_table_index() as usize];
                         let symval = if dynsym.shndx() == 0 {
-                            let name = dynsym.get_name(&self.elf)?;
-                            panic!("symbol not found: {:?}", name);
+                            match dynsym.get_name(&self.elf) {
+                                Ok(name) => panic!("symbol not found: {:?}", name),
+                                Err(infos) => {
+                                    return Self::parse_err(infos).map(|_| (0usize, 0usize))
+                                }
+                            }
                         } else {
                             dynsym.value() as usize
                         };
@@ -286,7 +300,7 @@ impl<'a> ElfLoader<'a> {
                 map.insert(AT_PHENT, self.elf.header.pt2.ph_entry_size() as usize);
                 map.insert(AT_PHNUM, self.elf.header.pt2.ph_count() as usize);
                 // AT_RANDOM 比较特殊，要求指向栈上的 16Byte 的随机子串。因此这里的 0 只是占位，在之后序列化时会特殊处理
-                map.insert(AT_RANDOM, 0);
+                //map.insert(AT_RANDOM, 0);
                 map.insert(AT_PAGESZ, PAGE_SIZE);
                 map
             },
