@@ -1,0 +1,586 @@
+openat 的输出：
+openat: dir_fd=-100, path="/etc/passwd", flags=0x8000, mode=0o666
+openat: dir_fd=-100, path="/dev/null", flags=0x8000, mode=0o0
+ ...ret -> 0(0x0)
+openat: dir_fd=-100, path="/etc/localtime", flags=0x88800, mode=0o57
+ ...ret -> ENOENT
+openat: dir_fd=-100, path="/dev/urandom", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+openat: dir_fd=-100, path="/redis.conf", flags=0x8000, mode=0o666
+ ...ret -> 5(0x5)
+openat: dir_fd=-100, path="/proc/sys/net/core/somaxconn", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+Syscall GETPID, [3, 3ffff630, 0, 14a8, 600000007, 4157e10] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3ffff262, 1, 37, 0, 0] ...ret -> 3(0x3)
+Syscall WRITEV, [1, 3ffff1e0, 2, a, a, 41cfc20]3:M 01 Jan 1970 00:00:40.074 # Server initialized
+ ...ret -> 50(0x32)
+openat: dir_fd=-100, path="/proc/sys/vm/overcommit_memory", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+openat: dir_fd=-100, path="/sys/kernel/mm/transparent_hugepage/enabled", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+openat: dir_fd=-100, path="/sys/devices/system/clocksource/clocksource0/current_clocksource", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+
+openat: dir_fd=-100, path="dump.rdb", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+openat: dir_fd=-100, path="/proc/self/stat", flags=0x8000, mode=0o0
+ ...ret -> ENOENT
+
+分析：
+需要有配置文件，其他的不用管
+-  有一个 "/dev/null" ，这是 busybox shell 在处理命令行命令时将 stdin 替换成 "/dev/null"，暂时不需要
+- 还有一个保存文件的 "dump.rdb"，暂时不需要
+
+
+openat: dir_fd=-100, path="/dev/tty", flags=0x8002, mode=0o0
+sh: can't access tty; job control turned off
+openat: dir_fd=-100, path="/etc/passwd", flags=0x8000, mode=0o666
+/ # ./redis-server /redis.conf &
+openat: dir_fd=-100, path="/etc/passwd", flags=0x8000, mode=0o666
+/ # Syscall GETTID, [0, 0, 0, 8, 122c58, 122ad8] ...ret -> 0(0x0)
+Syscall SIGPROCMASK, [2, 3ffff508, 0, 8, 122c58, 0] ...ret -> 0(0x0)
+Syscall SIGPROCMASK, [2, 3ffff5b8, 0, 8, 3366a5dd265c2f5f, 3366a5dd265c2f5f] ...ret -> 0(0x0)
+Syscall SIGACTION, [2, 3ffff458, 3ffff478, 8, 0, 3ffff478] ...ret -> 0(0x0)
+Syscall CLOSE, [0, 0, 0, 0, 0, 0] ...ret -> 0(0x0)
+openat: dir_fd=-100, path="/dev/null", flags=0x8000, mode=0o0
+ ...ret -> 0(0x0)
+Syscall SIGACTION, [f, 3ffff4f8, 0, 8, 0, 3ffff518] ...ret -> 0(0x0)
+Syscall EXECVE, [18e0, 1928, 1940, 15b454a495bff00, 300010001, 2f]Syscall SET_TID_ADDRESS, [41d01a8, e0, 41cf2b0, 0, 41cf730, 2] ...ret -> 3(0x3)
+Syscall BRK, [0, 3ffffff0, 0, 62452645, 0, ffffffffffffffff] ...ret -> 1071644672(0x3fe00000)
+Syscall BRK, [3fe02000, 3ffffff0, 0, 62452645, fff, 1] ...ret -> 1071652864(0x3fe02000)
+Syscall MMAP, [3fe00000, 1000, 0, 32, ffffffffffffffff, 0]
+mmap start=3fe00000 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1071644672(0x3fe00000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 4096(0x1000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 8192(0x2000)
+openat: dir_fd=-100, path="/etc/localtime", flags=0x88800, mode=0o57
+ ...ret -> ENOENT
+Syscall GETPID, [19, 3ffffa60, 0, ffffffffffffffda, 3e8, 0] ...ret -> 3(0x3)
+Syscall GETPID, [19, 3ffffa60, 0, ffffffffffffffda, 3e8, 0] ...ret -> 3(0x3)
+Syscall GETPID, [41cf7d8, 5851f42d4c957f2d, 1f, 41af3f4, 0, 5aa03] ...ret -> 3(0x3)
+Syscall UMASK, [1ff, 800, 41cdbc0, 41cdbb8, d0dbc55a0b79e09f, d0a4d69fd1a9e84b] ...ret -> 0(0x0)
+Syscall UMASK, [0, 800, 41cdbc0, 41cdbb8, d0dbc55a0b79e09f, fffffffffffff000] ...ret -> 0(0x0)
+openat: dir_fd=-100, path="/dev/urandom", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, aa6cf] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, b125b] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, b849b] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, bdaa1] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, c3d97] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, c8dd9] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, ce3a7] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, d5cba] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, db4d2] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, e3546] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, ea041] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, f0090] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 4b6b] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, c05f] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 12fbc] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 1b75c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 2454e] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 2b18c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 32f4a] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 393c7] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 3fcff] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 46f01] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 4b7e8] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 4fc87] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 531bf] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 5c3b4] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 6216c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 6686c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 6afa9] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 7217f] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 78f46] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 7eeeb] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 87dc1] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 8e2b2] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 93958] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 9b762] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, a23b1] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, a94e2] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, af0b2] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, b6627] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, bff26] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, c7187] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, cb98a] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, d1da0] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, da799] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, e03f8] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, e755c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, ee378] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 1629] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 847f] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 103a2] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 16dac] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 1ca05] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 22828] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 2b77d] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 3454f] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 399ad] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 3fd51] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 47809] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 4ddaf] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 54005] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 5acb6] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 6162a] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff930, 8000, ffffffffffffffda, 3e8, 6a639] ...ret -> 3(0x3)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 12288(0x3000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 20480(0x5000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 24576(0x6000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 28672(0x7000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 32768(0x8000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 36864(0x9000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 40960(0xa000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 45056(0xb000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 49152(0xc000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 53248(0xd000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 57344(0xe000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 61440(0xf000)
+openat: dir_fd=-100, path="/dev/urandom", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 96bf8] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 9def9] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, a2cfe] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, a9eec] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, b3610] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, b861c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, bea6d] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, c511c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, cc31b] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, d3d79] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, dbee3] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, e18c2] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, e83bc] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, ee862] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 1322] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, bc56] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 11561] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 156e0] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 1b64b] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 224e0] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 290e1] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 305bd] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 38823] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 407c8] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 4b075] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 51dc1] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 579ad] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 5e059] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 638e2] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 67fa1] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 6db0e] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 7449c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 78e48] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 7e2c2] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 8547f] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 89b6d] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 8cb15] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 92311] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 98a2f] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 9f084] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, a2efb] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, a9a25] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, b210b] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, b7e49] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, c02cf] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, c645f] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, cd4df] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, d5b89] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, daeef] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, e263c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, e8edc] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, f27f4] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 773e] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 101a5] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 15c8a] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 1cc81] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 24174] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 29804] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 2eb1b] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 36f53] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 3cd0f] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 42220] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 46cee] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8e0, 8000, ffffffffffffffda, 3e8, 4e07b] ...ret -> 3(0x3)
+openat: dir_fd=-100, path="/dev/urandom", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 6f232] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 742e9] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 7c964] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 83ec5] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 8a921] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 8e6be] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 94470] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 9b170] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, a1961] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, aab5c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, b0f4c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, b83dd] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, bf928] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, c6dbf] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, ccf43] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, d3905] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, da1b0] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, e3e1a] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, ebca4] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, f0335] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 2a7e] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 8d1c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, cf2e] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 12125] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 18da2] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 1e27b] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 249bf] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 2b5f6] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 3303f] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 39dab] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 3dc67] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 42faa] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 4ad15] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 510b4] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 58d34] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 5fecf] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 66c1f] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 6c3ab] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 74177] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 7a089] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 82c92] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 89aae] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 91061] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 9807a] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 9e6bd] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, a768c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, afc13] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, b60bc] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, bbb33] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, c4bfd] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, cc5b9] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, d453f] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, dea7c] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, e557b] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, eb9c7] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, f3215] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 57d3] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, ecf6] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 12fe9] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 19e11] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 21a30] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 26f23] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 2bd6e] ...ret -> 3(0x3)
+Syscall GETPID, [0, 3ffff8d0, 8000, ffffffffffffffda, 3e8, 34c2e] ...ret -> 3(0x3)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 65536(0x10000)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 69632(0x11000)
+Syscall BRK, [3fe03000, 70, 6, 1b, 41cf470, 0] ...ret -> 1071656960(0x3fe03000)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 77824(0x13000)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 86016(0x15000)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 94208(0x17000)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 102400(0x19000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 110592(0x1b000)
+Syscall MMAP, [0, 4000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=4000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 114688(0x1c000)
+Syscall MUNMAP, [17000, 2000, 0, 41cf3f8, 0, 0] ...ret -> 0(0x0)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 94208(0x17000)
+Syscall MMAP, [0, 4000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=4000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 131072(0x20000)
+Syscall MMAP, [0, 4000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=4000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 147456(0x24000)
+Syscall MMAP, [0, 4000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=4000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 163840(0x28000)
+Syscall MUNMAP, [1b000, 1000, 0, 41cf3f6, 0, 0] ...ret -> 0(0x0)
+Syscall BRK, [3fe04000, f, 0, 3fe02fb8, 41cf440, 0] ...ret -> 1071661056(0x3fe04000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 98304(0x18000)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 180224(0x2c000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 110592(0x1b000)
+Syscall MMAP, [0, 8000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=8000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 188416(0x2e000)
+Syscall MUNMAP, [2c000, 2000, 0, 41cf3f8, 0, 0] ...ret -> 0(0x0)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 180224(0x2c000)
+Syscall MUNMAP, [1b000, 1000, 0, 41cf3f6, 0, 0] ...ret -> 0(0x0)
+Syscall MMAP, [0, 4000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=4000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 221184(0x36000)
+Syscall PIPE, [41afec8, 80800, 80800, b5, 36ea8, 0] ...ret -> 0(0x0)
+Syscall GETCWD, [3ffff630, 400, fefefeff08090c1f, 101010100070001, 400, 10] ...ret -> 1073739312(0x3ffff630)
+openat: dir_fd=-100, path="/redis.conf", flags=0x8000, mode=0o666
+ ...ret -> 5(0x5)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 110592(0x1b000)
+Syscall READ, [5, 1b110, 400, 0, 400, 0] ...ret -> 28(0x1c)
+Syscall READ, [5, 1b110, 400, a, 400, 0] ...ret -> 0(0x0)
+Syscall CLOSE, [5, 1b510, 400, a, 0, 4100908] ...ret -> 0(0x0)
+Syscall MUNMAP, [1b000, 1000, 0, 41cf3f6, 0, 0] ...ret -> 0(0x0)
+Syscall GETPID, [3, 3ffff630, 1, 14a8, 600000007, 4157e10] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3ffff262, 1, 32, 0, 0] ...ret -> 3(0x3)
+Syscall IOCTL, [1, 5413, 3ffff218, 1, 4110f36, 41af660] ...ret -> 0(0x0)
+Syscall WRITEV, [1, 3ffff1c0, 2, 1, 4110f36, 41cfc20]3:C 01 Jan 1970 00:00:34.629 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+ ...ret -> 77(0x4d)
+Syscall GETPID, [0, a, 41268a2, ffffffffffffffff, 41268a1, 41268a1] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3ffff630, 0, 14a8, 600000007, 4157e10] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3ffff262, 1, 37, 0, 0] ...ret -> 3(0x3)
+Syscall WRITEV, [1, 3ffff1e0, 2, a, a, 41cfc20]3:C 01 Jan 1970 00:00:34.877 # Redis version=7.0.4, bits=64, commit=00000000, modified=0, pid=3, just started
+ ...ret -> 110(0x6e)
+Syscall GETPID, [3, 3ffff630, 0, 14a8, 600000007, 4157e10] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3ffff262, 1, 37, 0, 0] ...ret -> 3(0x3)
+Syscall WRITEV, [1, 3ffff1e0, 2, a, a, 41cfc20]3:C 01 Jan 1970 00:00:34.970 # Configuration loaded
+ ...ret -> 52(0x34)
+Syscall SIGACTION, [1, 3ffff820, 3ffff840, 8, 0, 3ffff840] ...ret -> 0(0x0)
+Syscall SIGACTION, [d, 3ffff820, 3ffff840, 8, 0, 3ffff840] ...ret -> 0(0x0)
+Syscall SIGPROCMASK, [1, 3ffff8d0, 0, 8, 41cf7e8, 300000000] ...ret -> 0(0x0)
+Syscall SIGACTION, [f, 3ffff8b0, 0, 8, 0, 3ffff8d0] ...ret -> 0(0x0)
+Syscall SIGACTION, [2, 3ffff8b0, 0, 8, 0, 3ffff8d0] ...ret -> 0(0x0)
+Syscall SIGACTION, [b, 3ffff8b0, 0, 8, 0, 3ffff8d0] ...ret -> 0(0x0)
+Syscall SIGACTION, [7, 3ffff8b0, 0, 8, 0, 3ffff8d0] ...ret -> 0(0x0)
+Syscall SIGACTION, [8, 3ffff8b0, 0, 8, 0, 3ffff8d0] ...ret -> 0(0x0)
+Syscall SIGACTION, [4, 3ffff8b0, 0, 8, 0, 3ffff8d0] ...ret -> 0(0x0)
+Syscall SIGPROCMASK, [0, 41507c0, 3ffff938, 8, 3f, 6] ...ret -> 0(0x0)
+Syscall SIGACTION, [6, 3ffff8b0, 0, 8, 0, 3ffff8d0] ...ret -> 0(0x0)
+Syscall SIGPROCMASK, [2, 3ffff938, 0, 8, 0, 41cf298] ...ret -> 0(0x0)
+Syscall GETPID, [0, 0, 0, 8, a, 0] ...ret -> 3(0x3)
+Syscall SYSINFO, [3ffff880, 0, 0, 4, 414d508, 40f8e4a] ...ret -> 0(0x0)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 237568(0x3a000)
+Syscall MMAP, [0, 8000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=8000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 245760(0x3c000)
+Syscall MMAP, [0, 8000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=8000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 278528(0x44000)
+Syscall BRK, [3fe05000, 18, 0, 3fe03fb8, 41cf440, 0] ...ret -> 1071665152(0x3fe05000)
+Syscall MMAP, [0, 8000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=8000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 311296(0x4c000)
+Syscall MMAP, [0, 8000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=8000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 344064(0x54000)
+Syscall MMAP, [0, 8000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=8000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 376832(0x5c000)
+Syscall BRK, [3fe06000, 18, 0, 3fe04fb8, 41cf440, 0] ...ret -> 1071669248(0x3fe06000)
+Syscall MMAP, [0, 8000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=8000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 409600(0x64000)
+Syscall MMAP, [0, 8000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=8000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 442368(0x6c000)
+Syscall MMAP, [0, 8000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=8000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 475136(0x74000)
+Syscall BRK, [3fe07000, 18, 0, 3fe05fb8, 41cf440, 0] ...ret -> 1071673344(0x3fe07000)
+Syscall MMAP, [0, 8000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=8000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 507904(0x7c000)
+Syscall MMAP, [0, 8000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=8000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 540672(0x84000)
+Syscall PRLIMIT64, [0, 7, 0, 3ffff9c0, 8b3a1, 8b399] ...ret -> 0(0x0)
+Syscall PRLIMIT64, [0, 7, 3ffff9c0, 0, 8b3a1, 7] ...ret -> 0(0x0)
+Syscall GETPID, [2, 3ffff570, 0, 14a8, 600000007, 4157e10] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3ffff1a2, 1, 39, 0, 0] ...ret -> 3(0x3)
+Syscall WRITEV, [1, 3ffff120, 2, a, a, 41cfc20]3:M 01 Jan 1970 00:00:36.692 * Increased maximum number of open files to 10032 (it was originally set to 48).
+ ...ret -> 110(0x6e)
+Syscall GETPID, [2, 3ffff5d0, 0, 14a8, 600000007, 4157e10] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3ffff202, 1, 30, 0, 0] ...ret -> 3(0x3)
+Syscall WRITEV, [1, 3ffff180, 2, a, a, 41cfc20]3:M 01 Jan 1970 00:00:36.802 * monotonic clock: POSIX clock_gettime
+ ...ret -> 68(0x44)
+Syscall MMAP, [0, 4f21c, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=4f21c prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 573440(0x8c000)
+Syscall MMAP, [0, 14000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=14000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 901120(0xdc000)
+Syscall MMAP, [0, 2791c, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2791c prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 983040(0xf0000)
+Syscall EPOLL_CREATE, [0, 0, 6e, 4, 27908, 41c4fc0] ...ret -> 5(0x5)
+Syscall FCNTL64, [5, 1, 6e, 4, 406, 4] ...ret -> 0(0x0)
+Syscall FCNTL64, [5, 2, 1, 4, 406, 4] ...ret -> EINVAL
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 110592(0x1b000)
+Syscall SOCKET, [2, 1, 6, 0, 0, 0] ...ret -> 6(0x6)
+Syscall SETSOCKOPT, [6, 1, 2, 3ffff8ec, 4, 0] ...ret -> 0(0x0)
+Syscall BIND, [6, 172a0, 10, 0, 0, 0] ...ret -> 0(0x0)
+Syscall LISTEN, [6, 1ff, 0, 0, 0, 0] ...ret -> 0(0x0)
+Syscall FCNTL64, [6, 3, 1, 0, 406, 4] ...ret -> 526338(0x80802)
+Syscall FCNTL64, [6, 1, 1, 0, 406, 4] ...ret -> 1(0x1)
+Syscall SOCKET, [a, 1, 6, 0, 0, 0] ...ret -> EAFNOSUPPORT
+Syscall GETPID, [3, 3ffff550, 0, 14a8, 600000007, 4157e10] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3ffff182, 1, 38, 0, 0] ...ret -> 3(0x3)
+Syscall WRITEV, [1, 3ffff100, 2, a, a, 41cfc20]3:M 01 Jan 1970 00:00:37.487 # Warning: Could not create server TCP listening socket ::*:6379: unable to bind socket, errno: 97
+ ...ret -> 128(0x80)
+Syscall MMAP, [0, 8000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=8000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1146880(0x118000)
+Syscall EPOLL_CTL, [5, 1, 6, 3ffff990, 8b3b8, 0] ...ret -> 0(0x0)
+Syscall EPOLL_CTL, [5, 1, 3, 3ffff9d0, 8b3b8, 0] ...ret -> 0(0x0)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1179648(0x120000)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1183744(0x121000)
+Syscall MUNMAP, [121000, 2000, 0, 41cf3f8, 0, 0] ...ret -> 0(0x0)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1183744(0x121000)
+Syscall BRK, [3fe08000, 28, 0, 3fe06f18, 41cf448, 0] ...ret -> 1071677440(0x3fe08000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1191936(0x123000)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1196032(0x124000)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1204224(0x126000)
+Syscall MMAP, [0, 5000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=5000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1212416(0x128000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1232896(0x12d000)
+Syscall MMAP, [0, 8000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=8000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1236992(0x12e000)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1269760(0x136000)
+Syscall MMAP, [0, 2000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=2000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1277952(0x138000)
+Syscall MMAP, [0, 1000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=1000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1286144(0x13a000)
+Syscall MMAP, [0, 5000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=5000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1290240(0x13b000)
+Syscall SETITIMER, [0, 3ffff9c8, 0, ffff8c8c9e8f9091, ffffffffffffffbf, 0] ...ret -> 0(0x0)
+Syscall SIGACTION, [e, 3ffff8f0, 0, 8, 0, 3ffff910] ...ret -> 0(0x0)
+Syscall MMAP, [0, 5000, 3, 22, ffffffffffffffff, 0]
+mmap start=0 len=5000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1310720(0x140000)
+Syscall IOCTL, [1, 5413, 3ffffa18, 4, 4008, ffffffffffffffff] ...ret -> 0(0x0)
+Syscall GETPID, [0, a, 41268a2, ffffffffffffffff, 41268a1, 41268a1] ...ret -> 3(0x3)
+Syscall WRITEV, [1, 3ffff880, 2, 41af660, 41cfc20, 41cfc20]                _._                                                  
+           _.-``__ ''-._                                             
+      _.-``    `.  `_.  ''-._           Redis 7.0.4 (00000000/0) 64 bit
+  .-`` .-```.  ```\/    _.,_ ''-._                                  
+ (    '      ,       .-`  | `,    )     Running in standalone mode
+ |`-._`-...-` __...-.``-._|'` _.-'|     Port: 6379
+ |    `-._   `._    /     _.-'    |     PID: 3
+  `-._    `-._  `-./  _.-'    _.-'                                   
+ |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+ |    `-._`-._        _.-'_.-'    |           https://redis.io       
+  `-._    `-._`-.__.-'_.-'    _.-'                                   
+ |`-._`-._    `-.__.-'    _.-'_.-'|                                  
+ |    `-._`-._        _.-'_.-'    |                                  
+  `-._    `-._`-.__.-'_.-'    _.-'                                   
+      `-._    `-.__.-'    _.-'                                       
+          `-._        _.-'                                           
+              `-.__.-'                                               
+
+ ...ret -> 1147(0x47b)
+Syscall MUNMAP, [140000, 5000, 0, 41cf405, 0, 0] ...ret -> 0(0x0)
+openat: dir_fd=-100, path="/proc/sys/net/core/somaxconn", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+Syscall GETPID, [3, 3ffff630, 0, 14a8, 600000007, 4157e10] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3ffff262, 1, 37, 0, 0] ...ret -> 3(0x3)
+Syscall WRITEV, [1, 3ffff1e0, 2, a, a, 41cfc20]3:M 01 Jan 1970 00:00:40.074 # Server initialized
+ ...ret -> 50(0x32)
+openat: dir_fd=-100, path="/proc/sys/vm/overcommit_memory", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+openat: dir_fd=-100, path="/sys/kernel/mm/transparent_hugepage/enabled", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+openat: dir_fd=-100, path="/sys/devices/system/clocksource/clocksource0/current_clocksource", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+Syscall SIGPROCMASK, [1, 3ffff8f0, 0, 8, 0, 300000000] ...ret -> 0(0x0)
+Syscall MMAP, [0, 403000, 0, 22, ffffffffffffffff, 0]
+mmap start=0 len=403000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 1310720(0x140000)
+Syscall MPROTECT, [142000, 401000, 3, fffffffffffff000, 401fff, 142000] ...ret -> 0(0x0)
+Syscall SIGPROCMASK, [0, 41507c8, 3ffff8f0, 8, ffffffffffabd018, 0] ...ret -> 0(0x0)
+Syscall CLONE, [7d0f00, 542ef0, 542f40, 542fe8, 41d01a8, 542fe8] ...ret -> 4(0x4)
+Syscall SIGPROCMASK, [2, 3ffff8f0, 0, 8, 41d0078, 0] ...ret -> 0(0x0)
+Syscall MMAP, [0, 403000, 0, 22, ffffffffffffffff, 0]
+mmap start=0 len=403000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 5517312(0x543000)
+Syscall MPROTECT, [545000, 401000, 3, fffffffffffff000, 401fff, 545000] ...ret -> 0(0x0)
+Syscall SIGPROCMASK, [0, 41507c8, 3ffff8f0, 8, ffffffffff6ba018, 0] ...ret -> 0(0x0)
+Syscall CLONE, [7d0f00, 945ef0, 945f40, 945fe8, 41d01a8, 945fe8] ...ret -> 5(0x5)
+Syscall SIGPROCMASK, [2, 3ffff8f0, 0, 8, 41d0078, 0] ...ret -> 0(0x0)
+Syscall MMAP, [0, 403000, 0, 22, ffffffffffffffff, 0]
+mmap start=0 len=403000 prot=[PROT_READ | PROT_WRITE] flags=[MAP_PRIVATE | MAP_ANONYMOUS] fd=-1 offset=0
+ ...ret -> 9723904(0x946000)
+Syscall MPROTECT, [948000, 401000, 3, fffffffffffff000, 401fff, 948000] ...ret -> 0(0x0)
+Syscall SIGPROCMASK, [0, 41507c8, 3ffff8f0, 8, ffffffffff2b7018, 0] ...ret -> 0(0x0)
+Syscall CLONE, [7d0f00, d48ef0, d48f40, d48fe8, 41d01a8, d48fe8] ...ret -> 6(0x6)
+Syscall SIGPROCMASK, [2, 3ffff8f0, 0, 8, 41d0078, 0] ...ret -> 0(0x0)
+Syscall FSTATAT, [ffffffffffffff9c, 6f38, 3ffff8d0, 0, 6f38, ffffffffffffff9c] ...ret -> 0(0x0)
+openat: dir_fd=-100, path="dump.rdb", flags=0x8000, mode=0o666
+ ...ret -> ENOENT
+Syscall GETPID, [2, 3ffff630, 1, 14a8, 600000007, 4157e10] ...ret -> 3(0x3)
+Syscall GETPID, [3, 3ffff262, 1, 35, 0, 0] ...ret -> 3(0x3)
+Syscall WRITEV, [1, 3ffff1e0, 2, a, a, 41cfc20]3:M 01 Jan 1970 00:00:41.150 * Ready to accept connections
+ ...ret -> 59(0x3b)
+openat: dir_fd=-100, path="/proc/self/stat", flags=0x8000, mode=0o0

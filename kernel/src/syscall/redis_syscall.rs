@@ -34,7 +34,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         print!("Syscall {:?}, {:x?}", syscall_id, args);
     }
     if syscall_id == SyscallNo::EPOLL_WAIT {
-        //panic!("redis init Ok, exit")
+        panic!("redis init Ok, exit")
     }
     let result = match syscall_id {
 
@@ -85,7 +85,6 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         // IO and FS
         SyscallNo::READ => sys_read(args[0], args[1] as *mut u8, args[2]),
         SyscallNo::WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
-        SyscallNo::READV => sys_readv(args[0], args[1] as *mut IoVec, args[2]),
         SyscallNo::WRITEV => sys_writev(args[0], args[1] as *const IoVec, args[2]),
         SyscallNo::OPEN => sys_open(
             args[0] as i32,

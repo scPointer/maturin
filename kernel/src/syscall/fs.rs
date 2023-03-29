@@ -519,7 +519,7 @@ pub fn sys_open(dir_fd: i32, path: *const u8, flags: u32, user_mode: i32) -> Sys
             //println!("opened");
             if let Some(node) = open_file(parent_dir.as_str(), file_path.as_str(), open_flags) {
                 if let Ok(fd) = task_fd_manager.push(node) {
-                    //info!("return fd {}", fd);
+                    println!("return fd {}", fd);
                     //add_sys_info(parent_dir.clone() + file_path.as_str());
                     return Ok(fd);
                 }
