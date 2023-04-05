@@ -1,0 +1,48 @@
+socket 操作：
+
+启动时
+
+Syscall SOCKET, [2, 1, 6, 0, 0, 0] ...ret -> 6(0x6)
+Syscall SETSOCKOPT, [6, 1, 2, 3ffff8ec, 4, 0] ...ret -> 0(0x0) //忽略
+Syscall BIND, [6, 172a0, 10, 0, 0, 0] ...ret -> 0(0x0)
+Syscall LISTEN, [6, 1ff, 0, 0, 0, 0] ...ret -> 0(0x0)
+Syscall FCNTL64, [6, 3, 1, 0, 406, 4] ...ret -> 526338(0x80802)
+Syscall FCNTL64, [6, 1, 1, 0, 406, 4] ...ret -> 1(0x1)
+Syscall SOCKET, [a, 1, 6, 0, 0, 0] ...ret -> EAFNOSUPPORT
+
+等待循环中
+简略：Syscall EPOLL_WAIT, [5, f0308, 2790, 0, 0, 8]
+全部：
+Syscall CLOCK_GET_TIME, [1, 3ffff9e0, 2790, 51, 10, 1]Syscall CLOCK_GET_TIME, [0, 3ffff900, 0, ffffffffffffffda, 4035036, 0]Syscall CLOCK_GET_TIME, [0, 3ffff930, c8, 0, 63, 0]Syscall CLOCK_GET_TIME, [0, 3ffff930, 41b0d98, 41b05d8, b, 0]Syscall CLOCK_GET_TIME, [0, 3ffff930, 41b0e30, 41b0670, b, 0]Syscall CLOCK_GET_TIME, [0, 3ffff930, 41b0ec8, 41b0708, b, 0]Syscall CLOCK_GET_TIME, [0, 3ffff930, 41b0f60, 41b07a0, b, 0]Syscall CLOCK_GET_TIME, [0, 3ffff930, 41b0ff8, 41b0838, b, 0]Syscall OPEN, [ffffffffffffff9c, 41162c0, 8000, 0, 0, 0] ...ret -> ENOENT
+Syscall CLOCK_GET_TIME, [0, 3ffff920, 0, 64, 1a, 0]Syscall CLOCK_GET_TIME, [0, 3ffff840, 0, ffffffffffffffda, 41afd98, 0]Syscall CLOCK_GET_TIME, [0, 3ffff840, 10, 41afd98, 10, 0]Syscall CLOCK_GET_TIME, [1, 3ffff9e0, 3ffff980, 63, 40d01b6, 1]Syscall CLOCK_GET_TIME, [1, 3ffff9e0, 3ffff980, 6, 2, 1]Syscall CLOCK_GET_TIME, [0, 3ffff8b0, 3ffff980, f4240, 41afd98, 0]Syscall EPOLL_WAIT, [5, f0308, 2790, 55, 0, 8] ...ret -> 0(0x0)
+Syscall FUTEX, [542d84, 80, 2, 0, 0, 0] ...ret -> 0(0x0)
+Syscall FUTEX, [945d84, 80, 2, 0, 0, 0] ...ret -> 0(0x0)
+Syscall FUTEX, [d48d84, 80, 2, 0, 0, 0] ...ret -> 0(0x0)
+
+
+客户端连接后
+Syscall ACCEPT4, [6, 3ffff880, 3ffff87c, 80800, 0, 0] ...ret -> 7(0x7)
+Syscall SETSOCKOPT, [7, 6, 1, 3ffff86c, 4, 0] ...ret -> 0(0x0)
+Syscall SETSOCKOPT, [7, 1, 9, 3ffff84c, 4, 0] ...ret -> 0(0x0)
+Syscall SETSOCKOPT, [7, 6, 4, 3ffff84c, 4, 0] ...ret -> 0(0x0)
+Syscall SETSOCKOPT, [7, 6, 5, 3ffff84c, 4, 0] ...ret -> 0(0x0)
+Syscall SETSOCKOPT, [7, 6, 6, 3ffff84c, 4, 0] ...ret -> 0(0x0)
+Syscall EPOLL_CTL, [5, 1, 7, 3ffff830, 8b3b8, 0] ...ret -> 0(0x0)
+
+epoll 操作：
+
+启动时
+Syscall EPOLL_CREATE, [0, 0, 6e, 4, 27908, 41c4fc0] ...ret -> 5(0x5) // 无参数，只获取fd
+...
+Syscall EPOLL_CTL, [5, 1, 6, 3ffff990, 8b3b8, 0] ...ret -> 0(0x0)
+Syscall EPOLL_CTL, [5, 1, 3, 3ffff9d0, 8b3b8, 0] ...ret -> 0(0x0)
+
+等待循环中
+Syscall EPOLL_WAIT, [5, f0308, 2790, 0, 0, 8]
+
+客户端连接后
+Syscall EPOLL_CTL, [5, 1, 7, 3ffff830, 8b3b8, 0] ...ret -> 0(0x0)
+...
+Syscall EPOLL_CTL, [5, 3, 7, 3ffff8f0, 8b3b8, 5] ...ret -> 0(0x0)
+...
+Syscall EPOLL_CTL, [5, 3, 7, 3ffff920, 5, 0] ...ret -> 0(0x0)

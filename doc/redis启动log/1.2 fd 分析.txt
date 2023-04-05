@@ -3,6 +3,7 @@
 2 stderr(未使用)
 3 pipe read
 4 pipe write
-5 Configuration(打开的配置文件)
+5 Configuration(打开的配置文件)，然后关了
+5 epoll
 6 socket
 7 socket
