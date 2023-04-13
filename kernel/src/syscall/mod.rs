@@ -223,8 +223,8 @@ pub fn syscall(syscall_id: usize, args: [usize; 6]) -> isize {
         SyscallNo::MMAP => sys_mmap(
             args[0],
             args[1],
-            MMAPPROT::from_bits(args[2] as u32).unwrap(),
-            MMAPFlags::from_bits(args[3] as u32).unwrap(),
+            MMAPPROT::from_bits_truncate(args[2] as u32),
+            MMAPFlags::from_bits_truncate(args[3] as u32),
             args[4] as i32,
             args[5],
         ),
