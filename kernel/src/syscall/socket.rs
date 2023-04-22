@@ -116,7 +116,11 @@ pub fn sys_bind(fd: usize, addr: *const u8, addr_len: usize) -> SysResult {
     }
     let fd_manager = task.fd_manager.lock();
     if let Ok(file) = fd_manager.get_file(fd) {
-        let sock = file.as_any().downcast_ref::<Socket>().unwrap().clone();
+        let sock_any = file.as_any();
+        if !sock_any.is::<Socket>(){
+            return Err(ErrorNo::EFAULT);
+        }
+        let sock = sock_any.downcast_ref::<Socket>().unwrap().clone();
         if let Some(_p) = sock.set_endpoint(addr, false) {
             Ok(0)
         } else {
