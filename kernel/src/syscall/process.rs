@@ -72,7 +72,7 @@ pub fn sys_brk(brk: usize) -> SysResult {
 /// 创建一个子任务，如成功，返回其 tid
 pub fn sys_clone(
     flags: usize,
-    user_stack: usize,
+    user_stack: isize,
     ptid: usize,
     tls: usize,
     ctid: usize,
@@ -82,10 +82,10 @@ pub fn sys_clone(
         "clone: flags {:#?} signal {} ptid {:x} tls {:x} ctid {:x}",
         clone_flags, signal as usize, ptid, tls, ctid
     );
-    let user_stack = if user_stack == 0 {
-        None
-    } else {
-        Some(user_stack)
+    let user_stack = match user_stack {
+        x if x < 0 => return Err(ErrorNo::EINVAL),
+        x if x > 0 => Some(user_stack as usize),
+        _ => None,
     };
     let old_task = get_current_task().unwrap();
     // 生成新任务。注意 from_clone 方法内部已经把对用户的返回值设成了0

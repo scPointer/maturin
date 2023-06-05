@@ -223,7 +223,7 @@ pub const SIG_SETMASK: i32 = 2;
 
 pub fn resolve_clone_flags_and_signal(flag: usize) -> (CloneFlags, SignalNo) {
     (
-        CloneFlags::from_bits(flag as u32 & (!0x3f)).unwrap(),
+        CloneFlags::from_bits_truncate(flag as u32 & (!0x3f)),
         SignalNo::try_from(flag as u8 & 0x3f).unwrap(),
     )
 }
