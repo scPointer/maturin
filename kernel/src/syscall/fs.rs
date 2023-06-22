@@ -554,6 +554,10 @@ pub fn sys_close(fd: usize) -> SysResult {
 /// 注意，因为
 pub fn sys_pipe(pipe: *mut u32) -> SysResult {
     let task = get_current_task().unwrap();
+    let mut task_vm = task.vm.lock();
+    if task_vm.manually_alloc_user_str(pipe as *const u8,2).is_err() {
+	    return Err(ErrorNo::EFAULT); // 地址不合法
+    }
     let mut task_fd_manager = task.fd_manager.lock();
     let (pipe_read, pipe_write) = Pipe::new_pipe();
     if let Ok(fd1) = task_fd_manager.push(Arc::new(pipe_read)) {
