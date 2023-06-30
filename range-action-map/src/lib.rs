@@ -8,8 +8,8 @@
 //! 
 //! 如需在 `std` 环境使用，直接在 `Cargo.toml` 引入即可；
 //! 如需在内核中使用，则需要选择：
-//! ```
-//! range-action-map = { path = "https://github.com/scPointer/maturin/tree/memory-area-mod/range-action-map", default-features = false }
+//! ```ignore
+//! range-action-map = { default-features = false }
 //! ```
 //! 
 //! ## 测试
@@ -212,13 +212,13 @@ impl<SegmentType: Segment> RangeActionMap<SegmentType> {
     ///     }
     /// }
     /// let mut map: RangeActionMap<Seg> = RangeActionMap::new(0);
-    /// /// 申请一个长为 10 的区间，要求左端点不小于 123，获得[123,133)
-    /// assert_eq!(Some(123), map.mmap_anywhere(123, 10, |start| Seg(start, start+10)));
-    /// /// 申请一个长为 10 的区间，要求左端点不小于 140，获得[140,150)
-    /// assert_eq!(Some(140), map.mmap_anywhere(140, 10, |start| Seg(start, start+10)));
-    /// /// 申请一个长为 10 的区间，要求左端点不小于 120，获得[150, 160)。
-    /// /// 这是因为[123,133)和[140,150)已有区间，第一个满足要求的空区间只能从 150 开始
-    /// assert_eq!(Some(150), map.mmap_anywhere(120, 10, |start| Seg(start, start+10)));
+    /// /// 申请一个长为 10 的区间，要求左端点不小于 10123，获得[10123,10133)
+    /// assert_eq!(Some(10123), map.mmap_anywhere(10123, 10, |start| Seg(start, start+10)));
+    /// /// 申请一个长为 10 的区间，要求左端点不小于 140，获得[10140,10150)
+    /// assert_eq!(Some(10140), map.mmap_anywhere(10140, 10, |start| Seg(start, start+10)));
+    /// /// 申请一个长为 10 的区间，要求左端点不小于 120，获得[10150, 10160)。
+    /// /// 这是因为[10123,10133)和[10140,10150)已有区间，第一个满足要求的空区间只能从 10150 开始
+    /// assert_eq!(Some(10150), map.mmap_anywhere(10120, 10, |start| Seg(start, start+10)));
     /// ```
     pub fn mmap_anywhere(
         &mut self,
