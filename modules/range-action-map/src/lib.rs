@@ -9,15 +9,15 @@
 //! 如需在 `std` 环境使用，直接在 `Cargo.toml` 引入即可；
 //! 如需在内核中使用，则需要选择：
 //! ```ignore
-//! range-action-map = { path = "https://github.com/scPointer/maturin/tree/memory-area-mod/range-action-map", default-features = false }
+//! range-action-map = { default-features = false }
 //! ```
 //! 
 //! ## 测试
 //! 
 //! 本项目来自 `https://github.com/scPointer/maturin`。
 //! 
-//! 其中 crate 源码在 `https://github.com/scPointer/maturin/tree/master/modules/range-action-map`，
-//! 对这个 crate 本身的单元测试在  `https://github.com/scPointer/maturin/tree/master/modules/range-action-map-test`。
+//! 其中 crate 源码在 `https://github.com/scPointer/maturin/tree/memory-area-mod/range-action-map`，
+//! 对这个 crate 本身的单元测试在  `https://github.com/scPointer/maturin/tree/memory-area-mod/range-action-map-test`。
 //! 
 //! 单元测试本身只包含对数据结构本身的测试，不涉及页表和内存分配。实际在内存中的应用见下
 //! 
