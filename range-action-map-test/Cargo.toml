@@ -1,6 +1,6 @@
 [package]
 name = "range-action-map-test"
-version = "0.1.0"
+version = "0.1.5"
 authors = ["scpointer <jax01@foxmail.com>"]
 edition = "2021"
 
