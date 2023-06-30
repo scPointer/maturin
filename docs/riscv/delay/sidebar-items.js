@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["McycleDelay","Machine mode cycle counter (`mcycle`) as a delay provider"]]});

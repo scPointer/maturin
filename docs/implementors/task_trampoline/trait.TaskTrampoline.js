@@ -1,3 +1,3 @@
-(function() {var implementors = {};
-implementors["maturin"] = [{"text":"impl <a class=\"trait\" href=\"task_trampoline/trait.TaskTrampoline.html\" title=\"trait task_trampoline::TaskTrampoline\">TaskTrampoline</a> for <a class=\"struct\" href=\"maturin/struct.TaskTrampoline.html\" title=\"struct maturin::TaskTrampoline\">TaskTrampoline</a>","synthetic":false,"types":["maturin::TaskTrampoline"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
+(function() {var implementors = {
+"maturin":[["impl TaskTrampoline for <a class=\"struct\" href=\"maturin/struct.TaskTrampoline.html\" title=\"struct maturin::TaskTrampoline\">TaskTrampoline</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

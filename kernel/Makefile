@@ -104,4 +104,4 @@ clean:
 	cargo clean
 
 doc:
-	cargo doc $(build_args) --no-deps
+	cargo doc $(build_args) --no-deps --document-private-items

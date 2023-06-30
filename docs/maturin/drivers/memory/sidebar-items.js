@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["new_memory_mapped_fs","创建文件系统实例"]],"mod":[["device",""],["wrapper",""]],"type":[["IoType",""]]});
+window.SIDEBAR_ITEMS = {"fn":["new_memory_mapped_fs"],"mod":["device","wrapper"],"type":["IoType"]};

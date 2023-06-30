@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["FsStat","文件系统的属性 具体参数定义信息来自 `https://man7.org/linux/man-pages/man2/statfs64.2.html`"]]});
+window.SIDEBAR_ITEMS = {"struct":["FsStat"]};

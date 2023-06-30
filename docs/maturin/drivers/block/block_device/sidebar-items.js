@@ -1,1 +1,1 @@
-initSidebarItems({"trait":[["BlockDevice","读写块设备的规范"]]});
+window.SIDEBAR_ITEMS = {"trait":["BlockDevice"]};

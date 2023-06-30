@@ -37,7 +37,7 @@ pub fn check_thread_blocked(tid: usize) -> bool {
 }
 
 /// 唤醒某个线程，如 waiter 存在，则返回 true(无论是否之前就被唤醒)。
-/// 注意，这不是线程被唤醒的唯一方式。如果在除了 WAITING_BOARD 之外的地方也保存了对应的 Arc<dyn Waiter>
+/// 注意，这不是线程被唤醒的唯一方式。如果在除了 WAITING_BOARD 之外的地方也保存了对应的 `Arc<dyn Waiter>`
 /// 那么 waiter 也可能在其他地方被设置为 woken
 pub fn wake_thread(tid: usize) -> bool {
     let mut waiting_board = WAITING_BOARD.lock();

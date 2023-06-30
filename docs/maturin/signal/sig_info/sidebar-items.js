@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["SigInfo","错误信息"]]});
+window.SIDEBAR_ITEMS = {"struct":["SigInfo"]};

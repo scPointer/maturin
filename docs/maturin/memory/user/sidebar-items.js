@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["user_data","用户地址空间传来的指针转换成数据。"],["user_ptr","用户地址空间传来的指针，默认是不安全的"]]});
+window.SIDEBAR_ITEMS = {"mod":["user_data","user_ptr"]};

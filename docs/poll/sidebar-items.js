@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["sys_ppoll","实现 ppoll 的系统调用"]],"struct":[["PollEvents","sys_ppoll 使用，表示对应在文件上等待或者发生过的事件"],["PollFd","sys_ppoll 系统调用参数用到的结构"]]});

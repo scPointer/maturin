@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["get_signals_from_tid","获取信号量。这个函数会复制一个 Arc，不会影响表中的信号本身"],["global_logoff_signals","所有线程退出时均需要从表中删除"],["global_register_signals","所有线程初始化时均需要加入表"]],"static":[["TID2SIGNALS","从 tid 获取信号相关信息"]]});
+window.SIDEBAR_ITEMS = {"fn":["get_signals_from_tid","global_logoff_signals","global_register_signals"],"static":["TID2SIGNALS"]};

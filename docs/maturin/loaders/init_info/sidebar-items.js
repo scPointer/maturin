@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["InitInfo","初始化信息"]]});
+window.SIDEBAR_ITEMS = {"struct":["InitInfo"]};

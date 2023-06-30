@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["FdDir","仅保存路径的文件描述符实现"]]});
+window.SIDEBAR_ITEMS = {"struct":["FdDir"]};

@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["UserPtr","指向用户空间的指针。"],["UserPtrUnchecked","指向用户空间的裸指针"]]});
+window.SIDEBAR_ITEMS = {"struct":["UserPtr","UserPtrUnchecked"]};

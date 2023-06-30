@@ -1,3 +1,3 @@
-(function() {var implementors = {};
-implementors["maturin"] = [{"text":"impl&lt;T:&nbsp;<a class=\"trait\" href=\"maturin/fsio/trait.Seek.html\" title=\"trait maturin::fsio::Seek\">Seek</a>&gt; <a class=\"trait\" href=\"fatfs/io/trait.Seek.html\" title=\"trait fatfs::io::Seek\">Seek</a> for <a class=\"struct\" href=\"maturin/drivers/memory/wrapper/struct.IoWrapper.html\" title=\"struct maturin::drivers::memory::wrapper::IoWrapper\">IoWrapper</a>&lt;T&gt;","synthetic":false,"types":["maturin::drivers::memory::wrapper::IoWrapper"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
+(function() {var implementors = {
+"maturin":[["impl&lt;T: <a class=\"trait\" href=\"maturin/fsio/trait.Seek.html\" title=\"trait maturin::fsio::Seek\">Seek</a>&gt; Seek for <a class=\"struct\" href=\"maturin/drivers/memory/wrapper/struct.IoWrapper.html\" title=\"struct maturin::drivers::memory::wrapper::IoWrapper\">IoWrapper</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

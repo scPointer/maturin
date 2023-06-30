@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["SignalNo","信号编号。"]]});
+window.SIDEBAR_ITEMS = {"enum":["SignalNo"]};

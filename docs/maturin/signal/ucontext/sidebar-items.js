@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["MachineContext",""],["SignalStack",""],["SignalUserContext",""]]});
+window.SIDEBAR_ITEMS = {"struct":["MachineContext","SignalStack","SignalUserContext"]};

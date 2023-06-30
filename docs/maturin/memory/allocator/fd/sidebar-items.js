@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["FdAllocator",""]],"type":[["PidAllocatorImpl",""]]});
+window.SIDEBAR_ITEMS = {"struct":["FdAllocator"],"type":["PidAllocatorImpl"]};

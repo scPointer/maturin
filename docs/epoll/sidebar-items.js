@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["EpollCtl","epoll_ctl 使用的选项"]],"fn":[["sys_epoll_create","执行 epoll_create 系统调用"],["sys_epoll_ctl","执行 epoll_ctl 系统调用"],["sys_epoll_wait","执行 epoll_wait 系统调用"]],"struct":[["EpollEvent","系统调用参数用到的类型 `epoll_event`"],["EpollEventType","Epoll 事件的类别"],["EpollFile","用作 epoll 的文件"]]});

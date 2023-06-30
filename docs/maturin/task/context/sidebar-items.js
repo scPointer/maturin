@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["TaskContext","一个任务的上下文信息，包含所有必要的寄存器"]]});
+window.SIDEBAR_ITEMS = {"fn":["__restore"],"struct":["TaskContext"]};

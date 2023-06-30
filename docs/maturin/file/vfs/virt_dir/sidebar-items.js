@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["DirEntry","目录项"],["VirtDir","虚拟目录。目前暂时不支持更快的查找，仍像普通fs那样按顺序查找"]]});
+window.SIDEBAR_ITEMS = {"struct":["DirEntry","VirtDir"]};

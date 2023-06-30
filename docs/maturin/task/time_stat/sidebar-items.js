@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["TimerType","sys_settimer / sys_gettimer 中设定的 which，即计时器类型"]],"struct":[["TimeStat","进程的时间统计，基于 lmbench 需要，主要用于 sys_getrusage"]]});
+window.SIDEBAR_ITEMS = {"enum":["TimerType"],"struct":["TimeStat"]};

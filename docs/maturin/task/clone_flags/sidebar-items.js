@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["CloneFlags","用于 sys_clone 的选项"]]});
+window.SIDEBAR_ITEMS = {"struct":["CloneFlags"],"trait":["__BitFlags"]};

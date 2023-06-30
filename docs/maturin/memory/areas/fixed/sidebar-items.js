@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["PmAreaFixed","直接分配的物理地址段"]]});
+window.SIDEBAR_ITEMS = {"struct":["PmAreaFixed"]};

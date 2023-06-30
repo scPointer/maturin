@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["block_device_test",""]],"mod":[["block_device",""],["virtio_block",""]],"struct":[["BLOCK_DEVICE",""]]});
+window.SIDEBAR_ITEMS = {"fn":["__stability","__static_ref_initialize","block_device_test"],"mod":["block_device","virtio_block"],"static":["LAZY"],"struct":["BLOCK_DEVICE"]};

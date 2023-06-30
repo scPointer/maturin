@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["KernelStack","内核栈，会通过帧分配器申请一段内存 在内核态时，这段内存是在 physical memory 上的，因此可以直接访问 这省去了修改 MemorySet 和页表的步骤，比较快，但也意味着没有 shadow page，需要由其他机制实现(Todo: trap.S 中判断) 因为 physical memory 中的所有页都有 READ/WRITE 权限"]]});
+window.SIDEBAR_ITEMS = {"struct":["KernelStack"]};

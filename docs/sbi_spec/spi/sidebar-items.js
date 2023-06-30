@@ -1,1 +1,0 @@
-initSidebarItems({"constant":[["EID_SPI",""],["SEND_IPI","§7.1"]]});

@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["allow_sum_access",""],["refuse_sum_access",""]]});
+window.SIDEBAR_ITEMS = {"fn":["allow_sum_access","refuse_sum_access"]};

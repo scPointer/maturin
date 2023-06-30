@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["fsio",""]],"struct":[["MemoryMappedDevice",""]]});
+window.SIDEBAR_ITEMS = {"mod":["fsio"],"struct":["MemoryMappedDevice"]};

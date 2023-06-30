@@ -1,1 +1,0 @@
-initSidebarItems({"constant":[["FD_LIMIT_HARD","最大允许的文件描述符数量"]],"fn":[["normal_file_mode","文件类型，输入 IFCHR / IFDIR / IFREG 等具体类型， 输出这些类型加上普遍的文件属性后得到的 mode 参数"]],"struct":[["Kstat","文件信息类"],["OpenFlags","指定文件打开时的权限"],["StMode","指定 st_mode 的选项"]],"trait":[["AsAny","`File` 需要满足 `AsAny` 的要求，即可以转化为 `Any` 类型，从而能够进行向下类型转换。"],["File","文件类抽象"]]});

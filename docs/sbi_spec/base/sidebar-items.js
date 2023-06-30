@@ -1,1 +1,0 @@
-initSidebarItems({"constant":[["EID_BASE",""],["GET_MARCHID","§4.6"],["GET_MIMPID","§4.7"],["GET_MVENDORID","§4.5"],["GET_SBI_IMPL_ID","§4.2"],["GET_SBI_IMPL_VERSION","§4.3"],["GET_SBI_SPEC_VERSION","§4.1"],["PROBE_EXTENSION","§4.4"],["UNAVAILABLE_EXTENSION",""]],"mod":[["impl_id","§4.9"]],"struct":[["SbiSpecVersion","§4.1"]]});

@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["SyscallNo","系统调用编号"]]});
+window.SIDEBAR_ITEMS = {"enum":["SyscallNo"]};

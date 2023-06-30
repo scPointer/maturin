@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["LOOP_EXIT_CODE","通过计数器退出时的返回值"],["LOOP_LIMIT","一个检测死循环的计数器"]],"fn":[["check_dead_loop",""],["clear_loop_checker","进入新进程时，清空计数器。 目前认为全局只有一个 checker，不处理更多的进程导致的死循环，如pipe"]],"static":[["DEAD_LOOP_CNT","计数器实现"]],"struct":[["LoopCounter","检查循环次数"]]});
+window.SIDEBAR_ITEMS = {"constant":["LOOP_EXIT_CODE","LOOP_LIMIT"],"fn":["check_dead_loop","clear_loop_checker"],"static":["DEAD_LOOP_CNT"],"struct":["LoopCounter"]};

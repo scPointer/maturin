@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["SOCKET_TYPE_MASK",""]],"enum":[["Domain","Generic musl socket domain."],["SocketType","Generic musl socket type."]],"mod":[["loopback","本地回环网络"],["resolution","地址解析。目前只有 ip 地址的解析"]],"struct":[["IpAddr",""],["Socket","一个套接字"],["SocketInner",""]]});
+window.SIDEBAR_ITEMS = {"constant":["SOCKET_TYPE_MASK"],"enum":["Domain","SocketType"],"mod":["loopback","resolution"],"struct":["IpAddr","Socket","SocketInner"]};

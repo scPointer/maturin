@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["FutexWaiter","等待的时 futex"]],"trait":[["Waiter",""]]});
+window.SIDEBAR_ITEMS = {"struct":["FutexWaiter"],"trait":["Waiter"]};

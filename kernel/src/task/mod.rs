@@ -1,7 +1,7 @@
 //! 任务管理
 //!
 //! 全局常量 TASK_MANAGER 在初始化过程中导入所有用户程序的数据，并分别保存在一个 TaskControlBlock 中
-//! 所有的 TaskControlBlock 都放在 Arc<Mutex<TaskManagerInner>> 中，
+//! 所有的 TaskControlBlock 都放在 `Arc<Mutex<TaskManagerInner>>` 中，
 //! 每个核需要切换任务时都需要拿到这个锁，且从调度开始到结束**必须一直持有**这个锁
 
 mod clone_flags;

@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["init","Initialize the global heap alloactor."]],"static":[["HEAP_ALLOCATOR",""]]});
+window.SIDEBAR_ITEMS = {"constant":["HEAP_BLOCK","MACHINE_ALIGN"],"fn":["__rg_alloc","__rg_alloc_zeroed","__rg_dealloc","__rg_realloc","init"],"static":["HEAP","HEAP_ALLOCATOR"]};

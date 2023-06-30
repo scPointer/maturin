@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["IoWrapper",""],["TransferError",""]]});
+window.SIDEBAR_ITEMS = {"struct":["IoWrapper","TransferError"]};
