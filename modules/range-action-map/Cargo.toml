@@ -1,7 +1,7 @@
 [package]
 name = "range-action-map"
-version = "0.1.4"
-authors = ["scpointer <jax01@foxmail.com>"]
+version = "0.1.5"
+authors = ["scpointer <responsibilities@foxmail.com>"]
 edition = "2021"
 license = "MIT"
 description = "A range tree, offering interval operation in kernel memory management, and deliver ACTION to actual VmArea。一个区间树结构，用于提供 mmap / munmap / mprotect 时对内核中区间的操作； "
