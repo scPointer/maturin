@@ -59,6 +59,9 @@ impl File for Stdin {
     fn ready_to_write(&self) -> bool {
         false
     }
+    fn set_close_on_exec(&self, _is_set: bool) -> bool {
+        true
+    }
 }
 
 impl File for Stdout {
@@ -94,6 +97,9 @@ impl File for Stdout {
     }
     /// 已准备好写
     fn ready_to_write(&self) -> bool {
+        true
+    }
+    fn set_close_on_exec(&self, _is_set: bool) -> bool {
         true
     }
 }
@@ -134,6 +140,9 @@ impl File for Stderr {
     }
     /// 已准备好写
     fn ready_to_write(&self) -> bool {
+        true
+    }
+    fn set_close_on_exec(&self, _is_set: bool) -> bool {
         true
     }
 }
