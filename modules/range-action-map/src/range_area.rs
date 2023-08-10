@@ -93,7 +93,7 @@ impl<SegmentType: Segment> RangeArea<SegmentType> {
         } else if end < self.end {
             // 前半段相交
             let old_end = self.end;
-            self.end = start;
+            self.end = end;
             // 注意返回的是右半段
             CutSet::ModifiedLeft(Self {
                 start: end,
