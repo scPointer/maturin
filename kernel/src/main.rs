@@ -7,9 +7,9 @@
 #![feature(panic_info_message)]
 #![feature(naked_functions, asm_const)]
 // MemorySet 处理相交的 VmArea 时需要
-#![feature(btree_drain_filter)]
+#![feature(btree_extract_if)]
 // test.rs 输入 argv 需要
-#![feature(drain_filter)]
+#![feature(extract_if)]
 
 #[macro_use]
 extern crate log;
@@ -42,10 +42,6 @@ extern crate alloc;
 extern crate fatfs;
 extern crate fscommon;
 extern crate lock;
-
-mod fsio {
-    pub use fscommon::{Read, Seek, Write};
-}
 
 core::arch::global_asm!(include_str!("fs.S"));
 

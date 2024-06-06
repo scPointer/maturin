@@ -53,7 +53,7 @@ impl VirtDir {
         let entry: Vec<DirEntry> = self
             .entry
             .lock()
-            .drain_filter(|e| e.name == *file_name)
+            .extract_if(|e| e.name == *file_name)
             .collect();
         if entry.len() == 0 {
             //没找到文件

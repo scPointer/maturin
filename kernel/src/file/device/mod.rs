@@ -32,12 +32,11 @@ type FsFile = fatfs::File<'static, FsIO, FsTP, FsOCC>;
 type FATFileSystem = FileSystem<FsIO, FsTP, FsOCC>;
 
 use base_file::{File, OpenFlags};
-pub use fat_dir::FatDir;
 pub use fat_file::FatFile;
 pub use fd_dir::FdDir;
 pub use link::FileDisc;
 pub use link::{
-    get_link_count, mount_fat_fs, read_link, try_add_link, try_add_rev_link, try_remove_link,
+    get_link_count, mount_fat_fs, read_link, try_add_link, try_remove_link,
     umount_fat_fs,
 };
 pub use stat::get_fs_stat as origin_fs_stat;

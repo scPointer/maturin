@@ -63,7 +63,7 @@
 //!
  
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(btree_drain_filter)]
+#![feature(btree_extract_if)]
 
 #[cfg(feature = "std")]
 mod external {
@@ -261,7 +261,7 @@ impl<SegmentType: Segment> RangeActionMap<SegmentType> {
         // 所以如果仅相交而不需要删除，就需要放回 self.areas
         let areas_to_be_modified: Vec<RangeArea<SegmentType>> = self
             .segments
-            .drain_filter(|_, area| area.is_overlap_with(start, end))
+            .extract_if(|_, area| area.is_overlap_with(start, end))
             .map(|(_, v)| v)
             .collect();
         for mut area in areas_to_be_modified {
@@ -284,7 +284,7 @@ impl<SegmentType: Segment> RangeActionMap<SegmentType> {
         // 所以如果仅相交而不需要删除，就需要放回 self.areas
         let areas_to_be_modified: Vec<RangeArea<SegmentType>> = self
             .segments
-            .drain_filter(|_, area| area.is_overlap_with(start, end))
+            .extract_if(|_, area| area.is_overlap_with(start, end))
             .map(|(_, v)| v)
             .collect();
         for mut area in areas_to_be_modified {

@@ -116,7 +116,7 @@ pub fn sys_bind(fd: usize, addr: *const u8, addr_len: usize) -> SysResult {
     }
     let fd_manager = task.fd_manager.lock();
     if let Ok(file) = fd_manager.get_file(fd) {
-        let sock = file.as_any().downcast_ref::<Socket>().unwrap().clone();
+        let sock = file.as_any().downcast_ref::<Socket>().unwrap();
         if let Some(_p) = sock.set_endpoint(addr, false) {
             Ok(0)
         } else {
@@ -133,7 +133,7 @@ pub fn sys_listen(fd: usize, backlog: usize) -> SysResult {
     let task = get_current_task().unwrap();
     let fd_manager = task.fd_manager.lock();
     if let Ok(file) = fd_manager.get_file(fd) {
-        let sock = file.as_any().downcast_ref::<Socket>().unwrap().clone();
+        let sock = file.as_any().downcast_ref::<Socket>().unwrap();
         sock.set_listening(true);
         Ok(0)
     } else {
@@ -152,7 +152,7 @@ pub fn sys_connect(fd: usize, addr: *const u8, addr_len: usize) -> SysResult {
 
     let fd_manager = task.fd_manager.lock();
     if let Ok(file) = fd_manager.get_file(fd) {
-        let sock = file.as_any().downcast_ref::<Socket>().unwrap().clone();
+        let sock = file.as_any().downcast_ref::<Socket>().unwrap();
         let laddr = IpAddr {
             family: 2,
             port: 0,
@@ -238,7 +238,7 @@ pub fn sys_accept4(fd: usize, addr: *mut u8, addr_len: *mut u32, flags: i32) -> 
                 }
 
                 //设置好远程endpoint
-                let sock = file.as_any().downcast_ref::<Socket>().unwrap().clone();
+                let sock = file.as_any().downcast_ref::<Socket>().unwrap();
                 sock.set_endpoint(addr, true).unwrap_or(0);
 
                 // New Socket
